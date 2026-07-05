@@ -1,0 +1,8 @@
+mydate,ename,logs(lbs)
+2024-03-01,Bench Press,"135x10,135x9,135x8"
+2024-03-01,Lat Pulldown,"100x12,100x10"
+2024-03-03,Squat,"185x8,185x8,185x7"
+2024-03-03,Skull Crusher,"45x12"
+not-a-date,Bench Press,"135x10"
+2024-03-05,,"135x10"
+2024-03-05,Deadlift,"garbage"

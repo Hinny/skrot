@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Skrot</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_programs">Programs</string>
+    <string name="tab_exercises">Exercises</string>
+    <string name="tab_stats">Statistics</string>
+    <string name="tab_more">More</string>
+
+    <!-- Generic -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="create">Create</string>
+    <string name="done">Done</string>
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="search">Search</string>
+    <string name="more">More</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="accept">Accept</string>
+    <string name="skip">Skip</string>
+    <string name="icon">Icon</string>
+    <string name="increase">Increase</string>
+    <string name="decrease">Decrease</string>
+    <string name="reorder">Reorder</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="days_ago">%1$d days ago</string>
+    <string name="never_performed">Never performed</string>
+    <string name="no_data_yet">No data yet</string>
+    <string name="seconds">Seconds</string>
+    <string name="notes">Notes</string>
+    <string name="history">History</string>
+
+    <!-- Home -->
+    <string name="workout_in_progress">Workout in progress</string>
+    <string name="tap_to_resume">Tap to resume</string>
+    <string name="next_workout">Next workout</string>
+    <string name="no_days_defined">No workout days defined</string>
+    <string name="start">Start</string>
+    <string name="choose_other_workout">Choose other</string>
+    <string name="choose_workout">Choose workout</string>
+    <string name="no_active_program">No active program. Pick one to get workout suggestions here.</string>
+    <string name="go_to_programs">Go to programs</string>
+    <string name="start_empty_workout">Start empty workout</string>
+    <string name="comeback_title">%1$d days since your last workout</string>
+    <string name="comeback_body">Ease back in with a rebuild program:</string>
+    <string name="start_workout">Start workout</string>
+    <string name="gym">Gym</string>
+    <string name="no_gym">No gym</string>
+    <string name="temporary_visit">Temporary visit</string>
+    <string name="temporary_visit_hint">Skips availability filtering — pick equivalents freely, nothing is saved.</string>
+    <string name="resolve_exercises">Resolve exercises</string>
+    <string name="not_available_no_equivalent">Not available at this gym, no equivalent found</string>
+    <string name="keep_original">Keep original</string>
+    <string name="skip_exercise">Skip exercise</string>
+    <string name="always_use_at_gym">Always use this exercise at this gym</string>
+    <string name="active_badge">Active</string>
+    <string name="set_active">Set active</string>
+
+    <!-- Programs -->
+    <string name="new_program">New program</string>
+    <string name="day_count">%1$d days</string>
+    <string name="active_program">Active program</string>
+    <string name="schedule">Schedule</string>
+    <string name="schedule_rotating">Rotating (A → B → C)</string>
+    <string name="schedule_fixed">Fixed weekdays</string>
+    <string name="prefill_mode">Pre-fill mode</string>
+    <string name="prefill_last_session">Last session</string>
+    <string name="prefill_targets">Targets</string>
+    <string name="prefill_hybrid">Hybrid</string>
+    <string name="tags_hint">Tags (e.g. rebuild)</string>
+    <string name="workout_days">Workout days</string>
+    <string name="add_day">Add day</string>
+    <string name="delete_program">Delete program</string>
+    <string name="delete_program_warning">This deletes the program and all its days. Logged sessions are kept.</string>
+    <string name="weekday_mon">Mon</string>
+    <string name="weekday_tue">Tue</string>
+    <string name="weekday_wed">Wed</string>
+    <string name="weekday_thu">Thu</string>
+    <string name="weekday_fri">Fri</string>
+    <string name="weekday_sat">Sat</string>
+    <string name="weekday_sun">Sun</string>
+
+    <!-- Day editor -->
+    <string name="exercise">Exercise</string>
+    <string name="superset">Superset</string>
+    <string name="add_exercise">Add exercise</string>
+    <string name="add_superset_exercise">Add exercise to this block (superset)</string>
+    <string name="link_superset">Link with previous</string>
+    <string name="unlink">Unlink</string>
+    <string name="target_min">Reps</string>
+    <string name="target_max_short">to</string>
+    <string name="target_max_optional">Max (optional)</string>
+    <string name="rest_s">Rest s</string>
+    <string name="level">Level</string>
+
+    <!-- Workout logging -->
+    <string name="workout">Workout</string>
+    <string name="finish">Finish</string>
+    <string name="finish_workout">Finish workout?</string>
+    <string name="discard">Discard</string>
+    <string name="discard_workout">Discard workout</string>
+    <string name="discard_workout_warning">This deletes the session and everything logged in it.</string>
+    <string name="add_set">+ Set</string>
+    <string name="add_drop_set">+ Drop set</string>
+    <string name="set_marker_warmup">W</string>
+    <string name="set_marker_standard">S</string>
+    <string name="set_marker_drop">D</string>
+    <string name="set_marker_failure">F</string>
+    <string name="amrap">AMRAP</string>
+    <string name="reps">Reps</string>
+    <string name="target_reps">Target reps</string>
+    <string name="rest_duration">Rest duration</string>
+    <string name="rest_zero_hint">0 = no timer</string>
+    <string name="swap_exercise">Swap exercise</string>
+    <string name="remove_exercise">Remove exercise</string>
+    <string name="exercise_note">Exercise note</string>
+    <string name="next_time_note">Next-time note</string>
+    <string name="note_prefix">Note: %1$s</string>
+    <string name="session_note">Session note</string>
+    <string name="new_pr">New PR!</string>
+    <string name="suggestion_increase">Target hit last time — increase to %1$s?</string>
+    <string name="suggestion_add_rep">Target hit last time — go for %1$d reps?</string>
+
+    <!-- Rest timer -->
+    <string name="rest_timer">Rest timer</string>
+    <string name="rest_over">Rest over</string>
+    <string name="rest_over_body">Next set: %1$s</string>
+    <string name="rest_remaining">%1$d:%2$02d — %3$s</string>
+
+    <!-- Summary -->
+    <string name="session_summary">Session summary</string>
+    <string name="duration">Duration</string>
+    <string name="exercises">Exercises</string>
+    <string name="sets">Sets</string>
+    <string name="total_volume">Total volume</string>
+    <string name="new_prs">New PRs</string>
+    <string name="pr_heaviest_weight">heaviest weight</string>
+    <string name="pr_best_e1rm">best estimated 1RM</string>
+    <string name="pr_reps_at_weight">rep PR at this weight</string>
+    <string name="pr_highest_level">highest level</string>
+    <string name="pr_reps_at_level">rep PR at this level</string>
+    <string name="pr_most_reps">most reps</string>
+    <string name="pr_most_added_weight">most added weight</string>
+
+    <!-- Exercise library -->
+    <string name="new_exercise">New exercise</string>
+    <string name="pick_exercise">Pick exercise</string>
+    <string name="exercise_name">Exercise name</string>
+    <string name="custom_badge">Custom</string>
+    <string name="measurement_type">Measurement type</string>
+    <string name="measurement_weight">Weight (kg)</string>
+    <string name="measurement_level">Machine level</string>
+    <string name="measurement_bodyweight">Bodyweight</string>
+    <string name="bodyweight_factor">Bodyweight factor (%)</string>
+    <string name="progression_increment_override">Progression increment (empty = default)</string>
+    <string name="exercise_group">Interchangeable-exercise group</string>
+    <string name="no_group">No group</string>
+    <string name="best_set">Best set</string>
+    <string name="load_over_time">Load over time</string>
+    <string name="estimated_1rm">Estimated 1RM</string>
+
+    <!-- Muscle groups -->
+    <string name="muscle_chest">Chest</string>
+    <string name="muscle_back">Back</string>
+    <string name="muscle_shoulders">Shoulders</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_forearms">Forearms</string>
+    <string name="muscle_abs">Abs</string>
+    <string name="muscle_quads">Quads</string>
+    <string name="muscle_hamstrings">Hamstrings</string>
+    <string name="muscle_glutes">Glutes</string>
+    <string name="muscle_calves">Calves</string>
+    <string name="muscle_full_body">Full body</string>
+
+    <!-- Stats -->
+    <string name="range_1m">1 m</string>
+    <string name="range_3m">3 m</string>
+    <string name="range_6m">6 m</string>
+    <string name="range_1y">1 y</string>
+    <string name="range_all">All</string>
+    <string name="training_frequency">Training frequency</string>
+    <string name="muscle_distribution">Sets per muscle group</string>
+    <string name="all_gyms">All gyms</string>
+
+    <!-- Body -->
+    <string name="body_metrics">Body metrics</string>
+    <string name="log_body_weight">Log body weight</string>
+    <string name="body_weight">Body weight</string>
+    <string name="body_weight_over_time">Body weight over time</string>
+    <string name="waist">Waist</string>
+    <string name="chest_measure">Chest</string>
+    <string name="arms">Arms</string>
+    <string name="thighs">Thighs</string>
+    <string name="hips">Hips</string>
+
+    <!-- Gyms -->
+    <string name="gyms">Gyms</string>
+    <string name="new_gym">New gym</string>
+    <string name="gyms_hint">Mark which exercises are available at each gym. Your routines stay gym-agnostic — Skrot swaps in equivalents when you train elsewhere.</string>
+    <string name="default_gym">Default gym</string>
+    <string name="set_default">Set default</string>
+    <string name="available_exercises">Available exercises (%1$d)</string>
+    <string name="select_all">Select all</string>
+    <string name="all_of">All %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="follow_system">Follow system</string>
+    <string name="display_unit">Display unit</string>
+    <string name="theme">Theme</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="default_rest_for_new_sets">Default rest for new sets (seconds)</string>
+    <string name="timer_adjust_step">Timer adjust step (seconds)</string>
+    <string name="timer_sound">Timer sound</string>
+    <string name="timer_vibration">Timer vibration</string>
+    <string name="sessions_section">Sessions</string>
+    <string name="auto_finish_threshold">Auto-finish after inactivity (minutes)</string>
+    <string name="swap_sequence_behavior">When swapping in another workout</string>
+    <string name="swap_skipped_stays">Skipped stays next</string>
+    <string name="swap_advance">Sequence advances</string>
+    <string name="comeback_threshold">Comeback suggestion after (days)</string>
+    <string name="keep_screen_on">Keep screen awake during workout</string>
+    <string name="progression">Progression suggestions</string>
+    <string name="increment_kg">Default increment (kg)</string>
+    <string name="increment_level">Default increment (machine levels)</string>
+    <string name="bodyweight_fallback">Body weight fallback (kg)</string>
+    <string name="coach_comments">Coach comments</string>
+    <string name="coach_enabled">Enable coach comments</string>
+    <string name="coach_personality">Personality</string>
+    <string name="coach_frequency">Frequency</string>
+    <string name="personality_cheerleader">Cheerleader</string>
+    <string name="personality_bro">Bro</string>
+    <string name="personality_pt">PT</string>
+    <string name="personality_minimal">Minimal</string>
+    <string name="frequency_low">Low</string>
+    <string name="frequency_medium">Medium</string>
+    <string name="frequency_high">High</string>
+    <string name="default_gym_setting">Gyms &amp; default gym</string>
+
+    <!-- Backup / import -->
+    <string name="backup_and_import">Backup &amp; import</string>
+    <string name="backup">Backup</string>
+    <string name="backup_hint">Everything stays on your device. Export a full backup to a file, or a CSV of the workout log for spreadsheets.</string>
+    <string name="export_json">Export backup (JSON)</string>
+    <string name="import_json">Import backup (JSON)</string>
+    <string name="export_csv">Export workout log (CSV)</string>
+    <string name="export_done">Export finished.</string>
+    <string name="export_failed">Export failed.</string>
+    <string name="import_done">Import finished.</string>
+    <string name="import_failed">Import failed.</string>
+    <string name="import_label">Import</string>
+    <string name="replace_data">Replace data</string>
+    <string name="import_replace_warning">Importing replaces ALL current data with the backup\'s content. This cannot be undone.</string>
+    <string name="jefit_import">JEFIT import</string>
+    <string name="jefit_import_hint">Import your training history from a JEFIT CSV export. Exercise names are matched against the library; the rest become custom exercises.</string>
+    <string name="pick_jefit_csv">Pick JEFIT CSV file</string>
+    <string name="jefit_unit_title">Weight unit</string>
+    <string name="jefit_unit_question">Which unit does the JEFIT export use?</string>
+    <string name="jefit_preview_title">Import preview</string>
+    <string name="jefit_preview_body">%1$d sessions, %2$d sets, %3$d new exercises.</string>
+    <string name="jefit_new_exercises">New exercises:</string>
+    <string name="jefit_skipped">%1$d rows skipped</string>
+    <string name="jefit_summary">Imported %1$d sessions with %2$d sets. %3$d new exercises created.</string>
+    <string name="jefit_nothing_found">No workout data found in the file.</string>
+
+    <!-- About -->
+    <string name="about">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_description">Skrot is a free, open-source strength training log. No ads, no accounts, no cloud — your data stays on your device.</string>
+    <string name="about_license">Licensed under the MIT license.</string>
+    <string name="about_offline">Skrot has no network permission — it is provably offline.</string>
+
+    <!-- Coach: Cheerleader -->
+    <string-array name="coach_cheerleader_welcome_back">
+        <item>Welcome back — so good to see you again! 🎉</item>
+        <item>You showed up. That\'s the hardest part — let\'s go!</item>
+        <item>Back at it! Today is going to be great!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_pr_chance">
+        <item>Hit the target now and it\'s a new PR — you\'ve got this!</item>
+        <item>PR within reach! Give it everything!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_idle">
+        <item>Shake it off — next set is waiting for you!</item>
+        <item>You\'ve rested plenty — time to shine!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_last_exercise">
+        <item>Last exercise — finish strong, superstar!</item>
+        <item>One more to go — you\'re amazing!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_session_done">
+        <item>Workout done — you\'re a rock star! ⭐</item>
+        <item>Amazing session! Be proud of yourself!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_streak">
+        <item>Another consistent week — the streak lives on!</item>
+    </string-array>
+
+    <!-- Coach: Bro -->
+    <string-array name="coach_bro_welcome_back">
+        <item>Yo, look who\'s back in the iron temple!</item>
+        <item>The scrap misses you no more — let\'s move some weight, bro.</item>
+    </string-array>
+    <string-array name="coach_bro_pr_chance">
+        <item>Hit the target and it\'s a PR, bro. Send it.</item>
+        <item>PR on the bar. No guts no glory.</item>
+    </string-array>
+    <string-array name="coach_bro_idle">
+        <item>Bro, the weights aren\'t gonna lift themselves.</item>
+        <item>Less scrolling, more lifting.</item>
+    </string-array>
+    <string-array name="coach_bro_last_exercise">
+        <item>Last one, bro — empty the tank.</item>
+        <item>Final exercise. Leave nothing.</item>
+    </string-array>
+    <string-array name="coach_bro_session_done">
+        <item>Solid session, bro. Gains incoming.</item>
+        <item>Done. Now eat.</item>
+    </string-array>
+    <string-array name="coach_bro_streak">
+        <item>Week after week. That\'s how it\'s done, bro.</item>
+    </string-array>
+
+    <!-- Coach: PT -->
+    <string-array name="coach_pt_welcome_back">
+        <item>Good to have you back. Start light and rebuild gradually.</item>
+        <item>After a break, technique first — the load will follow.</item>
+    </string-array>
+    <string-array name="coach_pt_pr_chance">
+        <item>Reaching the target here would set a new personal record.</item>
+        <item>A PR is within reach this set. Focus on form.</item>
+    </string-array>
+    <string-array name="coach_pt_idle">
+        <item>Long rest detected. Refocus and continue when ready.</item>
+        <item>Rest complete — maintain intensity for best results.</item>
+    </string-array>
+    <string-array name="coach_pt_last_exercise">
+        <item>Last exercise of the session. Keep quality high.</item>
+    </string-array>
+    <string-array name="coach_pt_session_done">
+        <item>Session complete. Prioritize protein and sleep for recovery.</item>
+        <item>Well executed. Recovery starts now.</item>
+    </string-array>
+    <string-array name="coach_pt_streak">
+        <item>Consistent training weeks are the strongest predictor of progress. Keep it up.</item>
+    </string-array>
+
+    <!-- Coach: Minimal -->
+    <string-array name="coach_minimal_welcome_back">
+        <item>Back.</item>
+        <item>Resume.</item>
+    </string-array>
+    <string-array name="coach_minimal_pr_chance">
+        <item>PR possible.</item>
+    </string-array>
+    <string-array name="coach_minimal_idle">
+        <item>Continue.</item>
+    </string-array>
+    <string-array name="coach_minimal_last_exercise">
+        <item>Last one.</item>
+    </string-array>
+    <string-array name="coach_minimal_session_done">
+        <item>Done.</item>
+    </string-array>
+    <string-array name="coach_minimal_streak">
+        <item>Streak intact.</item>
+    </string-array>
+</resources>
