@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tabs -->
+    <string name="tab_home">Hem</string>
+    <string name="tab_programs">Program</string>
+    <string name="tab_exercises">Övningar</string>
+    <string name="tab_stats">Statistik</string>
+    <string name="tab_more">Mer</string>
+
+    <!-- Generic -->
+    <string name="ok">OK</string>
+    <string name="cancel">Avbryt</string>
+    <string name="save">Spara</string>
+    <string name="delete">Ta bort</string>
+    <string name="create">Skapa</string>
+    <string name="done">Klar</string>
+    <string name="name">Namn</string>
+    <string name="description">Beskrivning</string>
+    <string name="search">Sök</string>
+    <string name="more">Mer</string>
+    <string name="dismiss">Stäng</string>
+    <string name="accept">Acceptera</string>
+    <string name="skip">Hoppa över</string>
+    <string name="icon">Ikon</string>
+    <string name="increase">Öka</string>
+    <string name="decrease">Minska</string>
+    <string name="reorder">Ändra ordning</string>
+    <string name="today">Idag</string>
+    <string name="yesterday">Igår</string>
+    <string name="days_ago">%1$d dagar sedan</string>
+    <string name="never_performed">Aldrig utförd</string>
+    <string name="no_data_yet">Ingen data ännu</string>
+    <string name="seconds">Sekunder</string>
+    <string name="notes">Anteckningar</string>
+    <string name="history">Historik</string>
+
+    <!-- Home -->
+    <string name="workout_in_progress">Pågående pass</string>
+    <string name="tap_to_resume">Tryck för att fortsätta</string>
+    <string name="next_workout">Nästa pass</string>
+    <string name="no_days_defined">Inga passdagar definierade</string>
+    <string name="start">Starta</string>
+    <string name="choose_other_workout">Välj annat</string>
+    <string name="choose_workout">Välj pass</string>
+    <string name="no_active_program">Inget aktivt program. Välj ett för att få passförslag här.</string>
+    <string name="go_to_programs">Gå till program</string>
+    <string name="start_empty_workout">Starta tomt pass</string>
+    <string name="comeback_title">%1$d dagar sedan ditt senaste pass</string>
+    <string name="comeback_body">Kom igång lugnt med ett återuppbyggnadsprogram:</string>
+    <string name="start_workout">Starta pass</string>
+    <string name="gym">Gym</string>
+    <string name="no_gym">Inget gym</string>
+    <string name="temporary_visit">Tillfälligt besök</string>
+    <string name="temporary_visit_hint">Hoppar över tillgänglighetsfiltret — välj fritt bland motsvarande övningar, inget sparas.</string>
+    <string name="resolve_exercises">Lös övningar</string>
+    <string name="not_available_no_equivalent">Finns inte på detta gym, ingen motsvarighet hittad</string>
+    <string name="keep_original">Behåll original</string>
+    <string name="skip_exercise">Hoppa över övning</string>
+    <string name="always_use_at_gym">Använd alltid denna övning på detta gym</string>
+    <string name="active_badge">Aktivt</string>
+    <string name="set_active">Gör aktivt</string>
+
+    <!-- Programs -->
+    <string name="new_program">Nytt program</string>
+    <string name="day_count">%1$d dagar</string>
+    <string name="active_program">Aktivt program</string>
+    <string name="schedule">Schema</string>
+    <string name="schedule_rotating">Roterande (A → B → C)</string>
+    <string name="schedule_fixed">Fasta veckodagar</string>
+    <string name="prefill_mode">Förifyllningsläge</string>
+    <string name="prefill_last_session">Senaste passet</string>
+    <string name="prefill_targets">Mål</string>
+    <string name="prefill_hybrid">Hybrid</string>
+    <string name="tags_hint">Taggar (t.ex. rebuild)</string>
+    <string name="workout_days">Passdagar</string>
+    <string name="add_day">Lägg till dag</string>
+    <string name="delete_program">Ta bort program</string>
+    <string name="delete_program_warning">Detta tar bort programmet och alla dess dagar. Loggade pass behålls.</string>
+    <string name="weekday_mon">Mån</string>
+    <string name="weekday_tue">Tis</string>
+    <string name="weekday_wed">Ons</string>
+    <string name="weekday_thu">Tor</string>
+    <string name="weekday_fri">Fre</string>
+    <string name="weekday_sat">Lör</string>
+    <string name="weekday_sun">Sön</string>
+
+    <!-- Day editor -->
+    <string name="exercise">Övning</string>
+    <string name="superset">Superset</string>
+    <string name="add_exercise">Lägg till övning</string>
+    <string name="add_superset_exercise">Lägg till övning i detta block (superset)</string>
+    <string name="link_superset">Länka med föregående</string>
+    <string name="unlink">Avlänka</string>
+    <string name="target_min">Reps</string>
+    <string name="target_max_short">till</string>
+    <string name="target_max_optional">Max (valfritt)</string>
+    <string name="rest_s">Vila s</string>
+    <string name="level">Nivå</string>
+
+    <!-- Workout logging -->
+    <string name="workout">Pass</string>
+    <string name="finish">Avsluta</string>
+    <string name="finish_workout">Avsluta passet?</string>
+    <string name="discard">Släng</string>
+    <string name="discard_workout">Släng passet</string>
+    <string name="discard_workout_warning">Detta tar bort passet och allt som loggats i det.</string>
+    <string name="add_set">+ Set</string>
+    <string name="add_drop_set">+ Drop set</string>
+    <string name="set_marker_warmup">U</string>
+    <string name="set_marker_standard">S</string>
+    <string name="set_marker_drop">D</string>
+    <string name="set_marker_failure">F</string>
+    <string name="amrap">AMRAP</string>
+    <string name="reps">Reps</string>
+    <string name="target_reps">Målreps</string>
+    <string name="rest_duration">Vilotid</string>
+    <string name="rest_zero_hint">0 = ingen timer</string>
+    <string name="swap_exercise">Byt övning</string>
+    <string name="remove_exercise">Ta bort övning</string>
+    <string name="exercise_note">Övningsanteckning</string>
+    <string name="next_time_note">Nästa gång-anteckning</string>
+    <string name="note_prefix">Anteckning: %1$s</string>
+    <string name="session_note">Passanteckning</string>
+    <string name="new_pr">Nytt PB!</string>
+    <string name="suggestion_increase">Målet nått förra gången — öka till %1$s?</string>
+    <string name="suggestion_add_rep">Målet nått förra gången — sikta på %1$d reps?</string>
+
+    <!-- Rest timer -->
+    <string name="rest_timer">Vilotimer</string>
+    <string name="rest_over">Vilan är slut</string>
+    <string name="rest_over_body">Nästa set: %1$s</string>
+    <string name="rest_remaining">%1$d:%2$02d — %3$s</string>
+
+    <!-- Summary -->
+    <string name="session_summary">Passammanfattning</string>
+    <string name="duration">Längd</string>
+    <string name="exercises">Övningar</string>
+    <string name="sets">Set</string>
+    <string name="total_volume">Total volym</string>
+    <string name="new_prs">Nya personbästa</string>
+    <string name="pr_heaviest_weight">tyngsta vikten</string>
+    <string name="pr_best_e1rm">bästa uppskattade 1RM</string>
+    <string name="pr_reps_at_weight">rep-PB på denna vikt</string>
+    <string name="pr_highest_level">högsta nivån</string>
+    <string name="pr_reps_at_level">rep-PB på denna nivå</string>
+    <string name="pr_most_reps">flest reps</string>
+    <string name="pr_most_added_weight">mest extravikt</string>
+
+    <!-- Exercise library -->
+    <string name="new_exercise">Ny övning</string>
+    <string name="pick_exercise">Välj övning</string>
+    <string name="exercise_name">Övningsnamn</string>
+    <string name="custom_badge">Egen</string>
+    <string name="measurement_type">Mätningstyp</string>
+    <string name="measurement_weight">Vikt (kg)</string>
+    <string name="measurement_level">Maskinnivå</string>
+    <string name="measurement_bodyweight">Kroppsvikt</string>
+    <string name="bodyweight_factor">Kroppsviktsfaktor (%)</string>
+    <string name="progression_increment_override">Progressionsökning (tomt = standard)</string>
+    <string name="exercise_group">Utbytbara övningar-grupp</string>
+    <string name="no_group">Ingen grupp</string>
+    <string name="best_set">Bästa set</string>
+    <string name="load_over_time">Belastning över tid</string>
+    <string name="estimated_1rm">Uppskattat 1RM</string>
+
+    <!-- Muscle groups -->
+    <string name="muscle_chest">Bröst</string>
+    <string name="muscle_back">Rygg</string>
+    <string name="muscle_shoulders">Axlar</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_forearms">Underarmar</string>
+    <string name="muscle_abs">Mage</string>
+    <string name="muscle_quads">Framsida lår</string>
+    <string name="muscle_hamstrings">Baksida lår</string>
+    <string name="muscle_glutes">Säte</string>
+    <string name="muscle_calves">Vader</string>
+    <string name="muscle_full_body">Helkropp</string>
+
+    <!-- Stats -->
+    <string name="range_1m">1 mån</string>
+    <string name="range_3m">3 mån</string>
+    <string name="range_6m">6 mån</string>
+    <string name="range_1y">1 år</string>
+    <string name="range_all">Allt</string>
+    <string name="training_frequency">Träningsfrekvens</string>
+    <string name="muscle_distribution">Set per muskelgrupp</string>
+    <string name="all_gyms">Alla gym</string>
+
+    <!-- Body -->
+    <string name="body_metrics">Kroppsmått</string>
+    <string name="log_body_weight">Logga kroppsvikt</string>
+    <string name="body_weight">Kroppsvikt</string>
+    <string name="body_weight_over_time">Kroppsvikt över tid</string>
+    <string name="waist">Midja</string>
+    <string name="chest_measure">Bröstkorg</string>
+    <string name="arms">Armar</string>
+    <string name="thighs">Lår</string>
+    <string name="hips">Höfter</string>
+
+    <!-- Gyms -->
+    <string name="gyms">Gym</string>
+    <string name="new_gym">Nytt gym</string>
+    <string name="gyms_hint">Markera vilka övningar som finns på varje gym. Dina program är gym-oberoende — Skrot byter till motsvarigheter när du tränar någon annanstans.</string>
+    <string name="default_gym">Standardgym</string>
+    <string name="set_default">Gör till standard</string>
+    <string name="available_exercises">Tillgängliga övningar (%1$d)</string>
+    <string name="select_all">Välj alla</string>
+    <string name="all_of">Alla %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings">Inställningar</string>
+    <string name="language">Språk</string>
+    <string name="follow_system">Följ systemet</string>
+    <string name="display_unit">Visningsenhet</string>
+    <string name="theme">Tema</string>
+    <string name="theme_dark">Mörkt</string>
+    <string name="theme_light">Ljust</string>
+    <string name="default_rest_for_new_sets">Standardvila för nya set (sekunder)</string>
+    <string name="timer_adjust_step">Timerjusteringssteg (sekunder)</string>
+    <string name="timer_sound">Timerljud</string>
+    <string name="timer_vibration">Timervibration</string>
+    <string name="sessions_section">Pass</string>
+    <string name="auto_finish_threshold">Avsluta automatiskt efter inaktivitet (minuter)</string>
+    <string name="swap_sequence_behavior">När ett annat pass byts in</string>
+    <string name="swap_skipped_stays">Det överhoppade förblir nästa</string>
+    <string name="swap_advance">Sekvensen går vidare</string>
+    <string name="comeback_threshold">Comeback-förslag efter (dagar)</string>
+    <string name="keep_screen_on">Håll skärmen vaken under pass</string>
+    <string name="progression">Progressionsförslag</string>
+    <string name="increment_kg">Standardökning (kg)</string>
+    <string name="increment_level">Standardökning (maskinnivåer)</string>
+    <string name="bodyweight_fallback">Reservkroppsvikt (kg)</string>
+    <string name="coach_comments">Coach-kommentarer</string>
+    <string name="coach_enabled">Aktivera coach-kommentarer</string>
+    <string name="coach_personality">Personlighet</string>
+    <string name="coach_frequency">Frekvens</string>
+    <string name="personality_cheerleader">Hejaklack</string>
+    <string name="personality_bro">Brorsan</string>
+    <string name="personality_pt">PT</string>
+    <string name="personality_minimal">Minimal</string>
+    <string name="frequency_low">Låg</string>
+    <string name="frequency_medium">Mellan</string>
+    <string name="frequency_high">Hög</string>
+    <string name="default_gym_setting">Gym &amp; standardgym</string>
+
+    <!-- Backup / import -->
+    <string name="backup_and_import">Säkerhetskopia &amp; import</string>
+    <string name="backup">Säkerhetskopia</string>
+    <string name="backup_hint">Allt stannar på din enhet. Exportera en fullständig säkerhetskopia till fil, eller en CSV av träningsloggen för kalkylblad.</string>
+    <string name="export_json">Exportera säkerhetskopia (JSON)</string>
+    <string name="import_json">Importera säkerhetskopia (JSON)</string>
+    <string name="export_csv">Exportera träningslogg (CSV)</string>
+    <string name="export_done">Exporten är klar.</string>
+    <string name="export_failed">Exporten misslyckades.</string>
+    <string name="import_done">Importen är klar.</string>
+    <string name="import_failed">Importen misslyckades.</string>
+    <string name="import_label">Importera</string>
+    <string name="replace_data">Ersätt data</string>
+    <string name="import_replace_warning">Importen ersätter ALL nuvarande data med säkerhetskopians innehåll. Detta kan inte ångras.</string>
+    <string name="jefit_import">JEFIT-import</string>
+    <string name="jefit_import_hint">Importera din träningshistorik från en JEFIT CSV-export. Övningsnamn matchas mot biblioteket; resten blir egna övningar.</string>
+    <string name="pick_jefit_csv">Välj JEFIT CSV-fil</string>
+    <string name="jefit_unit_title">Viktenhet</string>
+    <string name="jefit_unit_question">Vilken enhet använder JEFIT-exporten?</string>
+    <string name="jefit_preview_title">Förhandsgranskning</string>
+    <string name="jefit_preview_body">%1$d pass, %2$d set, %3$d nya övningar.</string>
+    <string name="jefit_new_exercises">Nya övningar:</string>
+    <string name="jefit_skipped">%1$d rader hoppades över</string>
+    <string name="jefit_summary">Importerade %1$d pass med %2$d set. %3$d nya övningar skapades.</string>
+    <string name="jefit_nothing_found">Ingen träningsdata hittades i filen.</string>
+
+    <!-- About -->
+    <string name="about">Om</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_description">Skrot är en gratis träningslogg med öppen källkod. Inga annonser, inga konton, inget moln — din data stannar på din enhet.</string>
+    <string name="about_license">Licensierad under MIT-licensen.</string>
+    <string name="about_offline">Skrot har ingen nätverksbehörighet — appen är bevisligen offline.</string>
+
+    <!-- Coach: Hejaklack -->
+    <string-array name="coach_cheerleader_welcome_back">
+        <item>Välkommen tillbaka — vad kul att se dig igen! 🎉</item>
+        <item>Du dök upp. Det är det svåraste — nu kör vi!</item>
+        <item>Tillbaka igen! Idag blir en toppendag!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_pr_chance">
+        <item>Nå målet nu så är det nytt personbästa — du fixar det!</item>
+        <item>PB inom räckhåll! Ge allt!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_idle">
+        <item>Skaka loss — nästa set väntar på dig!</item>
+        <item>Du har vilat klart — dags att glänsa!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_last_exercise">
+        <item>Sista övningen — avsluta starkt, superstjärna!</item>
+        <item>En kvar — du är fantastisk!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_session_done">
+        <item>Passet klart — du är en stjärna! ⭐</item>
+        <item>Grymt pass! Var stolt över dig själv!</item>
+    </string-array>
+    <string-array name="coach_cheerleader_streak">
+        <item>Ännu en jämn vecka — sviten lever!</item>
+    </string-array>
+
+    <!-- Coach: Brorsan -->
+    <string-array name="coach_bro_welcome_back">
+        <item>Tja, kolla vem som är tillbaka i järntemplet!</item>
+        <item>Skroten har saknat dig — nu flyttar vi vikt, bror.</item>
+    </string-array>
+    <string-array name="coach_bro_pr_chance">
+        <item>Nå målet så är det PB, bror. Kör.</item>
+        <item>PB på stången. Inget vågat, inget vunnet.</item>
+    </string-array>
+    <string-array name="coach_bro_idle">
+        <item>Bror, vikterna lyfter inte sig själva.</item>
+        <item>Mindre skrollande, mer lyftande.</item>
+    </string-array>
+    <string-array name="coach_bro_last_exercise">
+        <item>Sista, bror — töm tanken.</item>
+        <item>Sista övningen. Lämna inget kvar.</item>
+    </string-array>
+    <string-array name="coach_bro_session_done">
+        <item>Stabilt pass, bror. Gains på väg.</item>
+        <item>Klart. Ät nu.</item>
+    </string-array>
+    <string-array name="coach_bro_streak">
+        <item>Vecka efter vecka. Så ska det se ut, bror.</item>
+    </string-array>
+
+    <!-- Coach: PT -->
+    <string-array name="coach_pt_welcome_back">
+        <item>Kul att ha dig tillbaka. Börja lätt och bygg upp gradvis.</item>
+        <item>Efter ett uppehåll: teknik först — vikten kommer sen.</item>
+    </string-array>
+    <string-array name="coach_pt_pr_chance">
+        <item>Att nå målet här skulle innebära ett nytt personbästa.</item>
+        <item>PB inom räckhåll detta set. Fokusera på tekniken.</item>
+    </string-array>
+    <string-array name="coach_pt_idle">
+        <item>Lång vila registrerad. Återfå fokus och fortsätt när du är redo.</item>
+        <item>Vilan är klar — håll intensiteten uppe för bästa resultat.</item>
+    </string-array>
+    <string-array name="coach_pt_last_exercise">
+        <item>Passets sista övning. Håll kvaliteten hög.</item>
+    </string-array>
+    <string-array name="coach_pt_session_done">
+        <item>Passet slutfört. Prioritera protein och sömn för återhämtning.</item>
+        <item>Bra genomfört. Återhämtningen börjar nu.</item>
+    </string-array>
+    <string-array name="coach_pt_streak">
+        <item>Jämna träningsveckor är den starkaste indikatorn på framsteg. Fortsätt så.</item>
+    </string-array>
+
+    <!-- Coach: Minimal -->
+    <string-array name="coach_minimal_welcome_back">
+        <item>Tillbaka.</item>
+        <item>Återuppta.</item>
+    </string-array>
+    <string-array name="coach_minimal_pr_chance">
+        <item>PB möjligt.</item>
+    </string-array>
+    <string-array name="coach_minimal_idle">
+        <item>Fortsätt.</item>
+    </string-array>
+    <string-array name="coach_minimal_last_exercise">
+        <item>Sista.</item>
+    </string-array>
+    <string-array name="coach_minimal_session_done">
+        <item>Klart.</item>
+    </string-array>
+    <string-array name="coach_minimal_streak">
+        <item>Sviten håller.</item>
+    </string-array>
+</resources>
