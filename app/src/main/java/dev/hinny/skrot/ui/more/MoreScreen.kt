@@ -13,7 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
@@ -44,7 +43,6 @@ fun MoreScreen(nav: NavHostController) {
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 12.dp),
         )
-        MoreItem(Icons.Filled.Place, stringResource(R.string.gyms)) { nav.navigate(Routes.GYMS) }
         MoreItem(Icons.Filled.MonitorWeight, stringResource(R.string.body_metrics)) {
             nav.navigate(Routes.BODY)
         }

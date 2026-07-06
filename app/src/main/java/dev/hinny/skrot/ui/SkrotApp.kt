@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -52,6 +55,7 @@ import dev.hinny.skrot.ui.exercises.ExercisesScreen
 import dev.hinny.skrot.ui.gyms.GymsScreen
 import dev.hinny.skrot.ui.home.HomeScreen
 import dev.hinny.skrot.ui.importexport.BackupScreen
+import dev.hinny.skrot.ui.library.LibraryScreen
 import dev.hinny.skrot.ui.logging.SessionSummaryScreen
 import dev.hinny.skrot.ui.logging.WorkoutScreen
 import dev.hinny.skrot.ui.more.AboutScreen
@@ -59,6 +63,7 @@ import dev.hinny.skrot.ui.more.MoreScreen
 import dev.hinny.skrot.ui.routines.DayEditorScreen
 import dev.hinny.skrot.ui.routines.ProgramEditorScreen
 import dev.hinny.skrot.ui.routines.ProgramsScreen
+import dev.hinny.skrot.ui.session.SessionScreen
 import dev.hinny.skrot.ui.settings.SettingsScreen
 import dev.hinny.skrot.ui.stats.StatsScreen
 
@@ -77,6 +82,8 @@ inline fun <reified VM : ViewModel> containerViewModel(
 
 object Routes {
     const val HOME = "home"
+    const val SESSION = "session"
+    const val LIBRARY = "library"
     const val PROGRAMS = "programs"
     const val EXERCISES = "exercises"
     const val STATS = "stats"
@@ -91,23 +98,39 @@ object Routes {
     fun workout(id: Long) = "workout/$id"
     fun summary(id: Long) = "summary/$id"
     fun exercise(id: Long) = "exercise/$id"
+
+    /** Maps any route to the bottom-bar tab it belongs under (for highlighting). */
+    fun tabFor(route: String?): String? = when {
+        route == null -> null
+        route == HOME -> HOME
+        route == SESSION || route.startsWith("workout/") || route.startsWith("summary/") -> SESSION
+        route == LIBRARY || route == PROGRAMS || route == EXERCISES || route == GYMS ||
+            route.startsWith("program/") || route.startsWith("day/") ||
+            route.startsWith("exercise/") -> LIBRARY
+
+        route == STATS -> STATS
+        else -> MORE
+    }
 }
 
-private data class Tab(val route: String, val labelRes: Int, val icon: @Composable () -> Unit)
+private data class Tab(val route: String, val labelRes: Int, val icon: ImageVector)
 
 @Composable
 fun SkrotApp(container: AppContainer, settings: Settings) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val openSession by container.db.sessionDao().observeOpenSession()
+        .collectAsStateWithLifecycle(initialValue = null)
 
     val tabs = listOf(
-        Tab(Routes.HOME, R.string.tab_home) { Icon(Icons.Filled.Home, null) },
-        Tab(Routes.PROGRAMS, R.string.tab_programs) { Icon(Icons.Filled.MenuBook, null) },
-        Tab(Routes.EXERCISES, R.string.tab_exercises) { Icon(Icons.Filled.FitnessCenter, null) },
-        Tab(Routes.STATS, R.string.tab_stats) { Icon(Icons.Filled.BarChart, null) },
-        Tab(Routes.MORE, R.string.tab_more) { Icon(Icons.Filled.MoreHoriz, null) },
+        Tab(Routes.HOME, R.string.tab_home, Icons.Filled.Home),
+        Tab(Routes.SESSION, R.string.tab_session, Icons.Filled.PlayArrow),
+        Tab(Routes.LIBRARY, R.string.tab_library, Icons.Filled.MenuBook),
+        Tab(Routes.STATS, R.string.tab_stats, Icons.Filled.BarChart),
+        Tab(Routes.MORE, R.string.tab_more, Icons.Filled.MoreHoriz),
     )
+    val selectedTab = Routes.tabFor(currentRoute)
     val hideBars = currentRoute?.startsWith("workout/") == true ||
         currentRoute?.startsWith("summary/") == true
 
@@ -119,15 +142,21 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
                     NavigationBar {
                         tabs.forEach { tab ->
                             NavigationBarItem(
-                                selected = currentRoute == tab.route,
+                                selected = selectedTab == tab.route,
                                 onClick = {
+                                    // Always land on the tab's first page (never a sub-page).
                                     navController.navigate(tab.route) {
-                                        popUpTo(Routes.HOME) { saveState = true }
+                                        popUpTo(Routes.HOME)
                                         launchSingleTop = true
-                                        restoreState = true
                                     }
                                 },
-                                icon = tab.icon,
+                                icon = {
+                                    if (tab.route == Routes.SESSION && openSession != null) {
+                                        BadgedBox(badge = { Badge() }) { Icon(tab.icon, null) }
+                                    } else {
+                                        Icon(tab.icon, null)
+                                    }
+                                },
                                 label = { Text(stringResource(tab.labelRes)) },
                             )
                         }
@@ -142,6 +171,8 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.HOME) { HomeScreen(container, settings, navController) }
+            composable(Routes.SESSION) { SessionScreen(container, navController) }
+            composable(Routes.LIBRARY) { LibraryScreen(navController) }
             composable(Routes.PROGRAMS) { ProgramsScreen(container, navController) }
             composable(
                 "program/{id}",
