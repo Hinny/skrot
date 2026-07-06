@@ -269,6 +269,8 @@
     <string name="jefit_skipped">%1$d rader hoppades över</string>
     <string name="jefit_summary">Importerade %1$d pass med %2$d set. %3$d nya övningar skapades.</string>
     <string name="jefit_nothing_found">Ingen träningsdata hittades i filen.</string>
+    <string name="jefit_preview_body_metrics">%1$d kroppsloggposter kommer att importeras.</string>
+    <string name="jefit_summary_body_metrics">%1$d kroppsloggposter importerades.</string>
 
     <!-- About -->
     <string name="about">Om</string>

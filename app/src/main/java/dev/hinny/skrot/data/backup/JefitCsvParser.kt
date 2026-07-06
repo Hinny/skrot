@@ -7,8 +7,14 @@ import java.time.format.DateTimeFormatter
 
 /**
  * Defensive parser for JEFIT's CSV export. The format is undocumented and varies
- * between versions, so columns are detected by header name, and both packed
- * ("60x8,60x8,60x7" per exercise per day) and one-row-per-set layouts are handled.
+ * between versions, so two shapes are handled:
+ *
+ * 1. The real "My Data" export: a multi-section text file where sections are
+ *    delimited by banner lines like `### EXERCISE LOGS ####...`. Workout history
+ *    is read from the EXERCISE LOGS section, body measurements from PROFILE, and
+ *    the weight unit from SETTING.
+ * 2. A plain single-table CSV (one header row), with either packed sets
+ *    ("60x8,60x8,60x7" per exercise per day) or one row per set.
  */
 object JefitCsvParser {
 
@@ -16,15 +22,31 @@ object JefitCsvParser {
     data class ParsedExercise(val name: String, val sets: MutableList<ParsedSet> = mutableListOf())
     data class ParsedSession(val date: LocalDate, val exercises: MutableList<ParsedExercise> = mutableListOf())
 
+    /** One imported body-measurement entry (already converted to kg/cm). */
+    data class ParsedBodyMetric(
+        val date: LocalDate,
+        val weightKg: Double? = null,
+        val chestCm: Double? = null,
+        val armsCm: Double? = null,
+        val waistCm: Double? = null,
+        val hipsCm: Double? = null,
+        val thighsCm: Double? = null,
+    ) {
+        val fieldCount: Int
+            get() = listOfNotNull(weightKg, chestCm, armsCm, waistCm, hipsCm, thighsCm).size
+    }
+
     data class Result(
         val sessions: List<ParsedSession>,
         val skipped: List<String>,
-        /** Unit detected from headers, or null if undetectable (caller should ask the user). */
+        /** Unit detected from the file, or null if undetectable (caller should ask the user). */
         val detectedUnit: WeightUnit?,
         val totalSets: Int,
+        val bodyMetrics: List<ParsedBodyMetric> = emptyList(),
     )
 
     private val packedEntry = Regex("""^(-?\d+(?:[.,]\d+)?)\s*[x×X*]\s*(\d+)$""")
+    private val sectionBanner = Regex("""^#{2,}\s*([A-ZÅÄÖ][A-ZÅÄÖ0-9 &/_-]*?)\s*#*\s*$""")
     private val dateFormats = listOf(
         DateTimeFormatter.ISO_LOCAL_DATE,          // 2024-03-01
         DateTimeFormatter.ofPattern("yyyy/MM/dd"),
@@ -33,11 +55,221 @@ object JefitCsvParser {
     )
 
     /**
-     * @param unitOverride force kg or lbs interpretation; null = use header detection,
+     * @param unitOverride force kg or lbs interpretation; null = use detection,
      *   falling back to kg.
      */
     fun parse(csv: String, unitOverride: WeightUnit? = null): Result {
-        val rows = readCsv(csv).filter { row -> row.any { it.isNotBlank() } }
+        val sections = splitSections(csv)
+        return if (sections != null) parseSectioned(sections, unitOverride)
+        else parseSingleTable(csv, unitOverride)
+    }
+
+    // ---------------------------------------------------------------------
+    // Multi-section export ("### EXERCISE LOGS ###" banners)
+    // ---------------------------------------------------------------------
+
+    /** Returns section name -> raw CSV text, or null when the file has no banners. */
+    private fun splitSections(text: String): Map<String, String>? {
+        val lines = text.lines()
+        if (lines.none { sectionBanner.matches(it.trim()) }) return null
+
+        val sections = linkedMapOf<String, StringBuilder>()
+        var current: StringBuilder? = null
+        for (line in lines) {
+            val trimmed = line.trim()
+            val match = sectionBanner.matchEntire(trimmed)
+            when {
+                match != null -> {
+                    current = StringBuilder().also { sections[match.groupValues[1].uppercase()] = it }
+                }
+                trimmed.isNotEmpty() && trimmed.all { it == '#' } -> current = null // closing banner
+                else -> current?.append(line)?.append('\n')
+            }
+        }
+        return sections.mapValues { it.value.toString() }
+    }
+
+    private fun parseSectioned(sections: Map<String, String>, unitOverride: WeightUnit?): Result {
+        val skipped = mutableListOf<String>()
+        val detectedUnit = detectUnitFromSettings(sections["SETTING"])
+        val unit = unitOverride ?: detectedUnit ?: WeightUnit.KG
+
+        val (sessions, totalSets) = parseExerciseLogs(sections["EXERCISE LOGS"], unit, skipped)
+        val bodyMetrics = parseProfile(sections["PROFILE"], unit, skipped)
+
+        if (sessions.isEmpty() && bodyMetrics.isEmpty()) {
+            skipped.add(0, "No EXERCISE LOGS or PROFILE data found in the JEFIT export")
+        }
+        return Result(sessions, skipped, detectedUnit, totalSets, bodyMetrics)
+    }
+
+    /** The SETTING section has a `mass` column whose value is " kg" or " lbs". */
+    private fun detectUnitFromSettings(text: String?): WeightUnit? {
+        val rows = nonBlankRows(text ?: return null)
+        if (rows.size < 2) return null
+        val header = rows.first().map { it.trim().lowercase() }
+        val massCol = header.indexOfFirst { it == "mass" || "mass" in it }
+        if (massCol < 0) return null
+        val value = rows[1].getOrNull(massCol)?.trim()?.lowercase() ?: return null
+        return when {
+            "kg" in value -> WeightUnit.KG
+            "lb" in value -> WeightUnit.LBS
+            else -> null
+        }
+    }
+
+    private fun parseExerciseLogs(
+        text: String?,
+        unit: WeightUnit,
+        skipped: MutableList<String>,
+    ): Pair<List<ParsedSession>, Int> {
+        val rows = nonBlankRows(text ?: return emptyList<ParsedSession>() to 0)
+        if (rows.size < 2) return emptyList<ParsedSession>() to 0
+
+        val header = rows.first().map { it.trim().lowercase() }
+        val dateCol = header.indexOf("mydate").takeIf { it >= 0 }
+            ?: header.indexOfFirst { "date" in it }
+        val nameCol = header.indexOf("ename").takeIf { it >= 0 }
+            ?: header.indexOfFirst { "exercise" in it }
+        val logsCol = header.indexOf("logs")
+        if (dateCol < 0 || nameCol < 0 || logsCol < 0) {
+            skipped.add("EXERCISE LOGS section: missing mydate/ename/logs columns")
+            return emptyList<ParsedSession>() to 0
+        }
+
+        val sessions = linkedMapOf<LocalDate, ParsedSession>()
+        var totalSets = 0
+        var timedRows = 0
+        var emptyRows = 0
+        var namelessRows = 0
+
+        for (row in rows.drop(1)) {
+            if (row == rows.first()) continue // repeated header, just in case
+            val dateText = row.getOrNull(dateCol)?.trim().orEmpty()
+            val name = row.getOrNull(nameCol)?.trim().orEmpty()
+            val date = parseDate(dateText)
+            if (date == null) {
+                skipped.add("Exercise log: unparseable date \"$dateText\"")
+                continue
+            }
+            if (name.isBlank()) { namelessRows++; continue }
+
+            when (val packed = parsePacked(row.getOrNull(logsCol).orEmpty())) {
+                is PackedRow.Timed -> timedRows++
+                is PackedRow.Sets -> {
+                    packed.unparseable.forEach { skipped.add("Exercise log $dateText \"$name\": unparseable set \"$it\"") }
+                    val sets = packed.entries.map { ParsedSet(toKg(it.first, unit), it.second) }
+                    if (sets.isEmpty()) { emptyRows++; continue }
+                    val session = sessions.getOrPut(date) { ParsedSession(date) }
+                    val exercise = session.exercises.lastOrNull { it.name.equals(name, ignoreCase = true) }
+                        ?: ParsedExercise(name).also { session.exercises.add(it) }
+                    exercise.sets.addAll(sets)
+                    totalSets += sets.size
+                }
+            }
+        }
+        if (timedRows > 0) skipped.add("$timedRows timed/cardio/stretch entries skipped (no weight×reps data)")
+        if (emptyRows > 0) skipped.add("$emptyRows entries without logged sets skipped")
+        if (namelessRows > 0) skipped.add("$namelessRows entries without an exercise name skipped")
+        return sessions.values.toList() to totalSets
+    }
+
+    /** PROFILE section: body measurements. Zero values mean "not measured" in JEFIT. */
+    private fun parseProfile(
+        text: String?,
+        unit: WeightUnit,
+        skipped: MutableList<String>,
+    ): List<ParsedBodyMetric> {
+        val rows = nonBlankRows(text ?: return emptyList())
+        if (rows.size < 2) return emptyList()
+
+        val header = rows.first().map { it.trim().lowercase() }
+        val dateCol = header.indexOf("mydate").takeIf { it >= 0 } ?: header.indexOfFirst { "date" in it }
+        if (dateCol < 0) return emptyList()
+        fun col(name: String) = header.indexOf(name)
+        val weightCol = col("weight")
+        val chestCol = col("chest")
+        val armsCol = col("arms")
+        val waistCol = col("waist")
+        val hipsCol = col("hips")
+        val thighsCol = col("thighs")
+
+        fun value(row: List<String>, index: Int): Double? {
+            if (index < 0) return null
+            val v = row.getOrNull(index)?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+            return if (v > 0.0) v else null
+        }
+
+        // Keep the richest entry per date (exports contain duplicated legacy rows).
+        val byDate = linkedMapOf<LocalDate, ParsedBodyMetric>()
+        for (row in rows.drop(1)) {
+            val dateText = row.getOrNull(dateCol)?.trim().orEmpty()
+            val date = parseDate(dateText)
+            if (date == null) {
+                skipped.add("Body log: unparseable date \"$dateText\"")
+                continue
+            }
+            val metric = ParsedBodyMetric(
+                date = date,
+                weightKg = value(row, weightCol)?.let { toKg(it, unit) },
+                chestCm = value(row, chestCol),
+                armsCm = value(row, armsCol),
+                waistCm = value(row, waistCol),
+                hipsCm = value(row, hipsCol),
+                thighsCm = value(row, thighsCol),
+            )
+            if (metric.fieldCount == 0) continue
+            val existing = byDate[date]
+            if (existing == null || metric.fieldCount > existing.fieldCount) byDate[date] = metric
+        }
+        return byDate.values.sortedBy { it.date }
+    }
+
+    // ---------------------------------------------------------------------
+    // Packed "60x8,60x8" strings
+    // ---------------------------------------------------------------------
+
+    private sealed class PackedRow {
+        /** Cardio/stretch/timed encoding (e.g. "0x0,0x0,0x0,0x10,0x60") — no strength sets. */
+        object Timed : PackedRow()
+        data class Sets(
+            /** (load, reps) pairs with reps > 0. */
+            val entries: List<Pair<Double, Int>>,
+            val unparseable: List<String>,
+        ) : PackedRow()
+    }
+
+    private fun parsePacked(packed: String): PackedRow {
+        val raw = packed.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }
+        val matched = mutableListOf<Pair<Double, Int>>()
+        val unparseable = mutableListOf<String>()
+        var zeroRepEntries = 0
+        for (entry in raw) {
+            val match = packedEntry.matchEntire(entry)
+            if (match == null) {
+                unparseable.add(entry)
+                continue
+            }
+            val load = match.groupValues[1].replace(',', '.').toDouble()
+            val reps = match.groupValues[2].toInt()
+            if (reps == 0) { zeroRepEntries++; continue }
+            matched.add(load to reps)
+        }
+        // JEFIT encodes timed/cardio/stretch logs as 4+ zero-load fields such as
+        // "0x0,0x0,0x0,0x10,0x1" or "0x0.0,...,0x60". Distinguish those from genuine
+        // body-weight sets like "0x5,0x4,0x3" (few fields, all with real reps).
+        val allZeroLoad = matched.all { it.first == 0.0 }
+        val looksTimed = raw.size >= 4 && allZeroLoad && (zeroRepEntries > 0 || unparseable.isNotEmpty())
+        if (looksTimed) return PackedRow.Timed
+        return PackedRow.Sets(matched, unparseable)
+    }
+
+    // ---------------------------------------------------------------------
+    // Legacy single-table CSV
+    // ---------------------------------------------------------------------
+
+    private fun parseSingleTable(csv: String, unitOverride: WeightUnit?): Result {
+        val rows = nonBlankRows(csv)
         if (rows.isEmpty()) return Result(emptyList(), listOf("Empty file"), null, 0)
 
         val header = rows.first().map { it.trim().lowercase() }
@@ -83,18 +315,15 @@ object JefitCsvParser {
 
             val sets = mutableListOf<ParsedSet>()
             if (logsCol >= 0 && row.getOrNull(logsCol)?.isNotBlank() == true) {
-                val packed = row[logsCol]
-                for (entry in packed.split(',', ';')) {
-                    val text = entry.trim()
-                    if (text.isEmpty()) continue
-                    val match = packedEntry.matchEntire(text)
-                    if (match == null) {
-                        skipped.add("Line $lineNo: unparseable set \"$text\"")
+                when (val packed = parsePacked(row[logsCol])) {
+                    is PackedRow.Timed -> {
+                        skipped.add("Line $lineNo: timed/cardio entry for \"$name\"")
                         continue
                     }
-                    val load = match.groupValues[1].replace(',', '.').toDouble()
-                    val reps = match.groupValues[2].toInt()
-                    sets.add(ParsedSet(toKg(load, unit), reps))
+                    is PackedRow.Sets -> {
+                        packed.unparseable.forEach { skipped.add("Line $lineNo: unparseable set \"$it\"") }
+                        packed.entries.forEach { sets.add(ParsedSet(toKg(it.first, unit), it.second)) }
+                    }
                 }
             } else if (weightCol >= 0 && repsCol >= 0) {
                 val load = row.getOrNull(weightCol)?.trim()?.replace(',', '.')?.toDoubleOrNull()
@@ -120,6 +349,13 @@ object JefitCsvParser {
 
         return Result(sessions.values.toList(), skipped, detectedUnit, totalSets)
     }
+
+    // ---------------------------------------------------------------------
+    // Shared helpers
+    // ---------------------------------------------------------------------
+
+    private fun nonBlankRows(text: String): List<List<String>> =
+        readCsv(text).filter { row -> row.any { it.isNotBlank() } }
 
     private fun toKg(load: Double, unit: WeightUnit): Double =
         if (unit == WeightUnit.LBS) Units.lbsToKg(load) else load

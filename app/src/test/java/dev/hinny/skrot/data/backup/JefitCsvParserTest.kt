@@ -58,6 +58,80 @@ class JefitCsvParserTest {
     }
 
     @Test
+    fun `parses real multi-section export with kg detection from SETTING`() {
+        val result = JefitCsvParser.parse(fixture("jefit_multisection.csv"))
+
+        assertEquals(WeightUnit.KG, result.detectedUnit)
+        assertEquals(2, result.sessions.size)
+
+        val first = result.sessions.first()
+        assertEquals(LocalDate.of(2026, 1, 5), first.date)
+        // Stretch and Plank rows are timed encodings and must not become exercises
+        assertEquals(listOf("Bench Press", "Deadlift", "Pull-Up"), first.exercises.map { it.name })
+        assertEquals(3, first.exercises[0].sets.size)
+        assertEquals(60.0, first.exercises[0].sets[0].loadKg, 0.0)
+        assertEquals(8, first.exercises[0].sets[0].reps)
+        // "90x0" is a placeholder and is dropped
+        assertEquals(2, first.exercises[1].sets.size)
+        // body-weight pull-ups (few entries, real reps) are kept
+        assertEquals(3, first.exercises[2].sets.size)
+        assertEquals(0.0, first.exercises[2].sets[0].loadKg, 0.0)
+        assertEquals(5, first.exercises[2].sets[0].reps)
+
+        val second = result.sessions[1]
+        assertEquals(LocalDate.of(2026, 1, 7), second.date)
+        assertEquals(listOf("Bench Press"), second.exercises.map { it.name })
+        assertEquals(3 + 2 + 3 + 2, result.totalSets)
+
+        // Body metrics: two dates (duplicate legacy row deduped, bad date skipped)
+        assertEquals(2, result.bodyMetrics.size)
+        val day1 = result.bodyMetrics[0]
+        assertEquals(LocalDate.of(2026, 1, 2), day1.date)
+        assertEquals(80.0, day1.weightKg!!, 0.0)
+        val day2 = result.bodyMetrics[1]
+        assertEquals(81.5, day2.weightKg!!, 0.0)
+        assertEquals(100.0, day2.chestCm!!, 0.0)
+        assertEquals(90.0, day2.waistCm!!, 0.0)
+        assertEquals(95.0, day2.hipsCm!!, 0.0)
+        assertEquals(60.0, day2.thighsCm!!, 0.0)
+
+        // Skipped: garbage set, timed aggregate, no-sets aggregate, nameless aggregate, bad body date
+        assertTrue(result.skipped.any { "garbage" in it })
+        assertTrue(result.skipped.any { "timed" in it && it.startsWith("2") })
+        assertTrue(result.skipped.any { "bad-date" in it })
+    }
+
+    @Test
+    fun `multi-section export honours unit override for sets and body weight`() {
+        val result = JefitCsvParser.parse(
+            fixture("jefit_multisection.csv"),
+            unitOverride = WeightUnit.LBS,
+        )
+        // 60 "lbs" -> 27.22 kg
+        assertEquals(27.22, result.sessions.first().exercises[0].sets[0].loadKg, 0.01)
+        // 80 "lbs" body weight -> 36.29 kg
+        assertEquals(36.29, result.bodyMetrics.first().weightKg!!, 0.01)
+    }
+
+    @Test
+    fun `multi-section export detects lbs from SETTING mass column`() {
+        val csv = """
+            ### SETTING ####################
+            row_id,USERID,mass,length
+            1,42," lbs"," inches"
+            ################################
+            ### EXERCISE LOGS ##############
+            USERID,logs,mydate,ename
+            42,"100x10",2026-01-05,"Bench Press"
+            ################################
+        """.trimIndent()
+        val result = JefitCsvParser.parse(csv)
+        assertEquals(WeightUnit.LBS, result.detectedUnit)
+        // 100 lbs -> 45.36 kg
+        assertEquals(45.36, result.sessions.single().exercises[0].sets[0].loadKg, 0.01)
+    }
+
+    @Test
     fun `unrecognized file reports a helpful skip reason`() {
         val result = JefitCsvParser.parse("foo,bar\n1,2\n")
         assertTrue(result.sessions.isEmpty())

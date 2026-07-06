@@ -2,6 +2,7 @@ package dev.hinny.skrot.data.backup
 
 import androidx.room.withTransaction
 import dev.hinny.skrot.data.db.SkrotDatabase
+import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.LoggedSet
@@ -10,6 +11,7 @@ import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.data.model.SessionExercise
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.WorkoutSession
+import java.time.Instant
 import java.time.ZoneId
 
 class JefitImporter(private val db: SkrotDatabase) {
@@ -20,6 +22,7 @@ class JefitImporter(private val db: SkrotDatabase) {
         val matchedExercises: List<String>,
         val newExercises: List<String>,
         val skipped: List<String>,
+        val bodyMetricCount: Int = 0,
     )
 
     data class Summary(
@@ -27,6 +30,7 @@ class JefitImporter(private val db: SkrotDatabase) {
         val setsCreated: Int,
         val exercisesCreated: Int,
         val skipped: List<String>,
+        val bodyMetricsCreated: Int = 0,
     )
 
     /** Normalizes an exercise name for case-insensitive, punctuation-tolerant matching. */
@@ -73,6 +77,7 @@ class JefitImporter(private val db: SkrotDatabase) {
             matchedExercises = matched.toList(),
             newExercises = unmatched.toList(),
             skipped = parsed.skipped,
+            bodyMetricCount = parsed.bodyMetrics.size,
         )
     }
 
@@ -81,10 +86,31 @@ class JefitImporter(private val db: SkrotDatabase) {
         var sessions = 0
         var sets = 0
         var created = 0
+        var bodyMetrics = 0
         val createdByName = mutableMapOf<String, Long>()
         val zone = ZoneId.systemDefault()
 
         db.withTransaction {
+            // Body logs: one entry per date; skip dates that already have one.
+            val existingDates = db.backupDao().allBodyMetrics()
+                .map { Instant.ofEpochMilli(it.date).atZone(zone).toLocalDate() }
+                .toHashSet()
+            for (metric in parsed.bodyMetrics) {
+                if (metric.date in existingDates) continue
+                db.bodyMetricDao().insert(
+                    BodyMetric(
+                        date = metric.date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli(),
+                        weightKg = metric.weightKg,
+                        waistCm = metric.waistCm,
+                        chestCm = metric.chestCm,
+                        armsCm = metric.armsCm,
+                        thighsCm = metric.thighsCm,
+                        hipsCm = metric.hipsCm,
+                    )
+                )
+                bodyMetrics++
+            }
+
             for (parsedSession in parsed.sessions) {
                 val start = parsedSession.date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
                 val end = start + 60 * 60 * 1000
@@ -139,6 +165,6 @@ class JefitImporter(private val db: SkrotDatabase) {
                 }
             }
         }
-        return Summary(sessions, sets, created, parsed.skipped)
+        return Summary(sessions, sets, created, parsed.skipped, bodyMetrics)
     }
 }

@@ -1,0 +1,49 @@
+### SETTING ##########################################
+
+row_id,USERID,TIMESTAMP,gender,currentRoutine,DOB,name,length,mass,dbversion
+1,42,"2026-01-01 10:00:00",M,1,1990-01-01,," cm"," kg",
+
+######################################################
+
+### PROFILE ##########################################
+
+row_id,USERID,TIMESTAMP,_id,mydate,weight,fatpercent,chest,arms,waist,calves,height,hips,thighs,shoulders,neck,forearms,logTime
+1,42,"2026-01-01 10:00:00",1,2026-01-02,80,0,0,0,0,0,180,0,0,0,0,0,1000
+2,42,"2026-01-01 10:00:00",2,2026-01-03,81.5,12,100,0,90,0,180,95,60,0,0,0,1001
+3,42,"2026-01-01 10:00:00",100000,2026-01-02,80,0,0,0,0,0,180,0,0,0,0,0,1002
+4,42,"2026-01-01 10:00:00",4,bad-date,80,0,0,0,0,0,180,0,0,0,0,0,1003
+
+######################################################
+
+### ROUTINES #########################################
+
+row_id,USERID,TIMESTAMP,_id,name,difficulty,focus,dayaweek,description,daytype,tags,rdb_id,bannerCode,progression_flag
+1,42,"2026-01-01 10:00:00",1,"Test Routine",0,0,2,"Line one
+line two of description",0," ",0,,0
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+1,42,"2026-01-01 10:00:00",1,1,"Day 1",1,1,0,0,0,0,
+
+######################################################
+
+### EXERCISE LOGS ####################################
+
+USERID,TIMESTAMP,belongSys,logs,_id,record,mydate,eid,ename,day_item_id,belongsession,logTime,interval_logs,auto_generated
+42,"2026-01-01 10:00:00",1,"60x8,80x8,70x10",1,100,2026-01-05,2,"Bench Press",1,1,1000,,
+42,"2026-01-01 10:00:00",1,"100x5,100x5,90x0",2,120,2026-01-05,93,"Deadlift",2,1,1001,,
+42,"2026-01-01 10:00:00",1,"0x5,0x4,0x3",3,0,2026-01-05,83,"Pull-Up",3,1,1002,,
+42,"2026-01-01 10:00:00",1,"0x0,0x0,0x0,0x10,0x1",4,0,2026-01-05,1000,"Stretch - Test",4,1,1003,,
+42,"2026-01-01 10:00:00",1,"0x0.0,0x0.0,0x0.0,0x0.0,0x60",5,0,2026-01-05,631,Plank,5,1,1004,,
+42,"2026-01-01 10:00:00",1,"60x8,60x8",6,80,2026-01-07,2,"Bench Press",1,2,1005,,
+42,"2026-01-01 10:00:00",1,0x0,7,0,2026-01-07,56,"Ab Crunch",6,2,1006,,
+42,"2026-01-01 10:00:00",1,"55x8",8,0,2026-01-07,50,,7,2,1007,,
+42,"2026-01-01 10:00:00",1,"garbage",9,0,2026-01-07,99,"Weird",8,2,1008,,
+
+######################################################
+
+### EXERCISE SET LOGS ################################
+
+_id,userid,exercise_log_id,set_index,weight_lbs,reps,calories,distance_mi,speed_mph,laps,duration,set_type,log_time,TIMESTAMP
+1,42,1,0,132.2775,8,,,,,,default,1000,"2026-01-01 10:00:00"
+
+######################################################

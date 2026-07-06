@@ -271,6 +271,8 @@
     <string name="jefit_skipped">%1$d rows skipped</string>
     <string name="jefit_summary">Imported %1$d sessions with %2$d sets. %3$d new exercises created.</string>
     <string name="jefit_nothing_found">No workout data found in the file.</string>
+    <string name="jefit_preview_body_metrics">%1$d body log entries will be imported.</string>
+    <string name="jefit_summary_body_metrics">%1$d body log entries imported.</string>
 
     <!-- About -->
     <string name="about">About</string>
