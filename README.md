@@ -1,8 +1,9 @@
 # Skrot
 
-**Skrot** (Swedish gym slang for "scrap metal") is a free, open-source Android strength
-training log. Built to replace JEFIT for people who want a fast, private, no-nonsense
-logger — no ads, no accounts, no cloud, no tracking. The app has **no network permission**,
+**Skrot** (Swedish for "scrap metal" and is used in gym slang for weigh lifting) is a free, open-source Android strength
+training log. Built to replace payed workout apps for people who want a fast, private,
+no-nonsense logger — no ads, no accounts, no cloud, no tracking. 
+The app has **no network permission**,
 so it is provably offline.
 
 ## Screenshots
