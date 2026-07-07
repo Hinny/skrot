@@ -9,14 +9,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +68,7 @@ fun StartFlowHost(
     startTarget?.let { (routine, day) ->
         StartWorkoutDialog(
             gyms = gyms,
+            onCreateGym = { name, onCreated -> vm.createGym(name, onCreated) },
             onDismiss = onClearTarget,
             onConfirm = { gymId, temporary ->
                 onClearTarget()
@@ -147,46 +154,93 @@ fun WorkoutPickerDialog(
 @Composable
 private fun StartWorkoutDialog(
     gyms: List<Gym>,
+    onCreateGym: (name: String, onCreated: (Long) -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (gymId: Long?, temporary: Boolean) -> Unit,
 ) {
-    var selectedGym by remember { mutableStateOf(gyms.find { it.isDefault }?.id) }
+    var selectedGym by remember {
+        mutableStateOf(gyms.find { it.isDefault }?.id ?: gyms.firstOrNull()?.id)
+    }
     var temporary by remember { mutableStateOf(false) }
+    var addingGym by remember { mutableStateOf(false) }
+    var newGymName by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.start_workout)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (gyms.isNotEmpty()) {
-                    Text(stringResource(R.string.gym))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = selectedGym == null,
-                            onClick = { selectedGym = null },
-                            label = { Text(stringResource(R.string.no_gym)) },
-                        )
-                    }
-                    gyms.forEach { gym ->
-                        FilterChip(
-                            selected = selectedGym == gym.id,
-                            onClick = { selectedGym = gym.id },
-                            label = { Text(gym.name) },
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = temporary, onCheckedChange = { temporary = it })
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.temporary_visit))
-                    }
-                    Text(
-                        stringResource(R.string.temporary_visit_hint),
-                        style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.gym))
+                gyms.forEach { gym ->
+                    FilterChip(
+                        selected = !temporary && selectedGym == gym.id,
+                        onClick = {
+                            temporary = false
+                            selectedGym = gym.id
+                        },
+                        label = { Text(gym.name) },
                     )
                 }
+                if (addingGym) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = newGymName,
+                            onValueChange = { newGymName = it },
+                            label = { Text(stringResource(R.string.new_gym)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            enabled = newGymName.isNotBlank(),
+                            onClick = {
+                                onCreateGym(newGymName.trim()) { id ->
+                                    selectedGym = id
+                                    temporary = false
+                                }
+                                addingGym = false
+                                newGymName = ""
+                            },
+                        ) { Text(stringResource(R.string.add)) }
+                    }
+                } else {
+                    TextButton(onClick = { addingGym = true }) {
+                        Icon(Icons.Filled.Add, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.new_gym))
+                    }
+                }
+
+                HorizontalDivider()
+
+                FilterChip(
+                    selected = temporary,
+                    onClick = {
+                        temporary = !temporary
+                        if (temporary) selectedGym = null
+                        else selectedGym =
+                            gyms.find { it.isDefault }?.id ?: gyms.firstOrNull()?.id
+                    },
+                    label = { Text(stringResource(R.string.temporary_gym)) },
+                    leadingIcon = { Icon(Icons.Filled.Place, null) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ),
+                )
+                Text(
+                    stringResource(R.string.temporary_gym_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selectedGym, temporary) }) {
+            TextButton(
+                enabled = temporary || selectedGym != null || gyms.isEmpty(),
+                onClick = { onConfirm(if (temporary) null else selectedGym, temporary) },
+            ) {
                 Text(stringResource(R.string.start))
             }
         },

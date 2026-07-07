@@ -54,9 +54,9 @@
     <string name="comeback_body">Kom igång lugnt med ett återuppbyggnadsprogram:</string>
     <string name="start_workout">Starta pass</string>
     <string name="gym">Gym</string>
-    <string name="no_gym">Inget gym</string>
-    <string name="temporary_visit">Tillfälligt besök</string>
-    <string name="temporary_visit_hint">Hoppar över tillgänglighetsfiltret — välj fritt bland motsvarande övningar, inget sparas.</string>
+    <string name="temporary_gym">Tillfälligt gym</string>
+    <string name="temporary_gym_hint">Tränar du någon annanstans idag? Ingen utrustningsfiltrering, och inget sparas till dina gym.</string>
+    <string name="add">Lägg till</string>
     <string name="resolve_exercises">Lös övningar</string>
     <string name="not_available_no_equivalent">Finns inte på detta gym, ingen motsvarighet hittad</string>
     <string name="keep_original">Behåll original</string>

@@ -289,6 +289,13 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         return sessionId
     }
 
+    /** Creates a gym inline from the start dialog and hands back its id. */
+    fun createGym(name: String, onCreated: (Long) -> Unit) {
+        viewModelScope.launch {
+            onCreated(db.gymDao().insert(Gym(name = name)))
+        }
+    }
+
     suspend fun startEmptySession(gymId: Long?): Long {
         val now = System.currentTimeMillis()
         return db.sessionDao().insertSession(
