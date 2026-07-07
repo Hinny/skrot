@@ -56,6 +56,12 @@
     <string name="comeback_body">Ease back in with a rebuild program:</string>
     <string name="start_workout">Start workout</string>
     <string name="gym">Gym</string>
+    <string name="volume_per_session">Volume per session</string>
+    <string name="reps_per_session">Reps per session</string>
+    <string name="freestyle_session">Freestyle workout</string>
+    <string name="edit_session">Edit session</string>
+    <string name="delete_session">Delete session</string>
+    <string name="delete_session_confirm">The session and all its logged sets are removed permanently.</string>
     <string name="temporary_gym">Temporary gym</string>
     <string name="temporary_gym_hint">Training somewhere else today? No equipment filtering, and nothing is saved to your gyms.</string>
     <string name="add">Add</string>

@@ -54,6 +54,12 @@
     <string name="comeback_body">Kom igång lugnt med ett återuppbyggnadsprogram:</string>
     <string name="start_workout">Starta pass</string>
     <string name="gym">Gym</string>
+    <string name="volume_per_session">Volym per pass</string>
+    <string name="reps_per_session">Reps per pass</string>
+    <string name="freestyle_session">Fritt pass</string>
+    <string name="edit_session">Redigera pass</string>
+    <string name="delete_session">Ta bort pass</string>
+    <string name="delete_session_confirm">Passet och alla dess loggade set tas bort permanent.</string>
     <string name="temporary_gym">Tillfälligt gym</string>
     <string name="temporary_gym_hint">Tränar du någon annanstans idag? Ingen utrustningsfiltrering, och inget sparas till dina gym.</string>
     <string name="add">Lägg till</string>

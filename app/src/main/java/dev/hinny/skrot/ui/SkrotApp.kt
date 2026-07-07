@@ -202,7 +202,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
                 "exercise/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { ExerciseDetailScreen(container, settings, navController, it.arguments!!.getLong("id")) }
-            composable(Routes.STATS) { StatsScreen(container, settings) }
+            composable(Routes.STATS) { StatsScreen(container, settings, navController) }
             composable(Routes.MORE) { MoreScreen(navController) }
             composable(Routes.GYMS) { GymsScreen(container) }
             composable(Routes.BODY) { BodyScreen(container, settings) }
