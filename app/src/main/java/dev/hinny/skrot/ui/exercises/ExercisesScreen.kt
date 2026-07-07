@@ -39,10 +39,16 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
+import dev.hinny.skrot.domain.ExerciseSearch
 import dev.hinny.skrot.ui.Routes
-import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.CreateExerciseDialog
+import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.exerciseSubtitle
 import dev.hinny.skrot.ui.common.muscleLabel
+import dev.hinny.skrot.ui.common.searchEquipmentNames
+import dev.hinny.skrot.ui.common.searchMuscleNames
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -56,10 +62,17 @@ class ExercisesViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun create(name: String, muscle: MuscleGroup, onCreated: (Long) -> Unit) {
+    fun create(new: NewExercise, onCreated: (Long) -> Unit) {
         viewModelScope.launch {
             val id = container.db.exerciseDao().insert(
-                Exercise(nameEn = name, nameSv = name, muscleGroup = muscle, isCustom = true)
+                Exercise(
+                    nameEn = new.name,
+                    nameSv = new.name,
+                    muscleGroup = new.muscle,
+                    equipment = new.equipment,
+                    measurementType = new.measurement,
+                    isCustom = true,
+                )
             )
             onCreated(id)
         }
@@ -71,8 +84,8 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> ExercisesViewModel(c) }
     val exercises by vm.exercises.collectAsState()
     var query by remember { mutableStateOf("") }
-    var muscleFilter by remember { mutableStateOf<MuscleGroup?>(null) }
-    var equipmentFilter by remember { mutableStateOf<Equipment?>(null) }
+    var muscleFilters by remember { mutableStateOf(setOf<MuscleGroup>()) }
+    var equipmentFilters by remember { mutableStateOf(setOf<Equipment>()) }
     var showCreate by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -97,7 +110,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text(stringResource(R.string.search)) },
+                label = { Text(stringResource(R.string.search_exercises)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -109,8 +122,11 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
             ) {
                 MuscleGroup.entries.forEach { m ->
                     FilterChip(
-                        selected = muscleFilter == m,
-                        onClick = { muscleFilter = if (muscleFilter == m) null else m },
+                        selected = m in muscleFilters,
+                        onClick = {
+                            muscleFilters =
+                                if (m in muscleFilters) muscleFilters - m else muscleFilters + m
+                        },
                         label = { Text(muscleLabel(m)) },
                     )
                 }
@@ -123,18 +139,25 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
             ) {
                 Equipment.entries.forEach { eq ->
                     FilterChip(
-                        selected = equipmentFilter == eq,
-                        onClick = { equipmentFilter = if (equipmentFilter == eq) null else eq },
-                        label = { Text(eq.name.lowercase()) },
+                        selected = eq in equipmentFilters,
+                        onClick = {
+                            equipmentFilters =
+                                if (eq in equipmentFilters) equipmentFilters - eq
+                                else equipmentFilters + eq
+                        },
+                        label = { Text(equipmentLabel(eq)) },
                     )
                 }
             }
 
-            val filtered = exercises.filter { e ->
-                (query.isBlank() || e.displayName().contains(query, ignoreCase = true)) &&
-                    (muscleFilter == null || e.muscleGroup == muscleFilter) &&
-                    (equipmentFilter == null || e.equipment == equipmentFilter)
-            }
+            val filtered = ExerciseSearch.search(
+                exercises = exercises,
+                query = query,
+                muscleFilters = muscleFilters,
+                equipmentFilters = equipmentFilters,
+                muscleNames = searchMuscleNames(),
+                equipmentNames = searchEquipmentNames(),
+            )
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(filtered.size) { i ->
                     val e = filtered[i]
@@ -159,7 +182,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                                 }
                             }
                             Text(
-                                "${muscleLabel(e.muscleGroup)} · ${e.equipment.name.lowercase()}",
+                                exerciseSubtitle(e),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -171,12 +194,10 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
     }
 
     if (showCreate) {
-        ExercisePickerDialog(
-            exercises = emptyList(),
-            onPick = {},
-            onCreate = { name, muscle ->
+        CreateExerciseDialog(
+            onSave = { new ->
                 showCreate = false
-                vm.create(name, muscle) { id -> nav.navigate(Routes.exercise(id)) }
+                vm.create(new) { id -> nav.navigate(Routes.exercise(id)) }
             },
             onDismiss = { showCreate = false },
         )

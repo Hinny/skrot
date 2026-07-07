@@ -7,11 +7,13 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.Sex
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
 import dev.hinny.skrot.data.model.WeightUnit
@@ -44,6 +46,15 @@ data class Settings(
     val progressionIncrementLevel: Double = ProgressionEngine.DEFAULT_INCREMENT_LEVEL,
     val bodyweightFallbackKg: Double = VolumeCalculator.DEFAULT_BODYWEIGHT_FALLBACK_KG,
     val keepScreenOn: Boolean = true,
+    /** Days between backup reminders; 0 disables them. */
+    val backupReminderDays: Int = 90,
+    /** When the last JSON backup was exported; 0 = never. */
+    val lastBackupAt: Long = 0,
+    /** Offline profile — every field is optional and stays on the device. */
+    val profileName: String = "",
+    /** Birth year; 0 = unset. */
+    val profileBirthYear: Int = 0,
+    val profileSex: Sex = Sex.UNSPECIFIED,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -68,6 +79,11 @@ class SettingsRepository(private val context: Context) {
         val progressionIncrementLevel = doublePreferencesKey("progression_increment_level")
         val bodyweightFallbackKg = doublePreferencesKey("bodyweight_fallback_kg")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
+        val backupReminderDays = intPreferencesKey("backup_reminder_days")
+        val lastBackupAt = longPreferencesKey("last_backup_at")
+        val profileName = stringPreferencesKey("profile_name")
+        val profileBirthYear = intPreferencesKey("profile_birth_year")
+        val profileSex = stringPreferencesKey("profile_sex")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -93,6 +109,11 @@ class SettingsRepository(private val context: Context) {
             progressionIncrementLevel = p[Keys.progressionIncrementLevel] ?: defaults.progressionIncrementLevel,
             bodyweightFallbackKg = p[Keys.bodyweightFallbackKg] ?: defaults.bodyweightFallbackKg,
             keepScreenOn = p[Keys.keepScreenOn] ?: defaults.keepScreenOn,
+            backupReminderDays = p[Keys.backupReminderDays] ?: defaults.backupReminderDays,
+            lastBackupAt = p[Keys.lastBackupAt] ?: defaults.lastBackupAt,
+            profileName = p[Keys.profileName] ?: defaults.profileName,
+            profileBirthYear = p[Keys.profileBirthYear] ?: defaults.profileBirthYear,
+            profileSex = p[Keys.profileSex].toEnum(defaults.profileSex),
         )
     }
 
@@ -113,4 +134,10 @@ class SettingsRepository(private val context: Context) {
     suspend fun setProgressionIncrementLevel(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementLevel] = v }
     suspend fun setBodyweightFallbackKg(v: Double) = context.dataStore.edit { it[Keys.bodyweightFallbackKg] = v }
     suspend fun setKeepScreenOn(v: Boolean) = context.dataStore.edit { it[Keys.keepScreenOn] = v }
+    suspend fun setBackupReminderDays(v: Int) = context.dataStore.edit { it[Keys.backupReminderDays] = v }
+    suspend fun markBackupDone() =
+        context.dataStore.edit { it[Keys.lastBackupAt] = System.currentTimeMillis() }
+    suspend fun setProfileName(v: String) = context.dataStore.edit { it[Keys.profileName] = v }
+    suspend fun setProfileBirthYear(v: Int) = context.dataStore.edit { it[Keys.profileBirthYear] = v }
+    suspend fun setProfileSex(v: Sex) = context.dataStore.edit { it[Keys.profileSex] = v.name }
 }

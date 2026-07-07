@@ -169,7 +169,7 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
     }
 
     if (showAdd) {
-        AddMetricDialog(
+        BodyMetricDialog(
             unit = settings.unit,
             onSave = { vm.add(it); showAdd = false },
             onDismiss = { showAdd = false },
@@ -177,8 +177,9 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
     }
 }
 
+/** Body-metric entry dialog, shared between the Body page and Statistics. */
 @Composable
-private fun AddMetricDialog(
+fun BodyMetricDialog(
     unit: WeightUnit,
     onSave: (BodyMetric) -> Unit,
     onDismiss: () -> Unit,

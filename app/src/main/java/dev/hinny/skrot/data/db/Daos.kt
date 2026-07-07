@@ -538,6 +538,18 @@ interface BackupDao {
     @Query("DELETE FROM body_metrics")
     suspend fun clearBodyMetrics()
 
+    /** Removes user-created exercises; their planned and logged uses cascade away. */
+    @Query("DELETE FROM exercises WHERE isCustom = 1")
+    suspend fun clearCustomExercises()
+
+    /** Removes all logged workout sessions. */
+    @Transaction
+    suspend fun clearSessionLog() {
+        clearLoggedSets()
+        clearSessionExercises()
+        clearSessions()
+    }
+
     @Transaction
     suspend fun clearAll() {
         clearLoggedSets()

@@ -1,5 +1,7 @@
 package dev.hinny.skrot.data.model
 
+import kotlinx.serialization.Serializable
+
 /** How load is entered and tracked for an exercise. */
 enum class MeasurementType {
     /** Free weights and similar; decimal kg input. */
@@ -63,14 +65,29 @@ enum class MuscleGroup {
     FULL_BODY,
 }
 
+/**
+ * Equipment needed to perform an exercise. An exercise can require several
+ * pieces at once (e.g. bench press: barbell + bench + rack). NONE means the
+ * exercise needs no equipment at all (push-ups) — unlike e.g. dips, which are
+ * body-weight loaded but still need a DIP_STATION.
+ */
+@Serializable
 enum class Equipment {
     BARBELL,
+    EZ_BAR,
     DUMBBELL,
-    MACHINE,
-    CABLE,
-    BODYWEIGHT,
     KETTLEBELL,
+    WEIGHT_PLATE,
+    MACHINE,
+    MULTI_MACHINE,
+    SMITH_MACHINE,
+    CABLE,
+    BENCH,
+    PULLUP_BAR,
+    DIP_STATION,
+    RACK,
     BAND,
+    NONE,
     OTHER,
 }
 
@@ -118,4 +135,12 @@ enum class ThemeMode {
     DARK,
     LIGHT,
     SYSTEM,
+}
+
+/** Optional profile field; purely informational, stored on-device only. */
+enum class Sex {
+    UNSPECIFIED,
+    FEMALE,
+    MALE,
+    OTHER,
 }

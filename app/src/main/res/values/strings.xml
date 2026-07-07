@@ -8,6 +8,11 @@
     <string name="tab_exercises">Exercises</string>
     <string name="tab_stats">Statistics</string>
     <string name="tab_more">More</string>
+    <string name="tab_session">Session</string>
+    <string name="tab_library">Library</string>
+    <string name="library_programs_hint">Build and manage your training programs</string>
+    <string name="library_exercises_hint">Browse and edit the exercise library</string>
+    <string name="library_gyms_hint">Your gyms and their equipment</string>
 
     <!-- Generic -->
     <string name="ok">OK</string>
@@ -51,9 +56,61 @@
     <string name="comeback_body">Ease back in with a rebuild program:</string>
     <string name="start_workout">Start workout</string>
     <string name="gym">Gym</string>
-    <string name="no_gym">No gym</string>
-    <string name="temporary_visit">Temporary visit</string>
-    <string name="temporary_visit_hint">Skips availability filtering — pick equivalents freely, nothing is saved.</string>
+    <string name="guide_title">How Skrot works</string>
+    <string name="guide_basic">The basics</string>
+    <string name="guide_advanced">Advanced</string>
+    <string name="guide_programs_t">Programs and workout days</string>
+    <string name="guide_programs_b">A program is a set of workout days, for example Push, Pull and Legs. Each day lists exercises with planned sets, target reps and rest times. Mark one program as active and the home screen suggests which day is next. You can keep several programs and switch whenever you like.</string>
+    <string name="guide_logging_t">Starting and logging a workout</string>
+    <string name="guide_logging_b">Start from the Home or Session tab: take the suggested day, pick another one, or begin an empty workout. While training, the current set is highlighted — tap Done to complete it and the rest timer starts by itself. In a superset the highlight alternates between the exercises. Swipe a set to the left to remove it.</string>
+    <string name="guide_library_t">Exercises, search and your own</string>
+    <string name="guide_library_b">The Library tab gathers programs, exercises and gyms. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once — with name hits first. Create your own exercise, or clone an existing one and adjust it.</string>
+    <string name="guide_stats_t">Statistics and history</string>
+    <string name="guide_stats_b">Statistics shows training frequency, how sets are spread over muscle groups, and per-exercise charts: heaviest set, estimated one-rep max and volume per session. In the history list you can open a logged session to fix mistakes, or delete it. Body weight and measurements can be logged here too.</string>
+    <string name="guide_backup_t">Backups</string>
+    <string name="guide_backup_b">Everything is stored offline on your phone — no account, no cloud. Export a JSON backup from More → Backup and keep it somewhere safe; importing it restores everything, including on a new phone. Skrot reminds you when it is time; the interval is set in Settings.</string>
+    <string name="guide_gyms_t">Gyms and equipment</string>
+    <string name="guide_gyms_b">Every exercise lists the equipment it needs, and every gym keeps a list of which exercises are available there. When you start a workout at a gym, unavailable exercises are swapped to an equivalent from the same exercise family, or you get to choose. Ticking \"always use at this gym\" saves your choice for next time.</string>
+    <string name="guide_temp_gym_t">Temporary gym</string>
+    <string name="guide_temp_gym_b">Training somewhere that isn\'t one of your saved gyms — on holiday, at a hotel? Pick Temporary gym when starting. Nothing is filtered by availability, you can swap exercises freely, and nothing is saved to your gym setups.</string>
+    <string name="guide_plan_edits_t">This session vs. the plan</string>
+    <string name="guide_plan_edits_b">Changes made during a workout — adding or removing sets or exercises, adjusting a rest timer — apply to that session only. When something differs from the plan, a discreet \"Apply to future sessions\" button appears; tap it to write the change back into the program. Ignore it and the plan stays untouched.</string>
+    <string name="guide_supersets_t">Supersets and set types</string>
+    <string name="guide_supersets_b">In the day editor, exercises placed in the same block are run as a superset: while logging, the highlight alternates so you always see which set is next. Sets can also be marked as warm-up or drop sets; warm-up sets are excluded from the statistics.</string>
+    <string name="guide_measurements_t">Weight, machine levels and bodyweight</string>
+    <string name="guide_measurements_b">An exercise measures load as free weight, as a machine level, or as bodyweight with optional added weight. Machine levels aren\'t comparable between gyms, so history and charts for machine exercises are kept per gym. Bodyweight exercises use your logged body weight and a per-exercise factor when volume is estimated.</string>
+    <string name="guide_prefill_t">Prefill and progression</string>
+    <string name="guide_prefill_b">When you start a planned day, the sets are prefilled — from your last session or from the plan\'s targets, depending on the program\'s prefill mode. The increment settings decide how big a step the app takes when suggesting more weight or a higher level.</string>
+    <string name="guide_autofinish_t">Auto-finish and comeback</string>
+    <string name="guide_autofinish_b">A session with no activity for the configured time is finished automatically, so a forgotten workout doesn\'t stay open. And if you\'ve been away for a while, Skrot suggests programs tagged \"rebuild\" to help you ease back in — both thresholds live in Settings.</string>
+    <string name="profile">Profile</string>
+    <string name="profile_hint">Everything here is optional and never leaves your device.</string>
+    <string name="profile_name">Name</string>
+    <string name="profile_birth_year">Birth year</string>
+    <string name="profile_sex">Sex</string>
+    <string name="sex_unspecified">Prefer not to say</string>
+    <string name="sex_female">Female</string>
+    <string name="sex_male">Male</string>
+    <string name="sex_other">Other</string>
+    <string name="backup_reminder_setting">Backup reminder interval (days, 0 = off)</string>
+    <string name="backup_reminder_title">Time to back up</string>
+    <string name="backup_reminder_body">Your data lives only on this device. Export a backup so a lost or broken phone doesn\'t take your training history with it.</string>
+    <string name="backup_now">Back up now</string>
+    <string name="delete_user_data">Delete user data</string>
+    <string name="delete_data_sessions">Session logs</string>
+    <string name="delete_data_body">Body log</string>
+    <string name="delete_data_custom">Custom exercises</string>
+    <string name="delete_data_all">Everything (programs, gyms, logs, exercises)</string>
+    <string name="delete_data_warning">This cannot be undone. Deleting custom exercises also removes their logged history.</string>
+    <string name="volume_per_session">Volume per session</string>
+    <string name="reps_per_session">Reps per session</string>
+    <string name="freestyle_session">Freestyle workout</string>
+    <string name="edit_session">Edit session</string>
+    <string name="delete_session">Delete session</string>
+    <string name="delete_session_confirm">The session and all its logged sets are removed permanently.</string>
+    <string name="temporary_gym">Temporary gym</string>
+    <string name="temporary_gym_hint">Training somewhere else today? No equipment filtering, and nothing is saved to your gyms.</string>
+    <string name="add">Add</string>
     <string name="resolve_exercises">Resolve exercises</string>
     <string name="not_available_no_equivalent">Not available at this gym, no equivalent found</string>
     <string name="keep_original">Keep original</string>
@@ -94,8 +151,14 @@
     <string name="link_superset">Link with previous</string>
     <string name="unlink">Unlink</string>
     <string name="target_min">Reps</string>
-    <string name="target_max_short">to</string>
+    <string name="target_max">Max</string>
+    <string name="add_target_max">+ max</string>
     <string name="target_max_optional">Max (optional)</string>
+    <string name="finish_set">Done</string>
+    <string name="undo_set">Undo set</string>
+    <string name="remove_set">Remove set</string>
+    <string name="apply_future_sessions">Apply to future sessions</string>
+    <string name="exercise_removed">Exercise removed from this session</string>
     <string name="rest_s">Rest s</string>
     <string name="level">Level</string>
 
@@ -152,6 +215,9 @@
     <string name="new_exercise">New exercise</string>
     <string name="pick_exercise">Pick exercise</string>
     <string name="exercise_name">Exercise name</string>
+    <string name="search_exercises">Search exercises</string>
+    <string name="clone_exercise">Clone exercise</string>
+    <string name="clone_suffix">(copy)</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>
     <string name="measurement_weight">Weight (kg)</string>
@@ -178,6 +244,27 @@
     <string name="muscle_glutes">Glutes</string>
     <string name="muscle_calves">Calves</string>
     <string name="muscle_full_body">Full body</string>
+
+    <!-- Equipment -->
+    <string name="equip_barbell">Barbell</string>
+    <string name="equip_ez_bar">EZ bar</string>
+    <string name="equip_dumbbell">Dumbbell</string>
+    <string name="equip_kettlebell">Kettlebell</string>
+    <string name="equip_weight_plate">Weight plate</string>
+    <string name="equip_machine">Machine</string>
+    <string name="equip_multi_machine">Multi machine</string>
+    <string name="equip_smith_machine">Smith machine</string>
+    <string name="equip_cable">Cable</string>
+    <string name="equip_bench">Bench</string>
+    <string name="equip_pullup_bar">Pull-up bar</string>
+    <string name="equip_dip_station">Dip station</string>
+    <string name="equip_rack">Rack</string>
+    <string name="equip_band">Band</string>
+    <string name="equip_none">No equipment</string>
+    <string name="equip_other">Other</string>
+    <string name="primary_muscle">Primary muscle</string>
+    <string name="secondary_muscles">Secondary muscles</string>
+    <string name="equipment">Equipment</string>
 
     <!-- Stats -->
     <string name="range_1m">1 m</string>
@@ -261,7 +348,7 @@
     <string name="replace_data">Replace data</string>
     <string name="import_replace_warning">Importing replaces ALL current data with the backup\'s content. This cannot be undone.</string>
     <string name="jefit_import">JEFIT import</string>
-    <string name="jefit_import_hint">Import your training history from a JEFIT CSV export. Exercise names are matched against the library; the rest become custom exercises.</string>
+    <string name="jefit_import_hint">Import your programs and training history from a JEFIT CSV export. Exercise names are matched against the library; the rest become custom exercises.</string>
     <string name="pick_jefit_csv">Pick JEFIT CSV file</string>
     <string name="jefit_unit_title">Weight unit</string>
     <string name="jefit_unit_question">Which unit does the JEFIT export use?</string>
@@ -271,6 +358,10 @@
     <string name="jefit_skipped">%1$d rows skipped</string>
     <string name="jefit_summary">Imported %1$d sessions with %2$d sets. %3$d new exercises created.</string>
     <string name="jefit_nothing_found">No workout data found in the file.</string>
+    <string name="jefit_preview_body_metrics">%1$d body log entries will be imported.</string>
+    <string name="jefit_summary_body_metrics">%1$d body log entries imported.</string>
+    <string name="jefit_preview_routines">%1$d programs found.</string>
+    <string name="jefit_summary_routines">%1$d programs imported.</string>
 
     <!-- About -->
     <string name="about">About</string>

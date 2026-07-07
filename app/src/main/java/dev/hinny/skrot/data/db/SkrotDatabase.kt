@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -49,8 +49,18 @@ abstract class SkrotDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
 
     companion object {
+        /**
+         * v1 -> v2: equipment became a multi-value field (comma-joined enum names
+         * in the same TEXT column) and the BODYWEIGHT value was replaced by NONE.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("UPDATE exercises SET equipment = 'NONE' WHERE equipment = 'BODYWEIGHT'")
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

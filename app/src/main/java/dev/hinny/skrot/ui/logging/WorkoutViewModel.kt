@@ -6,6 +6,7 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
+import dev.hinny.skrot.data.model.PlannedExercise
 import dev.hinny.skrot.data.model.PlannedSet
 import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.data.model.SessionExercise
@@ -265,21 +266,105 @@ class WorkoutViewModel(
         }
     }
 
-    fun removeSet(set: LoggedSet) {
+    /** Removes a set from this session only and compacts the positions after it. */
+    fun removeSet(se: SessionExerciseWithDetails, set: LoggedSet) {
         viewModelScope.launch {
             db.sessionDao().deleteLoggedSet(set)
+            se.sortedSets.filter { it.position > set.position }.forEach {
+                db.sessionDao().updateLoggedSet(it.copy(position = it.position - 1))
+            }
             touch()
         }
     }
 
-    /** Rest-duration edits persist back to the routine (rest timer memory). */
-    fun updateRest(se: SessionExerciseWithDetails, set: LoggedSet, restSec: Int) {
+    /**
+     * Rest-duration edits apply to this session; [applyToPlan] additionally
+     * writes them back to the routine ("apply to future sessions").
+     */
+    fun updateRest(
+        se: SessionExerciseWithDetails,
+        set: LoggedSet,
+        restSec: Int,
+        applyToPlan: Boolean = false,
+    ) {
         viewModelScope.launch {
             db.sessionDao().updateLoggedSet(set.copy(restSec = restSec))
-            se.sessionExercise.plannedExerciseId?.let { peId ->
-                db.routineDao().writeBackRest(peId, set.position, restSec)
+            if (applyToPlan) {
+                se.sessionExercise.plannedExerciseId?.let { peId ->
+                    db.routineDao().writeBackRest(peId, set.position, restSec)
+                }
             }
             touch()
+        }
+    }
+
+    /**
+     * "Apply to future sessions" after adding/removing sets: syncs the planned
+     * set count of this exercise to the session's current set count. Existing
+     * planned targets are kept; new planned sets copy the last one's targets.
+     */
+    fun applySetsToPlan(se: SessionExerciseWithDetails) {
+        viewModelScope.launch {
+            val peId = se.sessionExercise.plannedExerciseId ?: return@launch
+            val planned = db.routineDao().plannedSets(peId)
+            val sessionSets = se.sortedSets
+            planned.drop(sessionSets.size).forEach { db.routineDao().deletePlannedSet(it) }
+            val template = planned.lastOrNull()
+            for (i in planned.size until sessionSets.size) {
+                val s = sessionSets[i]
+                db.routineDao().insertPlannedSet(
+                    PlannedSet(
+                        plannedExerciseId = peId,
+                        position = i,
+                        setType = s.setType,
+                        targetRepsMin = template?.targetRepsMin,
+                        targetRepsMax = template?.targetRepsMax,
+                        targetLoad = template?.targetLoad,
+                        restSec = s.restSec,
+                    )
+                )
+            }
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /**
+     * "Apply to future sessions" for an exercise added during the session:
+     * plans it into the routine day this session was started from.
+     */
+    fun addExerciseToPlan(se: SessionExerciseWithDetails) {
+        viewModelScope.launch {
+            if (se.sessionExercise.plannedExerciseId != null) return@launch
+            val dayId = session.value?.session?.routineDayId ?: return@launch
+            val day = db.routineDao().dayWithContent(dayId) ?: return@launch
+            val blockPos =
+                (day.blocks.flatten().maxOfOrNull { it.planned.blockPos } ?: -1) + 1
+            val peId = db.routineDao().insertPlannedExercise(
+                PlannedExercise(dayId = dayId, exerciseId = se.exercise.id, blockPos = blockPos)
+            )
+            se.sortedSets.forEachIndexed { i, s ->
+                db.routineDao().insertPlannedSet(
+                    PlannedSet(
+                        plannedExerciseId = peId,
+                        position = i,
+                        setType = s.setType,
+                        restSec = s.restSec,
+                    )
+                )
+            }
+            db.sessionDao().updateSessionExercise(
+                se.sessionExercise.copy(plannedExerciseId = peId)
+            )
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /** "Apply to future sessions" after removing a planned exercise from the session. */
+    fun deletePlannedExercise(peId: Long) {
+        viewModelScope.launch {
+            db.routineDao().plannedExerciseById(peId)?.let {
+                db.routineDao().deletePlannedExercise(it)
+            }
         }
     }
 

@@ -66,6 +66,7 @@ class BackupViewModel(private val container: AppContainer) : ViewModel() {
                 withContext(Dispatchers.IO) {
                     resolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) }
                 }
+                app.settings.markBackupDone()
                 message.value = BackupMessage.Info(R.string.export_done)
             } catch (e: Exception) {
                 message.value = BackupMessage.Error(R.string.export_failed, e.message ?: "")
@@ -110,7 +111,8 @@ class BackupViewModel(private val container: AppContainer) : ViewModel() {
                 } ?: throw IllegalArgumentException("Could not read file")
                 pendingCsv = text
                 val parsed = JefitCsvParser.parse(text)
-                if (parsed.detectedUnit == null && parsed.sessions.isNotEmpty()) {
+                val hasData = parsed.sessions.isNotEmpty() || parsed.bodyMetrics.isNotEmpty()
+                if (parsed.detectedUnit == null && hasData) {
                     needsUnitChoice.value = true
                 } else {
                     preview(parsed)
@@ -130,7 +132,7 @@ class BackupViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private suspend fun preview(parsed: JefitCsvParser.Result) {
-        if (parsed.sessions.isEmpty()) {
+        if (parsed.sessions.isEmpty() && parsed.bodyMetrics.isEmpty()) {
             message.value = BackupMessage.Error(
                 R.string.jefit_nothing_found,
                 parsed.skipped.take(3).joinToString("; "),
@@ -243,6 +245,22 @@ fun BackupScreen(container: AppContainer) {
                                     msg.summary.exercisesCreated,
                                 )
                             )
+                            if (msg.summary.bodyMetricsCreated > 0) {
+                                Text(
+                                    stringResource(
+                                        R.string.jefit_summary_body_metrics,
+                                        msg.summary.bodyMetricsCreated,
+                                    )
+                                )
+                            }
+                            if (msg.summary.routinesCreated > 0) {
+                                Text(
+                                    stringResource(
+                                        R.string.jefit_summary_routines,
+                                        msg.summary.routinesCreated,
+                                    )
+                                )
+                            }
                             if (msg.summary.skipped.isNotEmpty()) {
                                 Text(
                                     stringResource(R.string.jefit_skipped, msg.summary.skipped.size) +
@@ -319,6 +337,12 @@ fun BackupScreen(container: AppContainer) {
                             preview.newExercises.size,
                         )
                     )
+                    if (preview.bodyMetricCount > 0) {
+                        Text(stringResource(R.string.jefit_preview_body_metrics, preview.bodyMetricCount))
+                    }
+                    if (preview.routineCount > 0) {
+                        Text(stringResource(R.string.jefit_preview_routines, preview.routineCount))
+                    }
                     if (preview.newExercises.isNotEmpty()) {
                         Text(
                             stringResource(R.string.jefit_new_exercises) + " " +

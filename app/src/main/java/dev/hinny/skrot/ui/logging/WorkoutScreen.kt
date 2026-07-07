@@ -1,8 +1,10 @@
 package dev.hinny.skrot.ui.logging
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -30,12 +34,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -178,6 +187,8 @@ fun WorkoutScreen(
             Spacer(Modifier.padding(padding))
             return@Scaffold
         }
+        val removedMsg = stringResource(R.string.exercise_removed)
+        val applyLabel = stringResource(R.string.apply_future_sessions)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -188,6 +199,16 @@ fun WorkoutScreen(
             val blocks = session.blocks
             items(blocks.size) { blockIndex ->
                 val block = blocks[blockIndex]
+                // The set to do next in this block: supersets alternate between the
+                // linked exercises (A1, B1, A2, B2, ...).
+                val currentSetId = block
+                    .flatMapIndexed { exIndex, se ->
+                        se.sortedSets.mapIndexedNotNull { setIndex, s ->
+                            if (!s.completed) Triple(setIndex, exIndex, s.id) else null
+                        }
+                    }
+                    .minWithOrNull(compareBy({ it.first }, { it.second }))
+                    ?.third
                 Card {
                     Column(Modifier.padding(10.dp)) {
                         if (block.size > 1) {
@@ -207,6 +228,26 @@ fun WorkoutScreen(
                                     ?.let { plannedSets[it] } ?: emptyList(),
                                 suggestion = suggestions[se.sessionExercise.id],
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
+                                currentSetId = currentSetId,
+                                hasRoutineDay = session.session.routineDayId != null,
+                                onRemove = { removed ->
+                                    val peId = removed.sessionExercise.plannedExerciseId
+                                    vm.removeExercise(removed)
+                                    // Session-only by default; the snackbar action also
+                                    // removes it from the routine for future sessions.
+                                    if (peId != null) {
+                                        scope.launch {
+                                            val result = snackbar.showSnackbar(
+                                                message = removedMsg,
+                                                actionLabel = applyLabel,
+                                                duration = SnackbarDuration.Long,
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                vm.deletePlannedExercise(peId)
+                                            }
+                                        }
+                                    }
+                                },
                             )
                         }
                     }
@@ -237,13 +278,16 @@ fun WorkoutScreen(
         ExercisePickerDialog(
             exercises = allExercises,
             onPick = { vm.addExercise(it); showAddExercise = false },
-            onCreate = { name, muscle ->
+            onCreate = { new ->
                 showAddExercise = false
                 scope.launch {
                     val id = container.db.exerciseDao().insert(
                         Exercise(
-                            nameEn = name, nameSv = name,
-                            muscleGroup = muscle, isCustom = true,
+                            nameEn = new.name, nameSv = new.name,
+                            muscleGroup = new.muscle,
+                            equipment = new.equipment,
+                            measurementType = new.measurement,
+                            isCustom = true,
                         )
                     )
                     container.db.exerciseDao().byId(id)?.let { vm.addExercise(it) }
@@ -305,6 +349,9 @@ private fun ExerciseSection(
     plannedSets: List<PlannedSet>,
     suggestion: ProgressionSuggestion?,
     swapOptions: List<Exercise>,
+    currentSetId: Long?,
+    hasRoutineDay: Boolean,
+    onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var swapOpen by remember { mutableStateOf(false) }
@@ -338,7 +385,7 @@ private fun ExerciseSection(
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.remove_exercise)) },
-                    onClick = { menuOpen = false; vm.removeExercise(se) },
+                    onClick = { menuOpen = false; onRemove(se) },
                 )
             }
         }
@@ -407,6 +454,7 @@ private fun ExerciseSection(
                 planned = plannedSets.find { it.position == set.position },
                 settings = settings,
                 vm = vm,
+                isCurrent = set.id == currentSetId,
             )
         }
 
@@ -416,6 +464,25 @@ private fun ExerciseSection(
             }
             TextButton(onClick = { vm.addSet(se, SetType.DROP_SET, sets.lastOrNull()) }) {
                 Text(stringResource(R.string.add_drop_set))
+            }
+        }
+
+        // Session edits are session-only by default; these discreet actions
+        // write the change back to the routine for future sessions.
+        val peId = se.sessionExercise.plannedExerciseId
+        if (peId != null && plannedSets.isNotEmpty() && plannedSets.size != sets.size) {
+            TextButton(onClick = { vm.applySetsToPlan(se) }) {
+                Text(
+                    stringResource(R.string.apply_future_sessions),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        } else if (peId == null && hasRoutineDay) {
+            TextButton(onClick = { vm.addExerciseToPlan(se) }) {
+                Text(
+                    stringResource(R.string.apply_future_sessions),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
@@ -501,6 +568,7 @@ private fun SetRow(
     planned: PlannedSet?,
     settings: Settings,
     vm: WorkoutViewModel,
+    isCurrent: Boolean,
 ) {
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
@@ -521,11 +589,114 @@ private fun SetRow(
         return Units.fromDisplay(raw, settings.unit, measurement)
     }
 
+    // Swipe left to remove the set from this session (completed sets are
+    // protected: un-complete first).
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart && !set.completed) {
+                vm.removeSet(se, set)
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = !set.completed,
+        backgroundContent = {
+            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            RoundedCornerShape(10.dp),
+                        )
+                        .padding(end = 16.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = stringResource(R.string.remove_set),
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
+        },
+    ) {
+        Surface(
+            color = if (isCurrent) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+            } else {
+                Color.Transparent
+            },
+            shape = RoundedCornerShape(10.dp),
+        ) {
+            SetRowContent(
+                se = se,
+                set = set,
+                number = number,
+                planned = planned,
+                settings = settings,
+                vm = vm,
+                isCurrent = isCurrent,
+                loadText = loadText,
+                onLoadText = { loadText = it },
+                repsText = repsText,
+                onRepsText = { repsText = it },
+                currentLoadKg = ::currentLoadKg,
+                onOpenTarget = { targetOpen = true },
+                onOpenRest = { restOpen = true },
+            )
+        }
+    }
+
+    if (targetOpen && planned != null) {
+        TargetDialog(
+            planned = planned,
+            onSave = { min, max -> vm.updateTarget(se, set, min, max) },
+            onDismiss = { targetOpen = false },
+        )
+    }
+    if (restOpen) {
+        RestDialog(
+            initial = set.restSec,
+            step = settings.timerAdjustStepSec,
+            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
+            onSave = { sec, applyToPlan -> vm.updateRest(se, set, sec, applyToPlan) },
+            onDismiss = { restOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun SetRowContent(
+    se: SessionExerciseWithDetails,
+    set: LoggedSet,
+    number: Int?,
+    planned: PlannedSet?,
+    settings: Settings,
+    vm: WorkoutViewModel,
+    isCurrent: Boolean,
+    loadText: String,
+    onLoadText: (String) -> Unit,
+    repsText: String,
+    onRepsText: (String) -> Unit,
+    currentLoadKg: () -> Double,
+    onOpenTarget: () -> Unit,
+    onOpenRest: () -> Unit,
+) {
+    val measurement = se.exercise.measurementType
+    val isLevel = measurement == MeasurementType.MACHINE_LEVEL
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 2.dp, horizontal = 2.dp),
     ) {
         // Set type marker; tap cycles warmup -> standard -> drop -> failure
         val typeLabel = when (set.setType) {
@@ -557,7 +728,7 @@ private fun SetRow(
             planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
             else -> "—"
         }
-        TextButton(onClick = { if (planned != null) targetOpen = true }) {
+        TextButton(onClick = { if (planned != null) onOpenTarget() }) {
             Text(targetText, style = MaterialTheme.typography.bodySmall)
         }
 
@@ -572,7 +743,7 @@ private fun SetRow(
         OutlinedTextField(
             value = loadText,
             onValueChange = {
-                loadText = it.filter { c -> c.isDigit() || c == '.' || c == ',' || c == '-' }
+                onLoadText(it.filter { c -> c.isDigit() || c == '.' || c == ',' || c == '-' })
                 vm.updateSetValues(
                     set,
                     currentLoadKg(),
@@ -590,44 +761,49 @@ private fun SetRow(
         OutlinedTextField(
             value = repsText,
             onValueChange = {
-                repsText = it.filter { c -> c.isDigit() }
-                vm.updateSetValues(set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+                val filtered = it.filter { c -> c.isDigit() }
+                onRepsText(filtered)
+                vm.updateSetValues(set, currentLoadKg(), filtered.toIntOrNull() ?: 0)
             },
             label = { Text(stringResource(R.string.reps), style = MaterialTheme.typography.labelSmall) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.width(72.dp),
         )
-        TextButton(onClick = { restOpen = true }) {
+        TextButton(onClick = onOpenRest) {
             Text("${set.restSec}s", style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.weight(1f))
-        Checkbox(
-            checked = set.completed,
-            onCheckedChange = { checked ->
-                if (checked) {
-                    vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
-                } else {
-                    vm.uncompleteSet(set)
-                }
-            },
-        )
-    }
+        when {
+            set.completed -> IconButton(onClick = { vm.uncompleteSet(set) }) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.undo_set),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
 
-    if (targetOpen && planned != null) {
-        TargetDialog(
-            planned = planned,
-            onSave = { min, max -> vm.updateTarget(se, set, min, max) },
-            onDismiss = { targetOpen = false },
-        )
-    }
-    if (restOpen) {
-        RestDialog(
-            initial = set.restSec,
-            step = settings.timerAdjustStepSec,
-            onSave = { vm.updateRest(se, set, it) },
-            onDismiss = { restOpen = false },
-        )
+            isCurrent -> Button(
+                onClick = {
+                    vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+                },
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+            ) {
+                Text(stringResource(R.string.finish_set))
+            }
+
+            else -> IconButton(
+                onClick = {
+                    vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+                },
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = stringResource(R.string.finish_set),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                )
+            }
+        }
     }
 }
 
@@ -676,10 +852,12 @@ private fun TargetDialog(
 private fun RestDialog(
     initial: Int,
     step: Int,
-    onSave: (Int) -> Unit,
+    canApplyToPlan: Boolean,
+    onSave: (restSec: Int, applyToPlan: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var value by remember { mutableStateOf(initial.toString()) }
+    var applyToPlan by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.rest_duration)) },
@@ -693,11 +871,23 @@ private fun RestDialog(
                     label = stringResource(R.string.seconds),
                     integerOnly = true,
                 )
+                if (canApplyToPlan) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = applyToPlan,
+                            onCheckedChange = { applyToPlan = it },
+                        )
+                        Text(
+                            stringResource(R.string.apply_future_sessions),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave((value.toIntOrNull() ?: initial).coerceAtLeast(0))
+                onSave((value.toIntOrNull() ?: initial).coerceAtLeast(0), applyToPlan)
                 onDismiss()
             }) { Text(stringResource(R.string.save)) }
         },

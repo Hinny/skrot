@@ -10,25 +10,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,10 +56,11 @@ import dev.hinny.skrot.domain.GymResolver
 import dev.hinny.skrot.domain.PrefillEngine
 import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.ui.Routes
-import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
+import dev.hinny.skrot.ui.session.StartFlowHost
+import dev.hinny.skrot.ui.session.WorkoutPickerDialog
 import dev.hinny.skrot.data.prefs.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -84,6 +78,7 @@ data class HomeUiState(
     val gyms: List<Gym> = emptyList(),
     val daysSinceLastSession: Int? = null,
     val comebackRoutines: List<RoutineWithDays> = emptyList(),
+    val backupOverdue: Boolean = false,
 )
 
 /** One planned exercise checked against the selected gym. */
@@ -107,6 +102,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val db = container.db
 
     val comebackDismissed = MutableStateFlow(false)
+    val backupReminderDismissed = MutableStateFlow(false)
     val uiState = MutableStateFlow(HomeUiState())
 
     init {
@@ -131,7 +127,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 db.sessionDao().observeFinishedSessions(),
                 container.settings.settings,
                 comebackDismissed,
-            ) { state, finished, settings, dismissed ->
+                backupReminderDismissed,
+            ) { state, finished, settings, dismissed, backupDismissed ->
                 val active = state.allRoutines.find { it.routine.isActive }
                 val nextDay = active?.let {
                     ScheduleEngine.nextDay(it.routine, it.days, LocalDate.now())
@@ -146,11 +143,21 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                             r.routine.tags.any { it.equals("rebuild", ignoreCase = true) }
                         }
                     } else emptyList()
+                // Backup reminder: counts from the last backup, or from the oldest
+                // logged session if no backup was ever made.
+                val backupBasis = settings.lastBackupAt.takeIf { it > 0 }
+                    ?: finished.minOfOrNull { it.startedAt }
+                val backupOverdue = !backupDismissed &&
+                    settings.backupReminderDays > 0 &&
+                    backupBasis != null &&
+                    System.currentTimeMillis() - backupBasis >
+                    settings.backupReminderDays * 86_400_000L
                 state.copy(
                     activeRoutine = active,
                     nextDay = nextDay,
                     daysSinceLastSession = daysSince,
                     comebackRoutines = if (daysSince == null) emptyList() else comeback,
+                    backupOverdue = backupOverdue,
                 )
             }.collect { uiState.value = it }
         }
@@ -295,6 +302,13 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         return sessionId
     }
 
+    /** Creates a gym inline from the start dialog and hands back its id. */
+    fun createGym(name: String, onCreated: (Long) -> Unit) {
+        viewModelScope.launch {
+            onCreated(db.gymDao().insert(Gym(name = name)))
+        }
+    }
+
     suspend fun startEmptySession(gymId: Long?): Long {
         val now = System.currentTimeMillis()
         return db.sessionDao().insertSession(
@@ -308,7 +322,6 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
     val state by vm.uiState.collectAsState()
     var startTarget by remember { mutableStateOf<Pair<RoutineWithDays?, RoutineDay?>?>(null) }
-    var pending by remember { mutableStateOf<PendingStart?>(null) }
     var showPicker by remember { mutableStateOf(false) }
 
     Column(
@@ -335,6 +348,34 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(stringResource(R.string.tap_to_resume))
+                }
+            }
+        }
+
+        if (state.backupOverdue) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.backup_reminder_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { vm.backupReminderDismissed.value = true }) {
+                            Icon(Icons.Filled.Close, stringResource(R.string.dismiss))
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.backup_reminder_body),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { nav.navigate(Routes.BACKUP) }) {
+                        Text(stringResource(R.string.backup_now))
+                    }
                 }
             }
         }
@@ -461,240 +502,22 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
 
     // Workout picker (swap in a different day, from this or another program)
     if (showPicker) {
-        AlertDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            title = { Text(stringResource(R.string.choose_workout)) },
-            text = {
-                LazyColumn {
-                    state.allRoutines.forEach { r ->
-                        items(r.sortedDays.size) { i ->
-                            val day = r.sortedDays[i]
-                            Column(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showPicker = false
-                                        startTarget = r to day
-                                    }
-                                    .padding(vertical = 10.dp, horizontal = 4.dp),
-                            ) {
-                                Text(day.name, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "${r.routine.name} · " ,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        }
-                    }
-                }
+        WorkoutPickerDialog(
+            routines = state.allRoutines,
+            onDismiss = { showPicker = false },
+            onPick = { r, day ->
+                showPicker = false
+                startTarget = r to day
             },
         )
     }
 
     // Gym + temporary-visit selection, then resolution
-    startTarget?.let { (routine, day) ->
-        StartWorkoutDialog(
-            gyms = state.gyms,
-            onDismiss = { startTarget = null },
-            onConfirm = { gymId, temporary ->
-                startTarget = null
-                vm.viewModelScope.launch {
-                    if (routine == null && day == null) {
-                        val id = vm.startEmptySession(gymId)
-                        nav.navigate(Routes.workout(id))
-                    } else {
-                        val prepared = vm.prepareStart(
-                            routine?.routine?.id, day?.id, gymId, temporary,
-                        )
-                        val needsInput = prepared.items.any {
-                            it.resolution is GymResolution.Choice ||
-                                it.resolution is GymResolution.NoEquivalent
-                        }
-                        if (needsInput) {
-                            pending = prepared
-                        } else {
-                            val id = vm.startSession(prepared, emptyMap(), emptySet())
-                            nav.navigate(Routes.workout(id))
-                        }
-                    }
-                }
-            },
-        )
-    }
-
-    pending?.let { prepared ->
-        ResolveExercisesDialog(
-            pending = prepared,
-            onDismiss = { pending = null },
-            onConfirm = { picks, alwaysUse ->
-                pending = null
-                vm.viewModelScope.launch {
-                    val id = vm.startSession(prepared, picks, alwaysUse)
-                    nav.navigate(Routes.workout(id))
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun StartWorkoutDialog(
-    gyms: List<Gym>,
-    onDismiss: () -> Unit,
-    onConfirm: (gymId: Long?, temporary: Boolean) -> Unit,
-) {
-    var selectedGym by remember { mutableStateOf(gyms.find { it.isDefault }?.id) }
-    var temporary by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.start_workout)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (gyms.isNotEmpty()) {
-                    Text(stringResource(R.string.gym))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = selectedGym == null,
-                            onClick = { selectedGym = null },
-                            label = { Text(stringResource(R.string.no_gym)) },
-                        )
-                    }
-                    gyms.forEach { gym ->
-                        FilterChip(
-                            selected = selectedGym == gym.id,
-                            onClick = { selectedGym = gym.id },
-                            label = { Text(gym.name) },
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = temporary, onCheckedChange = { temporary = it })
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.temporary_visit))
-                    }
-                    Text(
-                        stringResource(R.string.temporary_visit_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selectedGym, temporary) }) {
-                Text(stringResource(R.string.start))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-}
-
-@Composable
-private fun ResolveExercisesDialog(
-    pending: PendingStart,
-    onDismiss: () -> Unit,
-    onConfirm: (picks: Map<Long, Long?>, alwaysUse: Set<Long>) -> Unit,
-) {
-    val picks = remember { mutableStateOf(mapOf<Long, Long?>()) }
-    val always = remember { mutableStateOf(setOf<Long>()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.resolve_exercises)) },
-        text = {
-            LazyColumn {
-                val needing = pending.items.filter {
-                    it.resolution is GymResolution.Choice ||
-                        it.resolution is GymResolution.NoEquivalent
-                }
-                items(needing.size) { i ->
-                    val item = needing[i]
-                    val plannedId = item.planned.planned.id
-                    var expanded by remember { mutableStateOf(false) }
-                    val chosen = picks.value.getOrDefault(plannedId, item.planned.exercise.id)
-                    Column(Modifier.padding(vertical = 8.dp)) {
-                        Text(
-                            item.planned.exercise.displayName(),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        if (item.resolution is GymResolution.NoEquivalent) {
-                            Text(
-                                stringResource(R.string.not_available_no_equivalent),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        OutlinedButton(onClick = { expanded = true }) {
-                            Text(
-                                when (chosen) {
-                                    null -> stringResource(R.string.skip_exercise)
-                                    item.planned.exercise.id ->
-                                        stringResource(R.string.keep_original)
-
-                                    else -> item.options.find { it.id == chosen }?.displayName()
-                                        ?: ""
-                                }
-                            )
-                        }
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.keep_original)) },
-                                onClick = {
-                                    picks.value = picks.value + (plannedId to item.planned.exercise.id)
-                                    expanded = false
-                                },
-                            )
-                            item.options.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option.displayName()) },
-                                    onClick = {
-                                        picks.value = picks.value + (plannedId to option.id)
-                                        expanded = false
-                                    },
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.skip_exercise)) },
-                                onClick = {
-                                    picks.value = picks.value + (plannedId to null)
-                                    expanded = false
-                                },
-                            )
-                        }
-                        if (!pending.temporaryVisit && chosen != null &&
-                            chosen != item.planned.exercise.id
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = plannedId in always.value,
-                                    onCheckedChange = { checked ->
-                                        always.value =
-                                            if (checked) always.value + plannedId
-                                            else always.value - plannedId
-                                    },
-                                )
-                                Text(
-                                    stringResource(R.string.always_use_at_gym),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(picks.value, always.value) }) {
-                Text(stringResource(R.string.start))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
+    StartFlowHost(
+        vm = vm,
+        nav = nav,
+        gyms = state.gyms,
+        startTarget = startTarget,
+        onClearTarget = { startTarget = null },
     )
 }

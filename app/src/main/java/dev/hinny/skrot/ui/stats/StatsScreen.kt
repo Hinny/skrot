@@ -11,35 +11,49 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.SetWithContext
 import dev.hinny.skrot.data.model.WeightUnit
+import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.data.db.MuscleGroupSets
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.ui.body.BodyMetricDialog
 import dev.hinny.skrot.ui.charts.CalendarHeatmap
 import dev.hinny.skrot.ui.charts.HorizontalBarChart
 import dev.hinny.skrot.ui.charts.LineChart
@@ -53,6 +67,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 enum class StatsRange(val labelRes: Int, val days: Long?) {
     M1(R.string.range_1m, 30),
@@ -72,6 +87,9 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
     val exerciseSets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val sessionDates = MutableStateFlow<List<Long>>(emptyList())
     val muscleSets = MutableStateFlow<List<MuscleGroupSets>>(emptyList())
+    val finishedSessions = MutableStateFlow<List<WorkoutSession>>(emptyList())
+    /** Routine-day id -> day name, for labeling sessions in the history list. */
+    val dayNames = MutableStateFlow<Map<Long, String>>(emptyMap())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
     /** Gym filter for machine-level charts; null = all gyms. */
     val gymFilter = MutableStateFlow<Long?>(null)
@@ -116,15 +134,34 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
                 }
             }
         }
+        viewModelScope.launch {
+            db.sessionDao().observeFinishedSessions()
+                .collect { finishedSessions.value = it.sortedByDescending { s -> s.startedAt } }
+        }
+        viewModelScope.launch {
+            db.routineDao().observeAllWithDays().collect { routines ->
+                dayNames.value = routines
+                    .flatMap { r -> r.days.map { it.id to it.name } }
+                    .toMap()
+            }
+        }
     }
 
     fun selectExercise(e: Exercise) {
         selectedExercise.value = e
     }
+
+    fun deleteSession(id: Long) {
+        viewModelScope.launch { db.sessionDao().deleteSession(id) }
+    }
+
+    fun addBodyMetric(metric: BodyMetric) {
+        viewModelScope.launch { db.bodyMetricDao().insert(metric) }
+    }
 }
 
 @Composable
-fun StatsScreen(container: AppContainer, settings: Settings) {
+fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> StatsViewModel(c) }
     val range by vm.range.collectAsState()
     val exercises by vm.exercises.collectAsState()
@@ -134,7 +171,11 @@ fun StatsScreen(container: AppContainer, settings: Settings) {
     val muscles by vm.muscleSets.collectAsState()
     val gyms by vm.gyms.collectAsState()
     val gymFilter by vm.gymFilter.collectAsState()
+    val finished by vm.finishedSessions.collectAsState()
+    val dayNames by vm.dayNames.collectAsState()
     var exerciseMenu by remember { mutableStateOf(false) }
+    var sessionToDelete by remember { mutableStateOf<WorkoutSession?>(null) }
+    var showBodyDialog by remember { mutableStateOf(false) }
 
     val zone = ZoneId.systemDefault()
     val fromMs = range.days?.let { System.currentTimeMillis() - it * 86_400_000L } ?: 0L
@@ -175,6 +216,8 @@ fun StatsScreen(container: AppContainer, settings: Settings) {
                     countsByDay = dates.groupingBy {
                         Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
                     }.eachCount(),
+                    // The grid covers exactly the selected range ("all" shows a year).
+                    weeks = range.days?.let { ((it + 6) / 7).toInt() } ?: 52,
                 )
             }
         }
@@ -284,10 +327,137 @@ fun StatsScreen(container: AppContainer, settings: Settings) {
                                 )
                             },
                         )
+
+                        Text(
+                            stringResource(R.string.volume_per_session),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        val volumePerSession = machineFiltered
+                            .filter { it.set.completed }
+                            .groupBy { it.sessionId }
+                            .map { (_, sessionSets) ->
+                                sessionSets.first().sessionDate to
+                                    sessionSets.sumOf { it.set.load * it.set.reps }
+                            }
+                        LineChart(
+                            points = volumePerSession,
+                            valueFormatter = {
+                                Units.formatValue(
+                                    Units.toDisplay(it, settings.unit, MeasurementType.WEIGHT_KG)
+                                )
+                            },
+                        )
+                    }
+
+                    if (exercise.measurementType == MeasurementType.BODYWEIGHT) {
+                        Text(
+                            stringResource(R.string.reps_per_session),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        val repsPerSession = machineFiltered
+                            .filter { it.set.completed }
+                            .groupBy { it.sessionId }
+                            .map { (_, sessionSets) ->
+                                sessionSets.first().sessionDate to
+                                    sessionSets.sumOf { it.set.reps }.toDouble()
+                            }
+                        LineChart(
+                            points = repsPerSession,
+                            valueFormatter = { it.toInt().toString() },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Body log: quick entry without leaving Statistics
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    stringResource(R.string.body_metrics),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                OutlinedButton(onClick = { showBodyDialog = true }) {
+                    Icon(Icons.Filled.Add, null)
+                    Text(stringResource(R.string.log_body_weight))
+                }
+            }
+        }
+
+        // Logged sessions: open to edit, or delete
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.history),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+                val inRange = finished.filter { it.startedAt >= fromMs }
+                if (inRange.isEmpty()) {
+                    Text(
+                        stringResource(R.string.no_data_yet),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                inRange.forEach { session ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                session.routineDayId?.let { dayNames[it] }
+                                    ?: stringResource(R.string.freestyle_session),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                Instant.ofEpochMilli(session.startedAt).atZone(zone)
+                                    .toLocalDate().format(dateFormat) +
+                                    (session.gymId?.let { g ->
+                                        gyms[g]?.let { " · $it" }
+                                    } ?: ""),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(onClick = { nav.navigate(Routes.workout(session.id)) }) {
+                            Icon(Icons.Filled.Edit, stringResource(R.string.edit_session))
+                        }
+                        IconButton(onClick = { sessionToDelete = session }) {
+                            Icon(Icons.Filled.Delete, stringResource(R.string.delete))
+                        }
                     }
                 }
             }
         }
         Spacer(Modifier.height(40.dp))
+    }
+
+    sessionToDelete?.let { session ->
+        AlertDialog(
+            onDismissRequest = { sessionToDelete = null },
+            title = { Text(stringResource(R.string.delete_session)) },
+            text = { Text(stringResource(R.string.delete_session_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteSession(session.id)
+                    sessionToDelete = null
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { sessionToDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showBodyDialog) {
+        BodyMetricDialog(
+            unit = settings.unit,
+            onSave = { vm.addBodyMetric(it); showBodyDialog = false },
+            onDismiss = { showBodyDialog = false },
+        )
     }
 }

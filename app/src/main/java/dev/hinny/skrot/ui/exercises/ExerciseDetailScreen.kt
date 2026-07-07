@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -40,17 +41,22 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.MeasurementType
+import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.SetWithContext
 import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,6 +104,23 @@ class ExerciseDetailViewModel(
             onDone()
         }
     }
+
+    /** Clones this exercise (prefab or custom) into a new custom exercise. */
+    fun clone(nameSuffix: String, onDone: (Long) -> Unit) {
+        viewModelScope.launch {
+            val source = exercise.value ?: return@launch
+            val id = db.exerciseDao().insert(
+                source.copy(
+                    id = 0,
+                    nameEn = "${source.nameEn} $nameSuffix",
+                    nameSv = "${source.nameSv} $nameSuffix",
+                    isCustom = true,
+                    nextTimeNote = "",
+                )
+            )
+            onDone(id)
+        }
+    }
 }
 
 @Composable
@@ -140,6 +163,12 @@ fun ExerciseDetailScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f),
                 )
+                val copySuffix = stringResource(R.string.clone_suffix)
+                IconButton(onClick = {
+                    vm.clone(copySuffix) { id -> nav.navigate(Routes.exercise(id)) }
+                }) {
+                    Icon(Icons.Filled.ContentCopy, stringResource(R.string.clone_exercise))
+                }
                 if (e.isCustom) {
                     IconButton(onClick = { vm.delete { nav.popBackStack() } }) {
                         Icon(Icons.Filled.Delete, stringResource(R.string.delete))
@@ -170,6 +199,75 @@ fun ExerciseDetailScreen(
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.BODYWEIGHT) } },
                     label = { Text(stringResource(R.string.measurement_bodyweight)) },
                 )
+            }
+        }
+
+        // Muscle groups: one primary + any number of secondary
+        item {
+            Text(stringResource(R.string.primary_muscle), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                MuscleGroup.entries.forEach { m ->
+                    FilterChip(
+                        selected = e.muscleGroup == m,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(muscleGroup = m, secondaryMuscles = ex.secondaryMuscles - m)
+                            }
+                        },
+                        label = { Text(muscleLabel(m)) },
+                    )
+                }
+            }
+        }
+        item {
+            Text(stringResource(R.string.secondary_muscles), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                MuscleGroup.entries.filter { it != e.muscleGroup }.forEach { m ->
+                    FilterChip(
+                        selected = m in e.secondaryMuscles,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(
+                                    secondaryMuscles =
+                                        if (m in ex.secondaryMuscles) ex.secondaryMuscles - m
+                                        else ex.secondaryMuscles + m
+                                )
+                            }
+                        },
+                        label = { Text(muscleLabel(m)) },
+                    )
+                }
+            }
+        }
+
+        // Equipment: any number of pieces can be required at once
+        item {
+            Text(stringResource(R.string.equipment), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                Equipment.entries.forEach { eq ->
+                    FilterChip(
+                        selected = eq in e.equipment,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(
+                                    equipment =
+                                        if (eq in ex.equipment) ex.equipment - eq
+                                        else ex.equipment + eq
+                                )
+                            }
+                        },
+                        label = { Text(equipmentLabel(eq)) },
+                    )
+                }
             }
         }
 
@@ -206,6 +304,7 @@ fun ExerciseDetailScreen(
                 label = { Text(stringResource(R.string.progression_increment_override)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
@@ -276,7 +375,10 @@ fun ExerciseDetailScreen(
         }
 
         item {
-            if (isMachine && gyms.isNotEmpty()) {
+            // Per-gym history filter is gated on equipment: anything gym-bound
+            // (i.e. not equipment-free) can differ between gyms.
+            val gymScoped = e.equipment.any { it != Equipment.NONE } || isMachine
+            if (gymScoped && gyms.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.horizontalScroll(rememberScrollState()),

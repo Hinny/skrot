@@ -32,7 +32,7 @@ object CsvExporter {
                     date,
                     e.nameEn,
                     e.muscleGroup.name,
-                    e.equipment.name,
+                    e.equipment.joinToString("+") { it.name },
                     e.measurementType.name,
                     s.set.setType.name,
                     s.set.load.toString(),

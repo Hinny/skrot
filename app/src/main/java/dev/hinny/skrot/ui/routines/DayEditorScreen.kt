@@ -52,6 +52,7 @@ import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -206,10 +207,17 @@ class DayEditorViewModel(
         viewModelScope.launch { db.routineDao().deletePlannedSet(set) }
     }
 
-    fun createCustomExercise(name: String, muscle: MuscleGroup, onCreated: (Exercise) -> Unit) {
+    fun createCustomExercise(new: NewExercise, onCreated: (Exercise) -> Unit) {
         viewModelScope.launch {
             val id = container.db.exerciseDao().insert(
-                Exercise(nameEn = name, nameSv = name, muscleGroup = muscle, isCustom = true)
+                Exercise(
+                    nameEn = new.name,
+                    nameSv = new.name,
+                    muscleGroup = new.muscle,
+                    equipment = new.equipment,
+                    measurementType = new.measurement,
+                    isCustom = true,
+                )
             )
             container.db.exerciseDao().byId(id)?.let(onCreated)
         }
@@ -334,8 +342,8 @@ fun DayEditorScreen(
                     vm.addExercise(it, target)
                     pickerTarget = -1
                 },
-                onCreate = { newName, muscle ->
-                    vm.createCustomExercise(newName, muscle) { created ->
+                onCreate = { new ->
+                    vm.createCustomExercise(new) { created ->
                         vm.addExercise(created, target)
                     }
                     pickerTarget = -1
@@ -387,6 +395,8 @@ private fun PlannedSetRow(
 ) {
     var minText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
     var maxText by remember(set.id) { mutableStateOf(set.targetRepsMax?.toString() ?: "") }
+    // A single target rep has no interval: the max field only appears on demand.
+    var showMax by remember(set.id) { mutableStateOf(set.targetRepsMax != null) }
     var loadText by remember(set.id) {
         mutableStateOf(
             set.targetLoad?.let { Units.formatValue(Units.toDisplay(it, settings.unit, measurement)) }
@@ -434,17 +444,23 @@ private fun PlannedSetRow(
                 singleLine = true,
                 modifier = Modifier.width(64.dp),
             )
-            OutlinedTextField(
-                value = maxText,
-                onValueChange = {
-                    maxText = it.filter(Char::isDigit)
-                    vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
-                },
-                label = { Text(stringResource(R.string.target_max_short), style = MaterialTheme.typography.labelSmall) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(64.dp),
-            )
+            if (showMax) {
+                OutlinedTextField(
+                    value = maxText,
+                    onValueChange = {
+                        maxText = it.filter(Char::isDigit)
+                        vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
+                    },
+                    label = { Text(stringResource(R.string.target_max), style = MaterialTheme.typography.labelSmall) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.width(64.dp),
+                )
+            } else {
+                TextButton(onClick = { showMax = true }) {
+                    Text(stringResource(R.string.add_target_max), style = MaterialTheme.typography.labelSmall)
+                }
+            }
         } else {
             Text(stringResource(R.string.amrap), modifier = Modifier.width(132.dp))
         }
