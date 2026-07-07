@@ -36,6 +36,19 @@ object JefitCsvParser {
             get() = listOfNotNull(weightKg, chestCm, armsCm, waistCm, hipsCm, thighsCm).size
     }
 
+    /** One exercise planned inside a routine day (target sets, no logged history). */
+    data class ParsedPlannedExercise(
+        val name: String,
+        /** Exercises sharing this key (JEFIT's `superset` id, or their own id when standalone) form one block. */
+        val supersetKey: Long,
+        val sortOrder: Int,
+        val restSec: Int,
+        val sets: List<ParsedSet>,
+    )
+
+    data class ParsedDay(val name: String, val sortOrder: Int, val exercises: List<ParsedPlannedExercise>)
+    data class ParsedRoutine(val name: String, val days: List<ParsedDay>)
+
     data class Result(
         val sessions: List<ParsedSession>,
         val skipped: List<String>,
@@ -43,6 +56,7 @@ object JefitCsvParser {
         val detectedUnit: WeightUnit?,
         val totalSets: Int,
         val bodyMetrics: List<ParsedBodyMetric> = emptyList(),
+        val routines: List<ParsedRoutine> = emptyList(),
     )
 
     private val packedEntry = Regex("""^(-?\d+(?:[.,]\d+)?)\s*[x×X*]\s*(\d+)$""")
@@ -96,11 +110,12 @@ object JefitCsvParser {
 
         val (sessions, totalSets) = parseExerciseLogs(sections["EXERCISE LOGS"], unit, skipped)
         val bodyMetrics = parseProfile(sections["PROFILE"], unit, skipped)
+        val routines = parseRoutines(sections["ROUTINES"], unit, skipped)
 
-        if (sessions.isEmpty() && bodyMetrics.isEmpty()) {
-            skipped.add(0, "No EXERCISE LOGS or PROFILE data found in the JEFIT export")
+        if (sessions.isEmpty() && bodyMetrics.isEmpty() && routines.isEmpty()) {
+            skipped.add(0, "No EXERCISE LOGS, PROFILE or ROUTINES data found in the JEFIT export")
         }
-        return Result(sessions, skipped, detectedUnit, totalSets, bodyMetrics)
+        return Result(sessions, skipped, detectedUnit, totalSets, bodyMetrics, routines)
     }
 
     /** The SETTING section has a `mass` column whose value is " kg" or " lbs". */
@@ -223,6 +238,119 @@ object JefitCsvParser {
             if (existing == null || metric.fieldCount > existing.fieldCount) byDate[date] = metric
         }
         return byDate.values.sortedBy { it.date }
+    }
+
+    /**
+     * ROUTINES section: a flat sequence of single-row "tables" (their own
+     * header row plus one data row, blank-row separated) nesting routine ->
+     * day -> planned exercise purely by order of appearance. The three shapes
+     * are told apart by a column unique to each: a routine row has `dayaweek`,
+     * a day row has `dayIndex`, an exercise-in-plan row has `belongplan`.
+     * Exercises sharing a non-zero `superset` value (JEFIT points every member
+     * at one member's own id) form a single block/superset.
+     *
+     * Chunking is done on CSV rows (via [readCsv] over the whole section, once)
+     * rather than on raw text lines, because JEFIT's routine `description`
+     * field is a quoted value that can itself contain blank lines — splitting
+     * the raw text on blank lines would cut such a record in half.
+     */
+    private fun parseRoutines(
+        text: String?,
+        unit: WeightUnit,
+        skipped: MutableList<String>,
+    ): List<ParsedRoutine> {
+        if (text == null) return emptyList()
+
+        val chunks = mutableListOf<List<List<String>>>()
+        var current = mutableListOf<List<String>>()
+        for (row in readCsv(text)) {
+            if (row.all { it.isBlank() }) {
+                if (current.isNotEmpty()) { chunks.add(current); current = mutableListOf() }
+            } else {
+                current.add(row)
+            }
+        }
+        if (current.isNotEmpty()) chunks.add(current)
+
+        val routines = mutableListOf<ParsedRoutine>()
+        var routineName: String? = null
+        var days = mutableListOf<ParsedDay>()
+        var dayName: String? = null
+        var daySort = 0
+        var exercises = mutableListOf<ParsedPlannedExercise>()
+
+        fun flushDay() {
+            val name = dayName ?: return
+            days.add(ParsedDay(name, daySort, exercises.toList()))
+            exercises = mutableListOf()
+            dayName = null
+        }
+        fun flushRoutine() {
+            flushDay()
+            val name = routineName ?: return
+            if (days.isNotEmpty()) routines.add(ParsedRoutine(name, days.toList()))
+            days = mutableListOf()
+            routineName = null
+        }
+
+        for (rows in chunks) {
+            if (rows.size < 2) continue
+            val header = rows[0].map { it.trim() }
+            val dataRows = rows.drop(1)
+            when {
+                "dayaweek" in header -> {
+                    flushRoutine()
+                    val nameIdx = header.indexOf("name")
+                    val rawName = dataRows[0].getOrNull(nameIdx)?.trim().orEmpty()
+                    routineName = rawName.ifBlank { "Imported routine" }
+                }
+
+                "belongplan" in header -> {
+                    val idIdx = header.indexOf("_id")
+                    val supersetIdx = header.indexOf("superset")
+                    val nameIdx = header.indexOf("exercisename")
+                    val timerIdx = header.indexOf("timer")
+                    val logsIdx = header.indexOf("logs")
+                    val sortIdx = header.indexOf("mysort")
+                    for (row in dataRows) {
+                        val exName = row.getOrNull(nameIdx)?.trim().orEmpty()
+                        if (exName.isBlank()) continue
+                        val ownId = row.getOrNull(idIdx)?.trim()?.toLongOrNull() ?: 0L
+                        val superset = row.getOrNull(supersetIdx)?.trim()?.toLongOrNull() ?: 0L
+                        val restSec = row.getOrNull(timerIdx)?.trim()?.toDoubleOrNull()?.toInt() ?: 0
+                        val sortOrder = row.getOrNull(sortIdx)?.trim()?.toIntOrNull() ?: 0
+                        val sets = when (val packed = parsePacked(row.getOrNull(logsIdx).orEmpty())) {
+                            is PackedRow.Timed -> emptyList()
+                            is PackedRow.Sets -> packed.entries.map { ParsedSet(toKg(it.first, unit), it.second) }
+                        }
+                        if (sets.isEmpty()) {
+                            skipped.add("Routine exercise \"$exName\": no set data, skipped")
+                            continue
+                        }
+                        exercises.add(
+                            ParsedPlannedExercise(
+                                name = exName,
+                                supersetKey = if (superset != 0L) superset else ownId,
+                                sortOrder = sortOrder,
+                                restSec = restSec,
+                                sets = sets,
+                            )
+                        )
+                    }
+                }
+
+                "dayIndex" in header -> {
+                    flushDay()
+                    val nameIdx = header.indexOf("name")
+                    val sortIdx = header.indexOf("sort_order")
+                    val rawName = dataRows[0].getOrNull(nameIdx)?.trim().orEmpty()
+                    dayName = rawName.ifBlank { "Day" }
+                    daySort = dataRows[0].getOrNull(sortIdx)?.trim()?.toIntOrNull() ?: 0
+                }
+            }
+        }
+        flushRoutine()
+        return routines
     }
 
     // ---------------------------------------------------------------------

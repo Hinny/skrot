@@ -19,10 +19,23 @@ row_id,USERID,TIMESTAMP,_id,mydate,weight,fatpercent,chest,arms,waist,calves,hei
 
 row_id,USERID,TIMESTAMP,_id,name,difficulty,focus,dayaweek,description,daytype,tags,rdb_id,bannerCode,progression_flag
 1,42,"2026-01-01 10:00:00",1,"Test Routine",0,0,2,"Line one
-line two of description",0," ",0,,0
+
+line two, after a blank line inside the quotes",0," ",0,,0
 
 row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
 1,42,"2026-01-01 10:00:00",1,1,"Day 1",1,1,0,0,0,0,
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+1,42,"2026-01-01 10:00:00",1,0,10,2,1,"Bench Press",3,90,"60x8,60x8,60x7",3,0,8,0,0,0,0,1,0,0
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+1,42,"2026-01-01 10:00:00",1,11,11,83,1,"Pull-Up",3,60,"0x5,0x4,0x3",1,1,8,0,0,0,0,1,0,0
+
+row_id,USERID,TIMESTAMP,belongSys,superset,_id,exercise_id,belongplan,exercisename,setcount,timer,logs,bodypart,mysort,targetrep,setdone,setdonetime,interval_time,interval_unit,rest_time_enabled,interval_time_enabled,is_tier_primary
+1,42,"2026-01-01 10:00:00",1,11,12,777,1,"Side Bend",2,0,"10x12,10x12",0,2,8,0,0,0,0,0,0,0
+
+row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+1,42,"2026-01-01 10:00:00",1,2,"Rest Day",2,2,0,1,0,1,
 
 ######################################################
 

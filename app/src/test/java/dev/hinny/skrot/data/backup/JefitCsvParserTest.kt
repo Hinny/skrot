@@ -102,6 +102,53 @@ class JefitCsvParserTest {
     }
 
     @Test
+    fun `parses ROUTINES into programs, days and supersets`() {
+        val result = JefitCsvParser.parse(fixture("jefit_multisection.csv"))
+
+        assertEquals(1, result.routines.size)
+        val routine = result.routines.first()
+        assertEquals("Test Routine", routine.name)
+        // A blank line inside the quoted description must not split the record in two.
+        assertEquals(2, routine.days.size)
+
+        val day1 = routine.days[0]
+        assertEquals("Day 1", day1.name)
+        assertEquals(listOf("Bench Press", "Pull-Up", "Side Bend"), day1.exercises.map { it.name })
+        assertEquals(3, day1.exercises[0].sets.size)
+        assertEquals(60.0, day1.exercises[0].sets[0].loadKg, 0.0)
+        assertEquals(8, day1.exercises[0].sets[0].reps)
+        assertEquals(90, day1.exercises[0].restSec)
+
+        // Pull-Up (the superset anchor) and Side Bend share a block; Bench Press stands alone.
+        assertEquals(day1.exercises[1].supersetKey, day1.exercises[2].supersetKey)
+        assertTrue(day1.exercises[0].supersetKey != day1.exercises[1].supersetKey)
+
+        // Rest day carries no exercises but is still imported as an empty day.
+        val day2 = routine.days[1]
+        assertEquals("Rest Day", day2.name)
+        assertTrue(day2.exercises.isEmpty())
+    }
+
+    @Test
+    fun `blank line inside a quoted ROUTINES field does not corrupt chunk boundaries`() {
+        val csv = """
+            ### ROUTINES ####################
+            row_id,USERID,TIMESTAMP,_id,name,difficulty,focus,dayaweek,description,daytype,tags,rdb_id,bannerCode,progression_flag
+            1,42,"2026-01-01 10:00:00",1,"My Routine",0,0,2,"Paragraph one.
+
+            Paragraph two.",0," ",0,,0
+
+            row_id,USERID,TIMESTAMP,package,_id,name,day,dayIndex,interval_mode,rest_day,week,sort_order,day_completed_timestamp
+            1,42,"2026-01-01 10:00:00",1,1,"Only Day",1,1,0,0,0,0,
+            ##################################
+        """.trimIndent()
+        val result = JefitCsvParser.parse(csv)
+        assertEquals(1, result.routines.size)
+        assertEquals("My Routine", result.routines.single().name)
+        assertEquals(listOf("Only Day"), result.routines.single().days.map { it.name })
+    }
+
+    @Test
     fun `multi-section export honours unit override for sets and body weight`() {
         val result = JefitCsvParser.parse(
             fixture("jefit_multisection.csv"),

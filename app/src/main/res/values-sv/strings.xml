@@ -346,7 +346,7 @@
     <string name="replace_data">Ersätt data</string>
     <string name="import_replace_warning">Importen ersätter ALL nuvarande data med säkerhetskopians innehåll. Detta kan inte ångras.</string>
     <string name="jefit_import">JEFIT-import</string>
-    <string name="jefit_import_hint">Importera din träningshistorik från en JEFIT CSV-export. Övningsnamn matchas mot biblioteket; resten blir egna övningar.</string>
+    <string name="jefit_import_hint">Importera dina program och din träningshistorik från en JEFIT CSV-export. Övningsnamn matchas mot biblioteket; resten blir egna övningar.</string>
     <string name="pick_jefit_csv">Välj JEFIT CSV-fil</string>
     <string name="jefit_unit_title">Viktenhet</string>
     <string name="jefit_unit_question">Vilken enhet använder JEFIT-exporten?</string>
@@ -358,6 +358,8 @@
     <string name="jefit_nothing_found">Ingen träningsdata hittades i filen.</string>
     <string name="jefit_preview_body_metrics">%1$d kroppsloggposter kommer att importeras.</string>
     <string name="jefit_summary_body_metrics">%1$d kroppsloggposter importerades.</string>
+    <string name="jefit_preview_routines">%1$d program hittades.</string>
+    <string name="jefit_summary_routines">%1$d program importerades.</string>
 
     <!-- About -->
     <string name="about">Om</string>

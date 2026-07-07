@@ -253,6 +253,14 @@ fun BackupScreen(container: AppContainer) {
                                     )
                                 )
                             }
+                            if (msg.summary.routinesCreated > 0) {
+                                Text(
+                                    stringResource(
+                                        R.string.jefit_summary_routines,
+                                        msg.summary.routinesCreated,
+                                    )
+                                )
+                            }
                             if (msg.summary.skipped.isNotEmpty()) {
                                 Text(
                                     stringResource(R.string.jefit_skipped, msg.summary.skipped.size) +
@@ -331,6 +339,9 @@ fun BackupScreen(container: AppContainer) {
                     )
                     if (preview.bodyMetricCount > 0) {
                         Text(stringResource(R.string.jefit_preview_body_metrics, preview.bodyMetricCount))
+                    }
+                    if (preview.routineCount > 0) {
+                        Text(stringResource(R.string.jefit_preview_routines, preview.routineCount))
                     }
                     if (preview.newExercises.isNotEmpty()) {
                         Text(

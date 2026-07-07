@@ -348,7 +348,7 @@
     <string name="replace_data">Replace data</string>
     <string name="import_replace_warning">Importing replaces ALL current data with the backup\'s content. This cannot be undone.</string>
     <string name="jefit_import">JEFIT import</string>
-    <string name="jefit_import_hint">Import your training history from a JEFIT CSV export. Exercise names are matched against the library; the rest become custom exercises.</string>
+    <string name="jefit_import_hint">Import your programs and training history from a JEFIT CSV export. Exercise names are matched against the library; the rest become custom exercises.</string>
     <string name="pick_jefit_csv">Pick JEFIT CSV file</string>
     <string name="jefit_unit_title">Weight unit</string>
     <string name="jefit_unit_question">Which unit does the JEFIT export use?</string>
@@ -360,6 +360,8 @@
     <string name="jefit_nothing_found">No workout data found in the file.</string>
     <string name="jefit_preview_body_metrics">%1$d body log entries will be imported.</string>
     <string name="jefit_summary_body_metrics">%1$d body log entries imported.</string>
+    <string name="jefit_preview_routines">%1$d programs found.</string>
+    <string name="jefit_summary_routines">%1$d programs imported.</string>
 
     <!-- About -->
     <string name="about">About</string>
