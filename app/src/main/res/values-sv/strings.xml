@@ -161,6 +161,9 @@
     <string name="new_exercise">Ny övning</string>
     <string name="pick_exercise">Välj övning</string>
     <string name="exercise_name">Övningsnamn</string>
+    <string name="search_exercises">Sök övningar</string>
+    <string name="clone_exercise">Klona övning</string>
+    <string name="clone_suffix">(kopia)</string>
     <string name="custom_badge">Egen</string>
     <string name="measurement_type">Mätningstyp</string>
     <string name="measurement_weight">Vikt (kg)</string>

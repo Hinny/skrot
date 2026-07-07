@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +52,7 @@ import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
@@ -102,6 +104,23 @@ class ExerciseDetailViewModel(
             onDone()
         }
     }
+
+    /** Clones this exercise (prefab or custom) into a new custom exercise. */
+    fun clone(nameSuffix: String, onDone: (Long) -> Unit) {
+        viewModelScope.launch {
+            val source = exercise.value ?: return@launch
+            val id = db.exerciseDao().insert(
+                source.copy(
+                    id = 0,
+                    nameEn = "${source.nameEn} $nameSuffix",
+                    nameSv = "${source.nameSv} $nameSuffix",
+                    isCustom = true,
+                    nextTimeNote = "",
+                )
+            )
+            onDone(id)
+        }
+    }
 }
 
 @Composable
@@ -144,6 +163,12 @@ fun ExerciseDetailScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f),
                 )
+                val copySuffix = stringResource(R.string.clone_suffix)
+                IconButton(onClick = {
+                    vm.clone(copySuffix) { id -> nav.navigate(Routes.exercise(id)) }
+                }) {
+                    Icon(Icons.Filled.ContentCopy, stringResource(R.string.clone_exercise))
+                }
                 if (e.isCustom) {
                     IconButton(onClick = { vm.delete { nav.popBackStack() } }) {
                         Icon(Icons.Filled.Delete, stringResource(R.string.delete))
@@ -279,6 +304,7 @@ fun ExerciseDetailScreen(
                 label = { Text(stringResource(R.string.progression_increment_override)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
@@ -349,7 +375,10 @@ fun ExerciseDetailScreen(
         }
 
         item {
-            if (isMachine && gyms.isNotEmpty()) {
+            // Per-gym history filter is gated on equipment: anything gym-bound
+            // (i.e. not equipment-free) can differ between gyms.
+            val gymScoped = e.equipment.any { it != Equipment.NONE } || isMachine
+            if (gymScoped && gyms.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.horizontalScroll(rememberScrollState()),

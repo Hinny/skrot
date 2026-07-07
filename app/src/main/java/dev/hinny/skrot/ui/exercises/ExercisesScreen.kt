@@ -40,7 +40,8 @@ import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.ui.Routes
-import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.CreateExerciseDialog
+import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.exerciseSubtitle
@@ -58,10 +59,17 @@ class ExercisesViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun create(name: String, muscle: MuscleGroup, onCreated: (Long) -> Unit) {
+    fun create(new: NewExercise, onCreated: (Long) -> Unit) {
         viewModelScope.launch {
             val id = container.db.exerciseDao().insert(
-                Exercise(nameEn = name, nameSv = name, muscleGroup = muscle, isCustom = true)
+                Exercise(
+                    nameEn = new.name,
+                    nameSv = new.name,
+                    muscleGroup = new.muscle,
+                    equipment = new.equipment,
+                    measurementType = new.measurement,
+                    isCustom = true,
+                )
             )
             onCreated(id)
         }
@@ -174,12 +182,10 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
     }
 
     if (showCreate) {
-        ExercisePickerDialog(
-            exercises = emptyList(),
-            onPick = {},
-            onCreate = { name, muscle ->
+        CreateExerciseDialog(
+            onSave = { new ->
                 showCreate = false
-                vm.create(name, muscle) { id -> nav.navigate(Routes.exercise(id)) }
+                vm.create(new) { id -> nav.navigate(Routes.exercise(id)) }
             },
             onDismiss = { showCreate = false },
         )

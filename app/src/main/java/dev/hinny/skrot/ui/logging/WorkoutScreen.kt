@@ -278,13 +278,16 @@ fun WorkoutScreen(
         ExercisePickerDialog(
             exercises = allExercises,
             onPick = { vm.addExercise(it); showAddExercise = false },
-            onCreate = { name, muscle ->
+            onCreate = { new ->
                 showAddExercise = false
                 scope.launch {
                     val id = container.db.exerciseDao().insert(
                         Exercise(
-                            nameEn = name, nameSv = name,
-                            muscleGroup = muscle, isCustom = true,
+                            nameEn = new.name, nameSv = new.name,
+                            muscleGroup = new.muscle,
+                            equipment = new.equipment,
+                            measurementType = new.measurement,
+                            isCustom = true,
                         )
                     )
                     container.db.exerciseDao().byId(id)?.let { vm.addExercise(it) }

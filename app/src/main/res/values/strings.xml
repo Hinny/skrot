@@ -163,6 +163,9 @@
     <string name="new_exercise">New exercise</string>
     <string name="pick_exercise">Pick exercise</string>
     <string name="exercise_name">Exercise name</string>
+    <string name="search_exercises">Search exercises</string>
+    <string name="clone_exercise">Clone exercise</string>
+    <string name="clone_suffix">(copy)</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>
     <string name="measurement_weight">Weight (kg)</string>

@@ -52,6 +52,7 @@ import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -206,10 +207,17 @@ class DayEditorViewModel(
         viewModelScope.launch { db.routineDao().deletePlannedSet(set) }
     }
 
-    fun createCustomExercise(name: String, muscle: MuscleGroup, onCreated: (Exercise) -> Unit) {
+    fun createCustomExercise(new: NewExercise, onCreated: (Exercise) -> Unit) {
         viewModelScope.launch {
             val id = container.db.exerciseDao().insert(
-                Exercise(nameEn = name, nameSv = name, muscleGroup = muscle, isCustom = true)
+                Exercise(
+                    nameEn = new.name,
+                    nameSv = new.name,
+                    muscleGroup = new.muscle,
+                    equipment = new.equipment,
+                    measurementType = new.measurement,
+                    isCustom = true,
+                )
             )
             container.db.exerciseDao().byId(id)?.let(onCreated)
         }
@@ -334,8 +342,8 @@ fun DayEditorScreen(
                     vm.addExercise(it, target)
                     pickerTarget = -1
                 },
-                onCreate = { newName, muscle ->
-                    vm.createCustomExercise(newName, muscle) { created ->
+                onCreate = { new ->
+                    vm.createCustomExercise(new) { created ->
                         vm.addExercise(created, target)
                     }
                     pickerTarget = -1
