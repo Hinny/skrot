@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +44,8 @@ import dev.hinny.skrot.data.model.CoachPersonality
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
 import dev.hinny.skrot.data.model.WeightUnit
+import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.prefs.Settings
-import dev.hinny.skrot.ui.Routes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -50,6 +54,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val scope = remember { CoroutineScope(Dispatchers.Main) }
     val repo = container.settings
+    var showDeleteData by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -201,17 +206,102 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
 
         HorizontalDivider()
 
-        OutlinedButton(onClick = { nav.navigate(Routes.GYMS) }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.default_gym_setting))
+        // Backup reminder
+        SettingSection(stringResource(R.string.backup)) {
+            NumberSetting(
+                label = stringResource(R.string.backup_reminder_setting),
+                value = settings.backupReminderDays,
+            ) { scope.launch { repo.setBackupReminderDays(it) } }
         }
-        OutlinedButton(onClick = { nav.navigate(Routes.BACKUP) }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.backup_and_import))
-        }
-        OutlinedButton(onClick = { nav.navigate(Routes.ABOUT) }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.about))
+
+        HorizontalDivider()
+
+        // Danger zone
+        SettingSection(stringResource(R.string.delete_user_data)) {
+            OutlinedButton(
+                onClick = { showDeleteData = true },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.delete_user_data)) }
         }
         Spacer(Modifier.height(40.dp))
     }
+
+    if (showDeleteData) {
+        DeleteDataDialog(
+            onDismiss = { showDeleteData = false },
+            onDelete = { sessions, body, custom, everything ->
+                showDeleteData = false
+                scope.launch {
+                    val dao = container.db.backupDao()
+                    if (everything) {
+                        dao.clearAll()
+                        SeedData.seedIfEmpty(container.db)
+                    } else {
+                        if (sessions) dao.clearSessionLog()
+                        if (body) dao.clearBodyMetrics()
+                        if (custom) dao.clearCustomExercises()
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun DeleteDataDialog(
+    onDismiss: () -> Unit,
+    onDelete: (sessions: Boolean, body: Boolean, custom: Boolean, everything: Boolean) -> Unit,
+) {
+    var sessions by remember { mutableStateOf(false) }
+    var body by remember { mutableStateOf(false) }
+    var custom by remember { mutableStateOf(false) }
+    var everything by remember { mutableStateOf(false) }
+
+    @Composable
+    fun CheckRow(label: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Checkbox(checked = checked, onCheckedChange = onChange, enabled = enabled)
+            Text(label)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_user_data)) },
+        text = {
+            Column {
+                CheckRow(stringResource(R.string.delete_data_sessions), sessions || everything, !everything) { sessions = it }
+                CheckRow(stringResource(R.string.delete_data_body), body || everything, !everything) { body = it }
+                CheckRow(stringResource(R.string.delete_data_custom), custom || everything, !everything) { custom = it }
+                CheckRow(stringResource(R.string.delete_data_all), everything, true) { everything = it }
+                Text(
+                    stringResource(R.string.delete_data_warning),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = sessions || body || custom || everything,
+                onClick = { onDelete(sessions, body, custom, everything) },
+            ) {
+                Text(
+                    stringResource(R.string.delete),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
 }
 
 @Composable

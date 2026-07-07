@@ -56,6 +56,16 @@
     <string name="comeback_body">Ease back in with a rebuild program:</string>
     <string name="start_workout">Start workout</string>
     <string name="gym">Gym</string>
+    <string name="backup_reminder_setting">Backup reminder interval (days, 0 = off)</string>
+    <string name="backup_reminder_title">Time to back up</string>
+    <string name="backup_reminder_body">Your data lives only on this device. Export a backup so a lost or broken phone doesn\'t take your training history with it.</string>
+    <string name="backup_now">Back up now</string>
+    <string name="delete_user_data">Delete user data</string>
+    <string name="delete_data_sessions">Session logs</string>
+    <string name="delete_data_body">Body log</string>
+    <string name="delete_data_custom">Custom exercises</string>
+    <string name="delete_data_all">Everything (programs, gyms, logs, exercises)</string>
+    <string name="delete_data_warning">This cannot be undone. Deleting custom exercises also removes their logged history.</string>
     <string name="volume_per_session">Volume per session</string>
     <string name="reps_per_session">Reps per session</string>
     <string name="freestyle_session">Freestyle workout</string>

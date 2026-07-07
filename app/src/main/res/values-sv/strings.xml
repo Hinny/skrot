@@ -54,6 +54,16 @@
     <string name="comeback_body">Kom igång lugnt med ett återuppbyggnadsprogram:</string>
     <string name="start_workout">Starta pass</string>
     <string name="gym">Gym</string>
+    <string name="backup_reminder_setting">Påminnelse om säkerhetskopiering (dagar, 0 = av)</string>
+    <string name="backup_reminder_title">Dags att säkerhetskopiera</string>
+    <string name="backup_reminder_body">Din data finns bara på den här enheten. Exportera en säkerhetskopia så att en borttappad eller trasig telefon inte tar träningshistoriken med sig.</string>
+    <string name="backup_now">Säkerhetskopiera nu</string>
+    <string name="delete_user_data">Ta bort användardata</string>
+    <string name="delete_data_sessions">Passloggar</string>
+    <string name="delete_data_body">Kroppslogg</string>
+    <string name="delete_data_custom">Egna övningar</string>
+    <string name="delete_data_all">Allt (program, gym, loggar, övningar)</string>
+    <string name="delete_data_warning">Detta kan inte ångras. Tas egna övningar bort försvinner även deras loggade historik.</string>
     <string name="volume_per_session">Volym per pass</string>
     <string name="reps_per_session">Reps per pass</string>
     <string name="freestyle_session">Fritt pass</string>

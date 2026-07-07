@@ -78,6 +78,7 @@ data class HomeUiState(
     val gyms: List<Gym> = emptyList(),
     val daysSinceLastSession: Int? = null,
     val comebackRoutines: List<RoutineWithDays> = emptyList(),
+    val backupOverdue: Boolean = false,
 )
 
 /** One planned exercise checked against the selected gym. */
@@ -101,6 +102,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val db = container.db
 
     val comebackDismissed = MutableStateFlow(false)
+    val backupReminderDismissed = MutableStateFlow(false)
     val uiState = MutableStateFlow(HomeUiState())
 
     init {
@@ -125,7 +127,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 db.sessionDao().observeFinishedSessions(),
                 container.settings.settings,
                 comebackDismissed,
-            ) { state, finished, settings, dismissed ->
+                backupReminderDismissed,
+            ) { state, finished, settings, dismissed, backupDismissed ->
                 val active = state.allRoutines.find { it.routine.isActive }
                 val nextDay = active?.let {
                     ScheduleEngine.nextDay(it.routine, it.days, LocalDate.now())
@@ -140,11 +143,21 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                             r.routine.tags.any { it.equals("rebuild", ignoreCase = true) }
                         }
                     } else emptyList()
+                // Backup reminder: counts from the last backup, or from the oldest
+                // logged session if no backup was ever made.
+                val backupBasis = settings.lastBackupAt.takeIf { it > 0 }
+                    ?: finished.minOfOrNull { it.startedAt }
+                val backupOverdue = !backupDismissed &&
+                    settings.backupReminderDays > 0 &&
+                    backupBasis != null &&
+                    System.currentTimeMillis() - backupBasis >
+                    settings.backupReminderDays * 86_400_000L
                 state.copy(
                     activeRoutine = active,
                     nextDay = nextDay,
                     daysSinceLastSession = daysSince,
                     comebackRoutines = if (daysSince == null) emptyList() else comeback,
+                    backupOverdue = backupOverdue,
                 )
             }.collect { uiState.value = it }
         }
@@ -335,6 +348,34 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(stringResource(R.string.tap_to_resume))
+                }
+            }
+        }
+
+        if (state.backupOverdue) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.backup_reminder_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { vm.backupReminderDismissed.value = true }) {
+                            Icon(Icons.Filled.Close, stringResource(R.string.dismiss))
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.backup_reminder_body),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    TextButton(onClick = { nav.navigate(Routes.BACKUP) }) {
+                        Text(stringResource(R.string.backup_now))
+                    }
                 }
             }
         }

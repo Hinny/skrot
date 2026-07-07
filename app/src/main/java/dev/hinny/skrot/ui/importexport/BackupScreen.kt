@@ -66,6 +66,7 @@ class BackupViewModel(private val container: AppContainer) : ViewModel() {
                 withContext(Dispatchers.IO) {
                     resolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) }
                 }
+                app.settings.markBackupDone()
                 message.value = BackupMessage.Info(R.string.export_done)
             } catch (e: Exception) {
                 message.value = BackupMessage.Error(R.string.export_failed, e.message ?: "")
