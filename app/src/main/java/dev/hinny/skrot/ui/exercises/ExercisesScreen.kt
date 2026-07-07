@@ -42,6 +42,8 @@ import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.exerciseSubtitle
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -125,15 +127,16 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                     FilterChip(
                         selected = equipmentFilter == eq,
                         onClick = { equipmentFilter = if (equipmentFilter == eq) null else eq },
-                        label = { Text(eq.name.lowercase()) },
+                        label = { Text(equipmentLabel(eq)) },
                     )
                 }
             }
 
             val filtered = exercises.filter { e ->
                 (query.isBlank() || e.displayName().contains(query, ignoreCase = true)) &&
-                    (muscleFilter == null || e.muscleGroup == muscleFilter) &&
-                    (equipmentFilter == null || e.equipment == equipmentFilter)
+                    (muscleFilter == null ||
+                        e.muscleGroup == muscleFilter || muscleFilter in e.secondaryMuscles) &&
+                    (equipmentFilter == null || equipmentFilter in e.equipment)
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(filtered.size) { i ->
@@ -159,7 +162,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                                 }
                             }
                             Text(
-                                "${muscleLabel(e.muscleGroup)} · ${e.equipment.name.lowercase()}",
+                                exerciseSubtitle(e),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }

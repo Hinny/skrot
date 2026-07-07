@@ -40,9 +40,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.MeasurementType
+import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.SetWithContext
 import dev.hinny.skrot.data.model.WeightUnit
@@ -51,6 +53,8 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -170,6 +174,75 @@ fun ExerciseDetailScreen(
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.BODYWEIGHT) } },
                     label = { Text(stringResource(R.string.measurement_bodyweight)) },
                 )
+            }
+        }
+
+        // Muscle groups: one primary + any number of secondary
+        item {
+            Text(stringResource(R.string.primary_muscle), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                MuscleGroup.entries.forEach { m ->
+                    FilterChip(
+                        selected = e.muscleGroup == m,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(muscleGroup = m, secondaryMuscles = ex.secondaryMuscles - m)
+                            }
+                        },
+                        label = { Text(muscleLabel(m)) },
+                    )
+                }
+            }
+        }
+        item {
+            Text(stringResource(R.string.secondary_muscles), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                MuscleGroup.entries.filter { it != e.muscleGroup }.forEach { m ->
+                    FilterChip(
+                        selected = m in e.secondaryMuscles,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(
+                                    secondaryMuscles =
+                                        if (m in ex.secondaryMuscles) ex.secondaryMuscles - m
+                                        else ex.secondaryMuscles + m
+                                )
+                            }
+                        },
+                        label = { Text(muscleLabel(m)) },
+                    )
+                }
+            }
+        }
+
+        // Equipment: any number of pieces can be required at once
+        item {
+            Text(stringResource(R.string.equipment), style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                Equipment.entries.forEach { eq ->
+                    FilterChip(
+                        selected = eq in e.equipment,
+                        onClick = {
+                            vm.update { ex ->
+                                ex.copy(
+                                    equipment =
+                                        if (eq in ex.equipment) ex.equipment - eq
+                                        else ex.equipment + eq
+                                )
+                            }
+                        },
+                        label = { Text(equipmentLabel(eq)) },
+                    )
+                }
             }
         }
 

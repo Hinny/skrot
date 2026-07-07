@@ -190,6 +190,27 @@
     <string name="muscle_calves">Calves</string>
     <string name="muscle_full_body">Full body</string>
 
+    <!-- Equipment -->
+    <string name="equip_barbell">Barbell</string>
+    <string name="equip_ez_bar">EZ bar</string>
+    <string name="equip_dumbbell">Dumbbell</string>
+    <string name="equip_kettlebell">Kettlebell</string>
+    <string name="equip_weight_plate">Weight plate</string>
+    <string name="equip_machine">Machine</string>
+    <string name="equip_multi_machine">Multi machine</string>
+    <string name="equip_smith_machine">Smith machine</string>
+    <string name="equip_cable">Cable</string>
+    <string name="equip_bench">Bench</string>
+    <string name="equip_pullup_bar">Pull-up bar</string>
+    <string name="equip_dip_station">Dip station</string>
+    <string name="equip_rack">Rack</string>
+    <string name="equip_band">Band</string>
+    <string name="equip_none">No equipment</string>
+    <string name="equip_other">Other</string>
+    <string name="primary_muscle">Primary muscle</string>
+    <string name="secondary_muscles">Secondary muscles</string>
+    <string name="equipment">Equipment</string>
+
     <!-- Stats -->
     <string name="range_1m">1 m</string>
     <string name="range_3m">3 m</string>

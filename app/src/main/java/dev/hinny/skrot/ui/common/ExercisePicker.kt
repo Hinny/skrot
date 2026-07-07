@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 
@@ -71,7 +72,7 @@ fun ExercisePickerDialog(
                             ) {
                                 Text(e.displayName(), style = MaterialTheme.typography.bodyLarge)
                                 Text(
-                                    "${muscleLabel(e.muscleGroup)} · ${e.equipment.name.lowercase()}",
+                                    exerciseSubtitle(e),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
@@ -119,6 +120,38 @@ fun ExercisePickerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Composable
+fun equipmentLabel(e: Equipment): String = stringResource(
+    when (e) {
+        Equipment.BARBELL -> R.string.equip_barbell
+        Equipment.EZ_BAR -> R.string.equip_ez_bar
+        Equipment.DUMBBELL -> R.string.equip_dumbbell
+        Equipment.KETTLEBELL -> R.string.equip_kettlebell
+        Equipment.WEIGHT_PLATE -> R.string.equip_weight_plate
+        Equipment.MACHINE -> R.string.equip_machine
+        Equipment.MULTI_MACHINE -> R.string.equip_multi_machine
+        Equipment.SMITH_MACHINE -> R.string.equip_smith_machine
+        Equipment.CABLE -> R.string.equip_cable
+        Equipment.BENCH -> R.string.equip_bench
+        Equipment.PULLUP_BAR -> R.string.equip_pullup_bar
+        Equipment.DIP_STATION -> R.string.equip_dip_station
+        Equipment.RACK -> R.string.equip_rack
+        Equipment.BAND -> R.string.equip_band
+        Equipment.NONE -> R.string.equip_none
+        Equipment.OTHER -> R.string.equip_other
+    }
+)
+
+/** "muscle · equipment1 + equipment2" subtitle used in exercise lists. */
+@Composable
+fun exerciseSubtitle(e: Exercise): String {
+    val muscles = (listOf(e.muscleGroup) + e.secondaryMuscles)
+        .map { muscleLabel(it) }
+        .joinToString(", ")
+    val equipment = e.equipment.map { equipmentLabel(it) }.joinToString(" + ")
+    return if (equipment.isBlank()) muscles else "$muscles · $equipment"
 }
 
 @Composable

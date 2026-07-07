@@ -5,6 +5,28 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
+
+/**
+ * Lenient serializer for [Exercise.equipment]: v1 backups stored a single enum
+ * string (possibly the removed BODYWEIGHT value); v2 stores a list.
+ */
+object EquipmentListSerializer :
+    JsonTransformingSerializer<List<Equipment>>(ListSerializer(Equipment.serializer())) {
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        fun mapLegacy(e: JsonElement): JsonElement =
+            if (e is JsonPrimitive && e.content == "BODYWEIGHT") JsonPrimitive("NONE") else e
+        return when (element) {
+            is JsonPrimitive -> JsonArray(listOf(mapLegacy(element)))
+            is JsonArray -> JsonArray(element.map(::mapLegacy))
+            else -> element
+        }
+    }
+}
 
 /**
  * An exercise in the library. Seed exercises carry both English and Swedish names;
@@ -29,7 +51,9 @@ data class Exercise(
     val nameSv: String,
     val muscleGroup: MuscleGroup,
     val secondaryMuscles: List<MuscleGroup> = emptyList(),
-    val equipment: Equipment = Equipment.OTHER,
+    /** All equipment needed for the exercise (empty = unspecified). */
+    @Serializable(with = EquipmentListSerializer::class)
+    val equipment: List<Equipment> = emptyList(),
     val measurementType: MeasurementType = MeasurementType.WEIGHT_KG,
     val isCustom: Boolean = false,
     val notes: String = "",

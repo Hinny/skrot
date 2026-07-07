@@ -3,7 +3,6 @@ package dev.hinny.skrot.data.backup
 import androidx.room.withTransaction
 import dev.hinny.skrot.data.db.SkrotDatabase
 import dev.hinny.skrot.data.model.BodyMetric
-import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
@@ -133,7 +132,6 @@ class JefitImporter(private val db: SkrotDatabase) {
                                     nameEn = parsedExercise.name,
                                     nameSv = parsedExercise.name,
                                     muscleGroup = MuscleGroup.FULL_BODY,
-                                    equipment = Equipment.OTHER,
                                     measurementType = MeasurementType.WEIGHT_KG,
                                     isCustom = true,
                                 )

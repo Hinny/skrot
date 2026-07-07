@@ -188,6 +188,27 @@
     <string name="muscle_calves">Vader</string>
     <string name="muscle_full_body">Helkropp</string>
 
+    <!-- Equipment -->
+    <string name="equip_barbell">Skivstång</string>
+    <string name="equip_ez_bar">EZ-stång</string>
+    <string name="equip_dumbbell">Hantel</string>
+    <string name="equip_kettlebell">Kettlebell</string>
+    <string name="equip_weight_plate">Viktskiva</string>
+    <string name="equip_machine">Maskin</string>
+    <string name="equip_multi_machine">Multimaskin</string>
+    <string name="equip_smith_machine">Smithmaskin</string>
+    <string name="equip_cable">Kabel</string>
+    <string name="equip_bench">Bänk</string>
+    <string name="equip_pullup_bar">Chinsstång</string>
+    <string name="equip_dip_station">Dipsställning</string>
+    <string name="equip_rack">Rack</string>
+    <string name="equip_band">Gummiband</string>
+    <string name="equip_none">Ingen utrustning</string>
+    <string name="equip_other">Övrigt</string>
+    <string name="primary_muscle">Primär muskel</string>
+    <string name="secondary_muscles">Sekundära muskler</string>
+    <string name="equipment">Utrustning</string>
+
     <!-- Stats -->
     <string name="range_1m">1 mån</string>
     <string name="range_3m">3 mån</string>

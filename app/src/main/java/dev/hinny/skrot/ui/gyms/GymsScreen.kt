@@ -49,6 +49,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,7 +111,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             db.gymDao().addExercises(
                 exercises.value
-                    .filter { it.equipment == equipment }
+                    .filter { equipment in it.equipment }
                     .map { GymExercise(gymId, it.id) }
             )
         }
@@ -242,7 +243,7 @@ fun GymsScreen(container: AppContainer) {
                         FilterChip(
                             selected = false,
                             onClick = { vm.addAllWithEquipment(gym.id, eq) },
-                            label = { Text(stringResource(R.string.all_of, eq.name.lowercase())) },
+                            label = { Text(stringResource(R.string.all_of, equipmentLabel(eq).lowercase())) },
                         )
                     }
                 }
@@ -273,7 +274,7 @@ fun GymsScreen(container: AppContainer) {
                     Column {
                         Text(e.displayName())
                         Text(
-                            e.equipment.name.lowercase(),
+                            e.equipment.map { equipmentLabel(it) }.joinToString(" + "),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
