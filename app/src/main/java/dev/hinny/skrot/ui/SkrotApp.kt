@@ -3,8 +3,13 @@ package dev.hinny.skrot.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
@@ -137,7 +142,9 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     Scaffold(
         bottomBar = {
             Column {
-                RestTimerBar(container, settings)
+                // When the nav bar is hidden (during a workout) the timer bar is the
+                // bottom-most element and must clear the system navigation bar itself.
+                RestTimerBar(container, settings, applyNavInsets = hideBars)
                 if (!hideBars) {
                     NavigationBar {
                         tabs.forEach { tab ->
@@ -207,13 +214,26 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
 }
 
 @Composable
-private fun RestTimerBar(container: AppContainer, settings: Settings) {
+private fun RestTimerBar(
+    container: AppContainer,
+    settings: Settings,
+    applyNavInsets: Boolean,
+) {
     val timerState by container.restTimer.state.collectAsStateWithLifecycle()
     val state = timerState ?: return
     Surface(color = MaterialTheme.colorScheme.primaryContainer) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (applyNavInsets) {
+                        Modifier.windowInsetsPadding(
+                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
