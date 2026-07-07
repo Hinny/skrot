@@ -30,6 +30,7 @@ import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.MuscleGroup
+import dev.hinny.skrot.domain.ExerciseSearch
 
 /** What a quick-created exercise consists of. */
 data class NewExercise(
@@ -74,7 +75,12 @@ fun ExercisePickerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                val filtered = filterExercises(exercises, query)
+                val filtered = ExerciseSearch.search(
+                    exercises = exercises,
+                    query = query,
+                    muscleNames = searchMuscleNames(),
+                    equipmentNames = searchEquipmentNames(),
+                )
                 LazyColumn(Modifier.height(320.dp)) {
                     items(filtered.size) { i ->
                         val e = filtered[i]
@@ -105,15 +111,15 @@ fun ExercisePickerDialog(
     )
 }
 
-/** Name search over both languages. Step 7 extends this to muscles/equipment. */
+/** Localized + English searchable names for every muscle group. */
 @Composable
-fun filterExercises(exercises: List<Exercise>, query: String): List<Exercise> {
-    if (query.isBlank()) return exercises
-    return exercises.filter {
-        it.nameEn.contains(query, ignoreCase = true) ||
-            it.nameSv.contains(query, ignoreCase = true)
-    }
-}
+fun searchMuscleNames(): Map<MuscleGroup, List<String>> =
+    MuscleGroup.entries.associateWith { listOf(muscleLabel(it), it.name.replace('_', ' ')) }
+
+/** Localized + English searchable names for every equipment type. */
+@Composable
+fun searchEquipmentNames(): Map<Equipment, List<String>> =
+    Equipment.entries.associateWith { listOf(equipmentLabel(it), it.name.replace('_', ' ')) }
 
 /**
  * Standalone "New exercise" dialog: name, primary muscle, equipment (several
