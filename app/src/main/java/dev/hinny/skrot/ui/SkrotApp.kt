@@ -64,6 +64,7 @@ import dev.hinny.skrot.ui.library.LibraryScreen
 import dev.hinny.skrot.ui.logging.SessionSummaryScreen
 import dev.hinny.skrot.ui.logging.WorkoutScreen
 import dev.hinny.skrot.ui.more.AboutScreen
+import dev.hinny.skrot.ui.more.GuideScreen
 import dev.hinny.skrot.ui.more.MoreScreen
 import dev.hinny.skrot.ui.more.ProfileScreen
 import dev.hinny.skrot.ui.routines.DayEditorScreen
@@ -100,6 +101,7 @@ object Routes {
     const val BACKUP = "backup"
     const val ABOUT = "about"
     const val PROFILE = "profile"
+    const val GUIDE = "guide"
     fun program(id: Long) = "program/$id"
     fun day(id: Long) = "day/$id"
     fun workout(id: Long) = "workout/$id"
@@ -209,6 +211,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             composable(Routes.GYMS) { GymsScreen(container) }
             composable(Routes.BODY) { BodyScreen(container, settings) }
             composable(Routes.PROFILE) { ProfileScreen(container, settings) }
+            composable(Routes.GUIDE) { GuideScreen() }
             composable(Routes.SETTINGS) { SettingsScreen(container, settings, navController) }
             composable(Routes.BACKUP) { BackupScreen(container) }
             composable(Routes.ABOUT) { AboutScreen() }
