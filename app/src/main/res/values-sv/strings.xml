@@ -97,8 +97,14 @@
     <string name="link_superset">Länka med föregående</string>
     <string name="unlink">Avlänka</string>
     <string name="target_min">Reps</string>
-    <string name="target_max_short">till</string>
+    <string name="target_max">Max</string>
+    <string name="add_target_max">+ max</string>
     <string name="target_max_optional">Max (valfritt)</string>
+    <string name="finish_set">Klar</string>
+    <string name="undo_set">Ångra set</string>
+    <string name="remove_set">Ta bort set</string>
+    <string name="apply_future_sessions">Spara till framtida pass</string>
+    <string name="exercise_removed">Övning borttagen från detta pass</string>
     <string name="rest_s">Vila s</string>
     <string name="level">Nivå</string>
 

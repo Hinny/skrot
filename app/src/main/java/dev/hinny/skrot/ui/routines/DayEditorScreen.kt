@@ -387,6 +387,8 @@ private fun PlannedSetRow(
 ) {
     var minText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
     var maxText by remember(set.id) { mutableStateOf(set.targetRepsMax?.toString() ?: "") }
+    // A single target rep has no interval: the max field only appears on demand.
+    var showMax by remember(set.id) { mutableStateOf(set.targetRepsMax != null) }
     var loadText by remember(set.id) {
         mutableStateOf(
             set.targetLoad?.let { Units.formatValue(Units.toDisplay(it, settings.unit, measurement)) }
@@ -434,17 +436,23 @@ private fun PlannedSetRow(
                 singleLine = true,
                 modifier = Modifier.width(64.dp),
             )
-            OutlinedTextField(
-                value = maxText,
-                onValueChange = {
-                    maxText = it.filter(Char::isDigit)
-                    vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
-                },
-                label = { Text(stringResource(R.string.target_max_short), style = MaterialTheme.typography.labelSmall) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(64.dp),
-            )
+            if (showMax) {
+                OutlinedTextField(
+                    value = maxText,
+                    onValueChange = {
+                        maxText = it.filter(Char::isDigit)
+                        vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
+                    },
+                    label = { Text(stringResource(R.string.target_max), style = MaterialTheme.typography.labelSmall) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.width(64.dp),
+                )
+            } else {
+                TextButton(onClick = { showMax = true }) {
+                    Text(stringResource(R.string.add_target_max), style = MaterialTheme.typography.labelSmall)
+                }
+            }
         } else {
             Text(stringResource(R.string.amrap), modifier = Modifier.width(132.dp))
         }
