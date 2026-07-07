@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.Sex
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
 import dev.hinny.skrot.data.model.WeightUnit
@@ -49,6 +50,11 @@ data class Settings(
     val backupReminderDays: Int = 90,
     /** When the last JSON backup was exported; 0 = never. */
     val lastBackupAt: Long = 0,
+    /** Offline profile — every field is optional and stays on the device. */
+    val profileName: String = "",
+    /** Birth year; 0 = unset. */
+    val profileBirthYear: Int = 0,
+    val profileSex: Sex = Sex.UNSPECIFIED,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -75,6 +81,9 @@ class SettingsRepository(private val context: Context) {
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
         val backupReminderDays = intPreferencesKey("backup_reminder_days")
         val lastBackupAt = longPreferencesKey("last_backup_at")
+        val profileName = stringPreferencesKey("profile_name")
+        val profileBirthYear = intPreferencesKey("profile_birth_year")
+        val profileSex = stringPreferencesKey("profile_sex")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -102,6 +111,9 @@ class SettingsRepository(private val context: Context) {
             keepScreenOn = p[Keys.keepScreenOn] ?: defaults.keepScreenOn,
             backupReminderDays = p[Keys.backupReminderDays] ?: defaults.backupReminderDays,
             lastBackupAt = p[Keys.lastBackupAt] ?: defaults.lastBackupAt,
+            profileName = p[Keys.profileName] ?: defaults.profileName,
+            profileBirthYear = p[Keys.profileBirthYear] ?: defaults.profileBirthYear,
+            profileSex = p[Keys.profileSex].toEnum(defaults.profileSex),
         )
     }
 
@@ -125,4 +137,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setBackupReminderDays(v: Int) = context.dataStore.edit { it[Keys.backupReminderDays] = v }
     suspend fun markBackupDone() =
         context.dataStore.edit { it[Keys.lastBackupAt] = System.currentTimeMillis() }
+    suspend fun setProfileName(v: String) = context.dataStore.edit { it[Keys.profileName] = v }
+    suspend fun setProfileBirthYear(v: Int) = context.dataStore.edit { it[Keys.profileBirthYear] = v }
+    suspend fun setProfileSex(v: Sex) = context.dataStore.edit { it[Keys.profileSex] = v.name }
 }

@@ -136,3 +136,11 @@ enum class ThemeMode {
     LIGHT,
     SYSTEM,
 }
+
+/** Optional profile field; purely informational, stored on-device only. */
+enum class Sex {
+    UNSPECIFIED,
+    FEMALE,
+    MALE,
+    OTHER,
+}

@@ -56,6 +56,15 @@
     <string name="comeback_body">Ease back in with a rebuild program:</string>
     <string name="start_workout">Start workout</string>
     <string name="gym">Gym</string>
+    <string name="profile">Profile</string>
+    <string name="profile_hint">Everything here is optional and never leaves your device.</string>
+    <string name="profile_name">Name</string>
+    <string name="profile_birth_year">Birth year</string>
+    <string name="profile_sex">Sex</string>
+    <string name="sex_unspecified">Prefer not to say</string>
+    <string name="sex_female">Female</string>
+    <string name="sex_male">Male</string>
+    <string name="sex_other">Other</string>
     <string name="backup_reminder_setting">Backup reminder interval (days, 0 = off)</string>
     <string name="backup_reminder_title">Time to back up</string>
     <string name="backup_reminder_body">Your data lives only on this device. Export a backup so a lost or broken phone doesn\'t take your training history with it.</string>
