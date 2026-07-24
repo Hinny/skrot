@@ -1,6 +1,10 @@
 package dev.hinny.skrot.ui.common
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -18,10 +22,12 @@ import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -111,6 +117,31 @@ fun StepperNumberField(
 fun formatNumber(value: Double, integerOnly: Boolean): String =
     if (integerOnly) value.toLong().toString()
     else dev.hinny.skrot.domain.Units.formatValue(value)
+
+/**
+ * Bottom bar shown when "confirm library edits" is on and there are unsaved
+ * changes: Apply writes them, Cancel reverts to the last-confirmed state.
+ * Shared by the exercise, program, day and gym editors.
+ */
+@Composable
+fun PendingChangesBar(onApply: () -> Unit, onCancel: () -> Unit) {
+    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.cancel))
+            }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onApply) {
+                Text(stringResource(R.string.apply))
+            }
+        }
+    }
+}
 
 @Composable
 fun ConfirmDialog(

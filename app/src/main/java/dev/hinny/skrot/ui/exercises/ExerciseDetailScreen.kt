@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Undo
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +59,7 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.muscleLabel
@@ -601,22 +601,7 @@ fun ExerciseDetailScreen(
     }
 
     if (hasPendingChanges) {
-        Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = { vm.cancelChanges() }) {
-                    Text(stringResource(R.string.cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { vm.applyChanges() }) {
-                    Text(stringResource(R.string.apply))
-                }
-            }
-        }
+        PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
     }
     }
 }

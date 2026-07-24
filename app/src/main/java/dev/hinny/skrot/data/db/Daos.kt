@@ -354,6 +354,9 @@ interface GymDao {
     @Query("SELECT * FROM gyms WHERE id = :id")
     suspend fun byId(id: Long): Gym?
 
+    @Query("SELECT * FROM gyms WHERE id = :id")
+    fun observeById(id: Long): Flow<Gym?>
+
     @Query("SELECT * FROM gyms WHERE isDefault = 1 LIMIT 1")
     suspend fun defaultGym(): Gym?
 

@@ -350,8 +350,8 @@
     <string name="frequency_high">High</string>
     <string name="default_gym_setting">Gyms &amp; default gym</string>
     <string name="library_edits_section">Library edits</string>
-    <string name="confirm_library_edits">Confirm changes to custom exercises</string>
-    <string name="confirm_library_edits_hint">On: edits wait for Apply or Cancel. Off: changes stick immediately, like before.</string>
+    <string name="confirm_library_edits">Confirm changes to library items</string>
+    <string name="confirm_library_edits_hint">On: edits to custom exercises, programs, workout days and gyms wait for Apply or Cancel. Off: changes stick immediately, like before. Built-in exercises are always locked either way.</string>
     <string name="sessions_locked_by_default">New sessions start locked</string>
     <string name="sessions_locked_by_default_hint">Locked sessions block structural edits (sets, exercises, targets, rest); weight, reps and completing the active set always work. Toggle the padlock in a session to override.</string>
 

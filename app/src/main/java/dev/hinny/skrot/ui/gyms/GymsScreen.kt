@@ -48,11 +48,13 @@ import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -62,25 +64,105 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     private val db = container.db
     val gyms = MutableStateFlow<List<Gym>>(emptyList())
     val exercises = MutableStateFlow<List<Exercise>>(emptyList())
+
+    private val editingGymId = MutableStateFlow<Long?>(null)
     val editingGym = MutableStateFlow<Gym?>(null)
     val editingAvailable = MutableStateFlow<Set<Long>>(emptySet())
+    val confirmEdits = MutableStateFlow(true)
+    val hasPendingChanges = MutableStateFlow(false)
+
+    /** Last-confirmed state for the gym being edited; only meaningful while [confirmEdits] is on. */
+    private var baselineGym: Gym? = null
+    private var baselineAvailable: Set<Long> = emptySet()
 
     init {
         viewModelScope.launch { db.gymDao().observeAll().collect { gyms.value = it } }
         viewModelScope.launch { db.exerciseDao().observeAll().collect { exercises.value = it } }
         viewModelScope.launch {
-            editingGym.flatMapLatest { gym ->
-                if (gym == null) flowOf(emptyList())
-                else db.gymDao().observeExerciseIdsAt(gym.id)
-            }.collect { editingAvailable.value = it.toSet() }
+            editingGymId.flatMapLatest { id ->
+                if (id == null) {
+                    flowOf<Pair<Gym?, Set<Long>>>(null to emptySet())
+                } else {
+                    combine(
+                        db.gymDao().observeById(id),
+                        db.gymDao().observeExerciseIdsAt(id),
+                    ) { gym, ids -> gym to ids.toSet() }
+                }
+            }.collect { (gym, available) ->
+                val switchedGym = gym != null && baselineGym?.id != gym.id
+                editingGym.value = gym
+                editingAvailable.value = available
+                if (gym == null) {
+                    baselineGym = null
+                    baselineAvailable = emptySet()
+                } else if (switchedGym) {
+                    baselineGym = gym
+                    baselineAvailable = available
+                }
+                recomputePending()
+            }
         }
+        viewModelScope.launch {
+            container.settings.settings.collect {
+                confirmEdits.value = it.confirmLibraryEdits
+                recomputePending()
+            }
+        }
+    }
+
+    /**
+     * Every mutation below (rename, toggle an exercise, bulk-add, ...) writes
+     * straight to the database as before; this just tracks whether the live
+     * state has drifted from the last-confirmed baseline so the UI can show
+     * an Apply/Cancel bar. In auto-apply mode every change re-baselines
+     * immediately, so no bar ever appears.
+     */
+    private fun recomputePending() {
+        val gym = editingGym.value
+        if (gym == null) {
+            hasPendingChanges.value = false
+            return
+        }
+        if (!confirmEdits.value) {
+            baselineGym = gym
+            baselineAvailable = editingAvailable.value
+            hasPendingChanges.value = false
+        } else {
+            hasPendingChanges.value = gym != baselineGym || editingAvailable.value != baselineAvailable
+        }
+    }
+
+    fun applyChanges() {
+        baselineGym = editingGym.value
+        baselineAvailable = editingAvailable.value
+        hasPendingChanges.value = false
+    }
+
+    /** Reverts the edited gym's name and available-exercise list to the last Apply point. */
+    fun cancelChanges() {
+        viewModelScope.launch {
+            val gym = baselineGym ?: return@launch
+            db.gymDao().update(gym)
+            val current = db.gymDao().exerciseIdsAt(gym.id).toSet()
+            for (id in current - baselineAvailable) db.gymDao().removeExercise(gym.id, id)
+            val toAdd = baselineAvailable - current
+            if (toAdd.isNotEmpty()) db.gymDao().addExercises(toAdd.map { GymExercise(gym.id, it) })
+        }
+    }
+
+    fun enterEditing(gymId: Long) {
+        editingGymId.value = gymId
+    }
+
+    fun exitEditing() {
+        editingGymId.value = null
     }
 
     fun create(name: String) {
         viewModelScope.launch {
             val makeDefault = gyms.value.isEmpty()
             val id = db.gymDao().insert(Gym(name = name, isDefault = makeDefault))
-            editingGym.value = db.gymDao().byId(id)
+            editingGymId.value = id
         }
     }
 
@@ -91,7 +173,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     fun delete(gym: Gym) {
         viewModelScope.launch {
             db.gymDao().delete(gym)
-            if (editingGym.value?.id == gym.id) editingGym.value = null
+            if (editingGymId.value == gym.id) editingGymId.value = null
         }
     }
 
@@ -131,6 +213,7 @@ fun GymsScreen(container: AppContainer) {
     val exercises by vm.exercises.collectAsState()
     val editing by vm.editingGym.collectAsState()
     val available by vm.editingAvailable.collectAsState()
+    val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
@@ -167,7 +250,7 @@ fun GymsScreen(container: AppContainer) {
                     Card(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { vm.editingGym.value = g },
+                            .clickable { vm.enterEditing(g.id) },
                     ) {
                         Row(
                             Modifier
@@ -202,9 +285,10 @@ fun GymsScreen(container: AppContainer) {
     } else {
         // Gym editor: which exercises are available here
         var name by remember(gym.id) { mutableStateOf(gym.name) }
+        Column(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -220,7 +304,7 @@ fun GymsScreen(container: AppContainer) {
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { vm.editingGym.value = null }) {
+                    TextButton(onClick = { vm.exitEditing() }) {
                         Text(stringResource(R.string.done))
                     }
                 }
@@ -281,6 +365,10 @@ fun GymsScreen(container: AppContainer) {
                 }
             }
             item { Spacer(Modifier.height(40.dp)) }
+        }
+        if (hasPendingChanges) {
+            PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
+        }
         }
     }
 
