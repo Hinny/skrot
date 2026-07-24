@@ -277,6 +277,23 @@ class WorkoutViewModel(
         }
     }
 
+    /** Reorders a set within its exercise by [delta] positions (+1 = later, -1 = earlier). */
+    fun moveSet(se: SessionExerciseWithDetails, set: LoggedSet, delta: Int) {
+        viewModelScope.launch {
+            val sets = se.sortedSets
+            val index = sets.indexOfFirst { it.id == set.id }
+            val target = index + delta
+            if (index < 0 || target < 0 || target >= sets.size) return@launch
+            val reordered = sets.toMutableList()
+            val moved = reordered.removeAt(index)
+            reordered.add(target, moved)
+            reordered.forEachIndexed { newPos, s ->
+                if (s.position != newPos) db.sessionDao().updateLoggedSet(s.copy(position = newPos))
+            }
+            touch()
+        }
+    }
+
     /**
      * Rest-duration edits apply to this session; [applyToPlan] additionally
      * writes them back to the routine ("apply to future sessions").

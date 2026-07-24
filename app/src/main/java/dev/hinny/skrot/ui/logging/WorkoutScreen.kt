@@ -82,6 +82,7 @@ import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
+import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
@@ -595,37 +596,42 @@ private fun SetRow(
         return Units.fromDisplay(raw, settings.unit, measurement)
     }
 
-    // Swipe (nearly) all the way left to remove the set from this session
-    // (completed sets are protected: un-complete first). Distance-only gate,
-    // so a quick short flick does nothing — only a full swipe deletes.
-    FullSwipeToDeleteBox(
-        enabled = !set.completed,
-        onDelete = { vm.removeSet(se, set) },
-    ) {
-        Surface(
-            color = if (isCurrent) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-            } else {
-                Color.Transparent
-            },
-            shape = RoundedCornerShape(10.dp),
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
+
+        // Swipe (nearly) all the way left to remove the set from this session
+        // (completed sets are protected: un-complete first). Distance-only gate,
+        // so a quick short flick does nothing — only a full swipe deletes.
+        FullSwipeToDeleteBox(
+            enabled = !set.completed,
+            onDelete = { vm.removeSet(se, set) },
+            modifier = Modifier.weight(1f),
         ) {
-            SetRowContent(
-                se = se,
-                set = set,
-                number = number,
-                planned = planned,
-                settings = settings,
-                vm = vm,
-                isCurrent = isCurrent,
-                loadText = loadText,
-                onLoadText = { loadText = it },
-                repsText = repsText,
-                onRepsText = { repsText = it },
-                currentLoadKg = ::currentLoadKg,
-                onOpenTarget = { targetOpen = true },
-                onOpenRest = { restOpen = true },
-            )
+            Surface(
+                color = if (isCurrent) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                } else {
+                    Color.Transparent
+                },
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                SetRowContent(
+                    se = se,
+                    set = set,
+                    number = number,
+                    planned = planned,
+                    settings = settings,
+                    vm = vm,
+                    isCurrent = isCurrent,
+                    loadText = loadText,
+                    onLoadText = { loadText = it },
+                    repsText = repsText,
+                    onRepsText = { repsText = it },
+                    currentLoadKg = ::currentLoadKg,
+                    onOpenTarget = { targetOpen = true },
+                    onOpenRest = { restOpen = true },
+                )
+            }
         }
     }
 
@@ -660,6 +666,7 @@ private const val FULL_SWIPE_FRACTION = 0.75f
 private fun FullSwipeToDeleteBox(
     enabled: Boolean,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     var widthPx by remember { mutableFloatStateOf(0f) }
@@ -668,7 +675,7 @@ private fun FullSwipeToDeleteBox(
     val progress = if (widthPx > 0f) (-dragOffset / widthPx).coerceIn(0f, 1f) else 0f
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .onSizeChanged { widthPx = it.width.toFloat() },
     ) {
