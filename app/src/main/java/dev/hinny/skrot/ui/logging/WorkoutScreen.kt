@@ -240,18 +240,21 @@ fun WorkoutScreen(
                 }
             }
             val blocks = session.blocks
-            items(blocks.size) { blockIndex ->
-                val block = blocks[blockIndex]
-                // The set to do next in this block: supersets alternate between the
-                // linked exercises (A1, B1, A2, B2, ...).
-                val currentSetId = block
+            // The single set to do next in the whole session: the first block
+            // (in order) with an incomplete set, alternating within a superset
+            // (A1, B1, A2, B2, ...). Only one set is ever "current" at a time —
+            // not one per exercise/block.
+            val currentSetId = blocks.firstNotNullOfOrNull { block ->
+                block
                     .flatMapIndexed { exIndex, se ->
                         se.sortedSets.mapIndexedNotNull { setIndex, s ->
                             if (!s.completed) Triple(setIndex, exIndex, s.id) else null
                         }
                     }
                     .minWithOrNull(compareBy({ it.first }, { it.second }))
-                    ?.third
+            }?.third
+            items(blocks.size) { blockIndex ->
+                val block = blocks[blockIndex]
                 Card {
                     Column(Modifier.padding(10.dp)) {
                         if (block.size > 1) {
