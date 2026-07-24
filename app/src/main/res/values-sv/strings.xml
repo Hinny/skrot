@@ -16,6 +16,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Avbryt</string>
     <string name="save">Spara</string>
+    <string name="apply">Tillämpa</string>
     <string name="delete">Ta bort</string>
     <string name="create">Skapa</string>
     <string name="done">Klar</string>
@@ -30,6 +31,8 @@
     <string name="increase">Öka</string>
     <string name="decrease">Minska</string>
     <string name="reorder">Ändra ordning</string>
+    <string name="undo">Ångra</string>
+    <string name="redo">Gör om</string>
     <string name="today">Idag</string>
     <string name="yesterday">Igår</string>
     <string name="days_ago">%1$d dagar sedan</string>
@@ -178,6 +181,9 @@
     <string name="target_reps">Målreps</string>
     <string name="rest_duration">Vilotid</string>
     <string name="rest_zero_hint">0 = ingen timer</string>
+    <string name="lock_session">Lås passet</string>
+    <string name="unlock_session">Lås upp passet</string>
+    <string name="session_locked_hint">Passet är låst — endast vikt, reps och att slutföra aktuellt set kan ändras.</string>
     <string name="swap_exercise">Byt övning</string>
     <string name="remove_exercise">Ta bort övning</string>
     <string name="exercise_note">Övningsanteckning</string>
@@ -228,6 +234,17 @@
     <string name="best_set">Bästa set</string>
     <string name="load_over_time">Belastning över tid</string>
     <string name="estimated_1rm">Uppskattat 1RM</string>
+    <string name="builtin_locked_hint">Inbyggd övning — låst. Använd klonknappen ovan för att göra en redigerbar kopia.</string>
+    <string name="category_all">Alla</string>
+    <string name="category_builtin">Inbyggda</string>
+    <string name="category_custom">Egna</string>
+    <string name="n_selected">%1$d markerade</string>
+    <string name="bulk_edit">Massredigera</string>
+    <string name="bulk_edit_title">Redigera %1$d övningar</string>
+    <string name="bulk_set_primary_muscle">Ange primär muskel</string>
+    <string name="bulk_set_measurement_type">Ange mätningstyp</string>
+    <string name="bulk_add_equipment">Lägg till utrustning</string>
+    <string name="bulk_remove_equipment">Ta bort utrustning</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Bröst</string>
@@ -314,6 +331,8 @@
     <string name="swap_advance">Sekvensen går vidare</string>
     <string name="comeback_threshold">Comeback-förslag efter (dagar)</string>
     <string name="keep_screen_on">Håll skärmen vaken under pass</string>
+    <string name="sessions_locked_by_default">Nya pass startar låsta</string>
+    <string name="sessions_locked_by_default_hint">Låsta pass blockerar strukturella ändringar (set, övningar, mål, vila); vikt, reps och att slutföra aktuellt set fungerar alltid. Växla hänglåset i ett pass för att åsidosätta.</string>
     <string name="progression">Progressionsförslag</string>
     <string name="increment_kg">Standardökning (kg)</string>
     <string name="increment_level">Standardökning (maskinnivåer)</string>
@@ -330,6 +349,9 @@
     <string name="frequency_medium">Mellan</string>
     <string name="frequency_high">Hög</string>
     <string name="default_gym_setting">Gym &amp; standardgym</string>
+    <string name="library_edits_section">Biblioteksredigeringar</string>
+    <string name="confirm_library_edits">Bekräfta ändringar i biblioteket</string>
+    <string name="confirm_library_edits_hint">På: ändringar av egna övningar, program, träningsdagar och gym väntar på Tillämpa eller Avbryt. Av: ändringar gäller direkt, som tidigare. Inbyggda övningar är alltid låsta oavsett.</string>
 
     <!-- Backup / import -->
     <string name="backup_and_import">Säkerhetskopia &amp; import</string>

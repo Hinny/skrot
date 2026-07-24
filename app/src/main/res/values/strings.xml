@@ -18,6 +18,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="apply">Apply</string>
     <string name="delete">Delete</string>
     <string name="create">Create</string>
     <string name="done">Done</string>
@@ -32,6 +33,8 @@
     <string name="increase">Increase</string>
     <string name="decrease">Decrease</string>
     <string name="reorder">Reorder</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="days_ago">%1$d days ago</string>
@@ -180,6 +183,9 @@
     <string name="target_reps">Target reps</string>
     <string name="rest_duration">Rest duration</string>
     <string name="rest_zero_hint">0 = no timer</string>
+    <string name="lock_session">Lock session</string>
+    <string name="unlock_session">Unlock session</string>
+    <string name="session_locked_hint">Session locked — only weight, reps and completing the active set can be changed.</string>
     <string name="swap_exercise">Swap exercise</string>
     <string name="remove_exercise">Remove exercise</string>
     <string name="exercise_note">Exercise note</string>
@@ -230,6 +236,17 @@
     <string name="best_set">Best set</string>
     <string name="load_over_time">Load over time</string>
     <string name="estimated_1rm">Estimated 1RM</string>
+    <string name="builtin_locked_hint">Built-in exercise — locked. Use the clone button above to make an editable copy.</string>
+    <string name="category_all">All</string>
+    <string name="category_builtin">Built-in</string>
+    <string name="category_custom">Custom</string>
+    <string name="n_selected">%1$d selected</string>
+    <string name="bulk_edit">Bulk edit</string>
+    <string name="bulk_edit_title">Edit %1$d exercises</string>
+    <string name="bulk_set_primary_muscle">Set primary muscle</string>
+    <string name="bulk_set_measurement_type">Set measurement type</string>
+    <string name="bulk_add_equipment">Add equipment</string>
+    <string name="bulk_remove_equipment">Remove equipment</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Chest</string>
@@ -332,6 +349,11 @@
     <string name="frequency_medium">Medium</string>
     <string name="frequency_high">High</string>
     <string name="default_gym_setting">Gyms &amp; default gym</string>
+    <string name="library_edits_section">Library edits</string>
+    <string name="confirm_library_edits">Confirm changes to library items</string>
+    <string name="confirm_library_edits_hint">On: edits to custom exercises, programs, workout days and gyms wait for Apply or Cancel. Off: changes stick immediately, like before. Built-in exercises are always locked either way.</string>
+    <string name="sessions_locked_by_default">New sessions start locked</string>
+    <string name="sessions_locked_by_default_hint">Locked sessions block structural edits (sets, exercises, targets, rest); weight, reps and completing the active set always work. Toggle the padlock in a session to override.</string>
 
     <!-- Backup / import -->
     <string name="backup_and_import">Backup &amp; import</string>

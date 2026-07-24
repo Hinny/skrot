@@ -85,9 +85,9 @@ object SeedData {
         SeedExercise("Chest Press Machine", "Bröstpressmaskin", CHEST, listOf(TRICEPS), MACHINE, measurement = MACHINE_LEVEL, groupKey = "hpress"),
         SeedExercise("Push-Up", "Armhävning", CHEST, listOf(TRICEPS, SHOULDERS), NONE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 65, groupKey = "hpress"),
         SeedExercise("Dip", "Dips", CHEST, listOf(TRICEPS), DIP_STATION, measurement = MeasurementType.BODYWEIGHT, bwFactor = 100, groupKey = "hpress"),
-        SeedExercise("Cable Fly", "Kabelflyes", CHEST, equipment = CABLE, groupKey = "fly"),
-        SeedExercise("Dumbbell Fly", "Hantelflyes", CHEST, equipment = DUMBBELL, groupKey = "fly"),
-        SeedExercise("Pec Deck", "Pec deck-maskin", CHEST, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "fly"),
+        SeedExercise("Cable Fly", "Kabelflyes", CHEST, listOf(SHOULDERS), CABLE, groupKey = "fly"),
+        SeedExercise("Dumbbell Fly", "Hantelflyes", CHEST, listOf(SHOULDERS), DUMBBELL, groupKey = "fly"),
+        SeedExercise("Pec Deck", "Pec deck-maskin", CHEST, listOf(SHOULDERS), MACHINE, measurement = MACHINE_LEVEL, groupKey = "fly"),
 
         // Back
         SeedExercise("Deadlift", "Marklyft", BACK, listOf(HAMSTRINGS, GLUTES), BARBELL, groupKey = "hinge"),
@@ -102,28 +102,28 @@ object SeedData {
         SeedExercise("Lat Pulldown", "Latsdrag", BACK, listOf(BICEPS), CABLE, groupKey = "vpull"),
         SeedExercise("Assisted Pull-Up Machine", "Assisterad räckhäv", BACK, listOf(BICEPS), MACHINE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 100, groupKey = "vpull"),
         SeedExercise("Back Extension", "Rygglyft", BACK, listOf(GLUTES, HAMSTRINGS), BENCH, measurement = MeasurementType.BODYWEIGHT, bwFactor = 50, groupKey = "hinge"),
-        SeedExercise("Barbell Shrug", "Axellyft med skivstång", BACK, equipment = BARBELL),
+        SeedExercise("Barbell Shrug", "Axellyft med skivstång", BACK, listOf(FOREARMS), BARBELL),
         SeedExercise("Face Pull", "Face pull", SHOULDERS, listOf(BACK), CABLE, groupKey = "reardelt"),
 
         // Shoulders
         SeedExercise("Overhead Press", "Militärpress", SHOULDERS, listOf(TRICEPS), BARBELL, groupKey = "vpress"),
         SeedExercise("Seated Dumbbell Press", "Sittande axelpress med hantlar", SHOULDERS, listOf(TRICEPS), DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "vpress"),
         SeedExercise("Shoulder Press Machine", "Axelpressmaskin", SHOULDERS, listOf(TRICEPS), MACHINE, measurement = MACHINE_LEVEL, groupKey = "vpress"),
-        SeedExercise("Arnold Press", "Arnoldpress", SHOULDERS, equipment = DUMBBELL, groupKey = "vpress"),
+        SeedExercise("Arnold Press", "Arnoldpress", SHOULDERS, listOf(TRICEPS), DUMBBELL, groupKey = "vpress"),
         SeedExercise("Lateral Raise", "Sidolyft", SHOULDERS, equipment = DUMBBELL, groupKey = "latraise"),
         SeedExercise("Cable Lateral Raise", "Sidolyft i kabel", SHOULDERS, equipment = CABLE, groupKey = "latraise"),
         SeedExercise("Front Raise", "Frontlyft", SHOULDERS, equipment = DUMBBELL),
         SeedExercise("Rear Delt Fly", "Omvänt flyes", SHOULDERS, listOf(BACK), DUMBBELL, groupKey = "reardelt"),
-        SeedExercise("Reverse Pec Deck", "Omvänd pec deck", SHOULDERS, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "reardelt"),
+        SeedExercise("Reverse Pec Deck", "Omvänd pec deck", SHOULDERS, listOf(BACK), MACHINE, measurement = MACHINE_LEVEL, groupKey = "reardelt"),
         SeedExercise("Upright Row", "Stående rodd", SHOULDERS, listOf(BICEPS), BARBELL),
 
         // Arms
-        SeedExercise("Barbell Curl", "Skivstångscurl", BICEPS, equipment = BARBELL, groupKey = "curl"),
-        SeedExercise("Dumbbell Curl", "Hantelcurl", BICEPS, equipment = DUMBBELL, groupKey = "curl"),
+        SeedExercise("Barbell Curl", "Skivstångscurl", BICEPS, listOf(FOREARMS), BARBELL, groupKey = "curl"),
+        SeedExercise("Dumbbell Curl", "Hantelcurl", BICEPS, listOf(FOREARMS), DUMBBELL, groupKey = "curl"),
         SeedExercise("Hammer Curl", "Hammercurl", BICEPS, listOf(FOREARMS), DUMBBELL, groupKey = "curl"),
-        SeedExercise("Preacher Curl", "Scottcurl", BICEPS, equipment = BARBELL, groupKey = "curl"),
-        SeedExercise("Cable Curl", "Bicepscurl i kabel", BICEPS, equipment = CABLE, groupKey = "curl"),
-        SeedExercise("Biceps Curl Machine", "Bicepsmaskin", BICEPS, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "curl"),
+        SeedExercise("Preacher Curl", "Scottcurl", BICEPS, listOf(FOREARMS), BARBELL, groupKey = "curl"),
+        SeedExercise("Cable Curl", "Bicepscurl i kabel", BICEPS, listOf(FOREARMS), CABLE, groupKey = "curl"),
+        SeedExercise("Biceps Curl Machine", "Bicepsmaskin", BICEPS, listOf(FOREARMS), MACHINE, measurement = MACHINE_LEVEL, groupKey = "curl"),
         SeedExercise("Triceps Pushdown", "Tricepspress i kabel", TRICEPS, equipment = CABLE, groupKey = "triceps"),
         SeedExercise("Skull Crusher", "Fransk press", TRICEPS, equipment = BARBELL, extraEquipment = listOf(BENCH), groupKey = "triceps"),
         SeedExercise("Overhead Triceps Extension", "Tricepspress över huvudet", TRICEPS, equipment = DUMBBELL, groupKey = "triceps"),
@@ -136,14 +136,14 @@ object SeedData {
         SeedExercise("Front Squat", "Frontböj", QUADS, listOf(GLUTES), BARBELL, extraEquipment = listOf(RACK), groupKey = "squat"),
         SeedExercise("Goblet Squat", "Goblet squat", QUADS, listOf(GLUTES), DUMBBELL, groupKey = "squat"),
         SeedExercise("Leg Press", "Benpress", QUADS, listOf(GLUTES), MACHINE, groupKey = "squat"),
-        SeedExercise("Hack Squat", "Hackböj", QUADS, equipment = MACHINE, groupKey = "squat"),
+        SeedExercise("Hack Squat", "Hackböj", QUADS, listOf(GLUTES), MACHINE, groupKey = "squat"),
         SeedExercise("Bulgarian Split Squat", "Bulgarisk utfallsböj", QUADS, listOf(GLUTES), DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "lunge"),
         SeedExercise("Lunge", "Utfall", QUADS, listOf(GLUTES), DUMBBELL, groupKey = "lunge"),
         SeedExercise("Leg Extension", "Benspark", QUADS, equipment = MACHINE, measurement = MACHINE_LEVEL),
         SeedExercise("Lying Leg Curl", "Liggande lårcurl", HAMSTRINGS, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "legcurl"),
         SeedExercise("Seated Leg Curl", "Sittande lårcurl", HAMSTRINGS, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "legcurl"),
         SeedExercise("Hip Thrust", "Höftlyft", GLUTES, listOf(HAMSTRINGS), BARBELL, extraEquipment = listOf(BENCH), groupKey = "thrust"),
-        SeedExercise("Glute Kickback", "Kickback i kabel", GLUTES, equipment = CABLE, groupKey = "thrust"),
+        SeedExercise("Glute Kickback", "Kickback i kabel", GLUTES, listOf(HAMSTRINGS), CABLE, groupKey = "thrust"),
         SeedExercise("Standing Calf Raise", "Stående vadpress", CALVES, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "calf"),
         SeedExercise("Seated Calf Raise", "Sittande vadpress", CALVES, equipment = MACHINE, groupKey = "calf"),
         SeedExercise("Kettlebell Swing", "Kettlebellsving", GLUTES, listOf(HAMSTRINGS, BACK), KETTLEBELL, groupKey = "hinge"),
@@ -151,7 +151,7 @@ object SeedData {
         // Abs
         SeedExercise("Crunch", "Crunch", ABS, equipment = NONE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 30, groupKey = "abs"),
         SeedExercise("Sit-Up", "Situps", ABS, equipment = NONE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 40, groupKey = "abs"),
-        SeedExercise("Hanging Leg Raise", "Hängande benlyft", ABS, equipment = PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 50, groupKey = "abs"),
+        SeedExercise("Hanging Leg Raise", "Hängande benlyft", ABS, listOf(FOREARMS), PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 50, groupKey = "abs"),
         SeedExercise("Cable Crunch", "Kabelcrunch", ABS, equipment = CABLE, groupKey = "abs"),
         SeedExercise("Ab Machine", "Magmaskin", ABS, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "abs"),
         SeedExercise("Russian Twist", "Rysk vridning", ABS, equipment = NONE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 30),
@@ -161,8 +161,8 @@ object SeedData {
         // Chest
         SeedExercise("Decline Bench Press", "Nedåtlutande bänkpress", CHEST, listOf(TRICEPS), BARBELL, listOf(BENCH, RACK), groupKey = "hpress"),
         SeedExercise("Smith Machine Bench Press", "Bänkpress i smithmaskin", CHEST, listOf(TRICEPS), SMITH_MACHINE, listOf(BENCH), groupKey = "hpress"),
-        SeedExercise("Incline Cable Fly", "Lutande kabelflyes", CHEST, equipment = CABLE, extraEquipment = listOf(BENCH), groupKey = "fly"),
-        SeedExercise("Machine Fly", "Flyesmaskin", CHEST, equipment = MACHINE, measurement = MACHINE_LEVEL, groupKey = "fly"),
+        SeedExercise("Incline Cable Fly", "Lutande kabelflyes", CHEST, listOf(SHOULDERS), CABLE, extraEquipment = listOf(BENCH), groupKey = "fly"),
+        SeedExercise("Machine Fly", "Flyesmaskin", CHEST, listOf(SHOULDERS), MACHINE, measurement = MACHINE_LEVEL, groupKey = "fly"),
         SeedExercise("Svend Press", "Svendpress", CHEST, listOf(SHOULDERS), WEIGHT_PLATE),
         SeedExercise("Diamond Push-Up", "Diamantarmhävning", TRICEPS, listOf(CHEST), NONE, measurement = MeasurementType.BODYWEIGHT, bwFactor = 65, groupKey = "triceps"),
 
@@ -175,7 +175,7 @@ object SeedData {
         SeedExercise("Pendlay Row", "Pendlayrodd", BACK, listOf(BICEPS), BARBELL, groupKey = "row"),
         SeedExercise("Single-Arm Cable Row", "Enarmad kabelrodd", BACK, listOf(BICEPS), CABLE, groupKey = "row"),
         SeedExercise("Inverted Row", "Omvänd rodd", BACK, listOf(BICEPS), RACK, measurement = MeasurementType.BODYWEIGHT, bwFactor = 60, groupKey = "row"),
-        SeedExercise("Straight-Arm Pulldown", "Rakarmsdrag", BACK, equipment = CABLE),
+        SeedExercise("Straight-Arm Pulldown", "Rakarmsdrag", BACK, listOf(TRICEPS), CABLE),
         SeedExercise("Close-Grip Lat Pulldown", "Smalt latsdrag", BACK, listOf(BICEPS), CABLE, groupKey = "vpull"),
         SeedExercise("Reverse-Grip Lat Pulldown", "Omvänt latsdrag", BACK, listOf(BICEPS), CABLE, groupKey = "vpull"),
         SeedExercise("Neutral-Grip Pull-Up", "Räckhäv med neutralt grepp", BACK, listOf(BICEPS), PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 100, groupKey = "vpull"),
@@ -193,10 +193,10 @@ object SeedData {
         SeedExercise("Band Pull-Apart", "Band pull-apart", SHOULDERS, listOf(BACK), BAND, groupKey = "reardelt"),
 
         // Arms
-        SeedExercise("EZ Bar Curl", "EZ-stångscurl", BICEPS, equipment = EZ_BAR, groupKey = "curl"),
+        SeedExercise("EZ Bar Curl", "EZ-stångscurl", BICEPS, listOf(FOREARMS), EZ_BAR, groupKey = "curl"),
         SeedExercise("EZ Bar Reverse Curl", "Omvänd EZ-stångscurl", FOREARMS, listOf(BICEPS), EZ_BAR),
-        SeedExercise("Incline Dumbbell Curl", "Lutande hantelcurl", BICEPS, equipment = DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "curl"),
-        SeedExercise("Concentration Curl", "Koncentrationscurl", BICEPS, equipment = DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "curl"),
+        SeedExercise("Incline Dumbbell Curl", "Lutande hantelcurl", BICEPS, listOf(FOREARMS), DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "curl"),
+        SeedExercise("Concentration Curl", "Koncentrationscurl", BICEPS, listOf(FOREARMS), DUMBBELL, extraEquipment = listOf(BENCH), groupKey = "curl"),
         SeedExercise("Cable Rope Hammer Curl", "Hammercurl med rep", BICEPS, listOf(FOREARMS), CABLE, groupKey = "curl"),
         SeedExercise("Cable Overhead Triceps Extension", "Tricepspress över huvudet i kabel", TRICEPS, equipment = CABLE, groupKey = "triceps"),
         SeedExercise("Rope Pushdown", "Tricepspress med rep", TRICEPS, equipment = CABLE, groupKey = "triceps"),
@@ -235,8 +235,8 @@ object SeedData {
         SeedExercise("Plate Twist", "Vridning med viktskiva", ABS, equipment = WEIGHT_PLATE),
         SeedExercise("Cable Woodchopper", "Vedhuggare i kabel", ABS, equipment = CABLE),
         SeedExercise("Pallof Press", "Pallofpress", ABS, equipment = CABLE),
-        SeedExercise("Hanging Knee Raise", "Hängande knälyft", ABS, equipment = PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 40, groupKey = "abs"),
-        SeedExercise("Toes to Bar", "Tår till stång", ABS, equipment = PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 60, groupKey = "abs"),
+        SeedExercise("Hanging Knee Raise", "Hängande knälyft", ABS, listOf(FOREARMS), PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 40, groupKey = "abs"),
+        SeedExercise("Toes to Bar", "Tår till stång", ABS, listOf(FOREARMS), PULLUP_BAR, measurement = MeasurementType.BODYWEIGHT, bwFactor = 60, groupKey = "abs"),
 
         // Full body & conditioning
         SeedExercise("Clean and Jerk", "Frivändning med stöt", FULL_BODY, listOf(SHOULDERS, QUADS), BARBELL),
@@ -256,9 +256,14 @@ object SeedData {
     )
 
     /**
-     * Seeds the exercise catalog. On first launch this inserts everything;
-     * on later launches it tops up built-ins added in newer app versions
-     * (matching non-custom exercises by English name).
+     * Seeds the exercise catalog. On first launch this inserts everything; on
+     * later launches it tops up built-ins added in newer app versions
+     * (matching non-custom exercises by English name), and re-syncs the
+     * definitional fields (muscle groups, equipment, measurement type, ...)
+     * of already-seeded built-ins to this catalog. That sync is safe because
+     * built-ins can no longer be edited in the UI, and it's how existing
+     * installs pick up catalog corrections (e.g. added secondary muscles)
+     * shipped in a later app version.
      */
     suspend fun seedIfEmpty(db: SkrotDatabase) {
         val dao = db.exerciseDao()
@@ -268,26 +273,39 @@ object SeedData {
             groupIds[g.key] = existingGroupsByName[g.nameEn]?.id
                 ?: dao.insertGroup(ExerciseGroup(nameEn = g.nameEn, nameSv = g.nameSv))
         }
-        val existingNames = dao.getAll()
+        val existingByName = dao.getAll()
             .filter { !it.isCustom }
-            .map { it.nameEn.lowercase() }
-            .toHashSet()
-        val missing = exercises.filter { it.nameEn.lowercase() !in existingNames }
-        if (missing.isEmpty()) return
-        dao.insertAll(
-            missing.map { e ->
-                Exercise(
-                    nameEn = e.nameEn,
-                    nameSv = e.nameSv,
-                    muscleGroup = e.muscle,
-                    secondaryMuscles = e.secondary,
-                    equipment = (listOf(e.equipment) + e.extraEquipment).distinct(),
-                    measurementType = e.measurement,
-                    isCustom = false,
-                    bodyweightFactor = e.bwFactor,
-                    groupId = e.groupKey?.let { groupIds[it] },
-                )
-            }
-        )
+            .associateBy { it.nameEn.lowercase() }
+        val missing = exercises.filter { it.nameEn.lowercase() !in existingByName.keys }
+        if (missing.isNotEmpty()) {
+            dao.insertAll(
+                missing.map { e ->
+                    Exercise(
+                        nameEn = e.nameEn,
+                        nameSv = e.nameSv,
+                        muscleGroup = e.muscle,
+                        secondaryMuscles = e.secondary,
+                        equipment = (listOf(e.equipment) + e.extraEquipment).distinct(),
+                        measurementType = e.measurement,
+                        isCustom = false,
+                        bodyweightFactor = e.bwFactor,
+                        groupId = e.groupKey?.let { groupIds[it] },
+                    )
+                }
+            )
+        }
+        for (e in exercises) {
+            val current = existingByName[e.nameEn.lowercase()] ?: continue
+            val synced = current.copy(
+                nameSv = e.nameSv,
+                muscleGroup = e.muscle,
+                secondaryMuscles = e.secondary,
+                equipment = (listOf(e.equipment) + e.extraEquipment).distinct(),
+                measurementType = e.measurement,
+                bodyweightFactor = e.bwFactor,
+                groupId = e.groupKey?.let { groupIds[it] },
+            )
+            if (synced != current) dao.update(synced)
+        }
     }
 }

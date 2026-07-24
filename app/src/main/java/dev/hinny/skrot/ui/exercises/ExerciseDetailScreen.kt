@@ -12,10 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -25,7 +28,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +59,7 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.muscleLabel
@@ -72,14 +78,36 @@ class ExerciseDetailViewModel(
     private val exerciseId: Long,
 ) : ViewModel() {
     private val db = container.db
+
+    /** Last-persisted value, as loaded from the database. */
     val exercise = MutableStateFlow<Exercise?>(null)
+
+    /** Working copy shown in the UI; may hold unsaved edits when confirm mode is on. */
+    val draft = MutableStateFlow<Exercise?>(null)
+    val confirmEdits = MutableStateFlow(true)
     val sets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val groups = MutableStateFlow<List<ExerciseGroup>>(emptyList())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
+    val canUndo = MutableStateFlow(false)
+    val canRedo = MutableStateFlow(false)
+
+    private val undoStack = ArrayDeque<Exercise>()
+    private val redoStack = ArrayDeque<Exercise>()
 
     init {
         viewModelScope.launch {
-            db.exerciseDao().observeById(exerciseId).collect { exercise.value = it }
+            db.exerciseDao().observeById(exerciseId).collect { e ->
+                exercise.value = e
+                if (draft.value?.id != e?.id) {
+                    draft.value = e
+                    undoStack.clear()
+                    redoStack.clear()
+                    updateUndoRedoFlags()
+                }
+            }
+        }
+        viewModelScope.launch {
+            container.settings.settings.collect { confirmEdits.value = it.confirmLibraryEdits }
         }
         viewModelScope.launch {
             db.sessionDao().observeSetsForExercise(exerciseId).collect { sets.value = it }
@@ -92,10 +120,59 @@ class ExerciseDetailViewModel(
         }
     }
 
+    /**
+     * Applies [transform] to the draft, recording an undo step. In auto-apply
+     * mode (confirm mode off) this also persists immediately, matching the
+     * classic behavior; in confirm mode the change stays pending until
+     * [applyChanges].
+     */
     fun update(transform: (Exercise) -> Exercise) {
-        viewModelScope.launch {
-            exercise.value?.let { db.exerciseDao().update(transform(it)) }
-        }
+        val current = draft.value ?: return
+        val updated = transform(current)
+        if (updated == current) return
+        undoStack.addLast(current)
+        redoStack.clear()
+        draft.value = updated
+        updateUndoRedoFlags()
+        if (!confirmEdits.value) persist(updated)
+    }
+
+    fun undo() {
+        val current = draft.value ?: return
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(current)
+        draft.value = previous
+        updateUndoRedoFlags()
+        if (!confirmEdits.value) persist(previous)
+    }
+
+    fun redo() {
+        val current = draft.value ?: return
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(current)
+        draft.value = next
+        updateUndoRedoFlags()
+        if (!confirmEdits.value) persist(next)
+    }
+
+    fun applyChanges() {
+        draft.value?.let { persist(it) }
+    }
+
+    fun cancelChanges() {
+        draft.value = exercise.value
+        undoStack.clear()
+        redoStack.clear()
+        updateUndoRedoFlags()
+    }
+
+    private fun updateUndoRedoFlags() {
+        canUndo.value = undoStack.isNotEmpty()
+        canRedo.value = redoStack.isNotEmpty()
+    }
+
+    private fun persist(e: Exercise) {
+        viewModelScope.launch { db.exerciseDao().update(e) }
     }
 
     fun delete(onDone: () -> Unit) {
@@ -133,11 +210,15 @@ fun ExerciseDetailScreen(
     val vm = containerViewModel(container, key = "exercise_$exerciseId") { c, _ ->
         ExerciseDetailViewModel(c, exerciseId)
     }
-    val exercise by vm.exercise.collectAsState()
+    val saved by vm.exercise.collectAsState()
+    val draft by vm.draft.collectAsState()
+    val confirmEdits by vm.confirmEdits.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
     val sets by vm.sets.collectAsState()
     val groups by vm.groups.collectAsState()
     val gyms by vm.gyms.collectAsState()
-    val e = exercise ?: return
+    val e = draft ?: return
     var groupMenu by remember { mutableStateOf(false) }
     var gymFilter by remember { mutableStateOf<Long?>(null) }
 
@@ -149,10 +230,12 @@ fun ExerciseDetailScreen(
     val zone = ZoneId.systemDefault()
     val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val hasPendingChanges = confirmEdits && draft != saved
 
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -163,6 +246,14 @@ fun ExerciseDetailScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f),
                 )
+                if (e.isCustom) {
+                    IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                        Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                    }
+                    IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                        Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                    }
+                }
                 val copySuffix = stringResource(R.string.clone_suffix)
                 IconButton(onClick = {
                     vm.clone(copySuffix) { id -> nav.navigate(Routes.exercise(id)) }
@@ -177,7 +268,24 @@ fun ExerciseDetailScreen(
             }
         }
 
-        // Measurement type — editable at any time
+        // Built-in exercises are locked: clone one to get an editable copy.
+        if (!e.isCustom) {
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(R.string.builtin_locked_hint),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+
+        // Measurement type — editable for custom exercises only
         item {
             Text(stringResource(R.string.measurement_type), style = MaterialTheme.typography.titleSmall)
             Row(
@@ -186,16 +294,19 @@ fun ExerciseDetailScreen(
             ) {
                 FilterChip(
                     selected = e.measurementType == MeasurementType.WEIGHT_KG,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.WEIGHT_KG) } },
                     label = { Text(stringResource(R.string.measurement_weight)) },
                 )
                 FilterChip(
                     selected = e.measurementType == MeasurementType.MACHINE_LEVEL,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.MACHINE_LEVEL) } },
                     label = { Text(stringResource(R.string.measurement_level)) },
                 )
                 FilterChip(
                     selected = e.measurementType == MeasurementType.BODYWEIGHT,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.BODYWEIGHT) } },
                     label = { Text(stringResource(R.string.measurement_bodyweight)) },
                 )
@@ -212,6 +323,7 @@ fun ExerciseDetailScreen(
                 MuscleGroup.entries.forEach { m ->
                     FilterChip(
                         selected = e.muscleGroup == m,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(muscleGroup = m, secondaryMuscles = ex.secondaryMuscles - m)
@@ -231,6 +343,7 @@ fun ExerciseDetailScreen(
                 MuscleGroup.entries.filter { it != e.muscleGroup }.forEach { m ->
                     FilterChip(
                         selected = m in e.secondaryMuscles,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(
@@ -256,6 +369,7 @@ fun ExerciseDetailScreen(
                 Equipment.entries.forEach { eq ->
                     FilterChip(
                         selected = eq in e.equipment,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(
@@ -285,6 +399,7 @@ fun ExerciseDetailScreen(
                     label = { Text(stringResource(R.string.bodyweight_factor)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    enabled = e.isCustom,
                 )
             }
         }
@@ -304,6 +419,7 @@ fun ExerciseDetailScreen(
                 label = { Text(stringResource(R.string.progression_increment_override)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                enabled = e.isCustom,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -311,7 +427,7 @@ fun ExerciseDetailScreen(
         // Interchangeable-exercise group
         item {
             Text(stringResource(R.string.exercise_group), style = MaterialTheme.typography.titleSmall)
-            OutlinedButton(onClick = { groupMenu = true }) {
+            OutlinedButton(onClick = { groupMenu = true }, enabled = e.isCustom) {
                 Text(
                     groups.find { it.id == e.groupId }
                         ?.let { if (Locale.getDefault().language == "sv") it.nameSv else it.nameEn }
@@ -482,6 +598,11 @@ fun ExerciseDetailScreen(
             }
         }
         item { Spacer(Modifier.height(40.dp)) }
+    }
+
+    if (hasPendingChanges) {
+        PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
+    }
     }
 }
 

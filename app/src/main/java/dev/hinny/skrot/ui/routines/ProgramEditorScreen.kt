@@ -50,6 +50,7 @@ import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.DragHandle
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,10 +61,61 @@ class ProgramEditorViewModel(
     private val routineId: Long,
 ) : ViewModel() {
     val routine = MutableStateFlow<RoutineWithDays?>(null)
+    val confirmEdits = MutableStateFlow(true)
+    val hasPendingChanges = MutableStateFlow(false)
+
+    /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
+    private var baseline: RoutineWithDays? = null
 
     init {
         viewModelScope.launch {
-            container.db.routineDao().observeWithDays(routineId).collect { routine.value = it }
+            container.db.routineDao().observeWithDays(routineId).collect { r ->
+                routine.value = r
+                if (baseline == null) baseline = r
+                recomputePending()
+            }
+        }
+        viewModelScope.launch {
+            container.settings.settings.collect {
+                confirmEdits.value = it.confirmLibraryEdits
+                recomputePending()
+            }
+        }
+    }
+
+    /**
+     * Every mutation below writes straight to the database as before (add day,
+     * reorder, field edits, ...); this just tracks whether the live state has
+     * drifted from the last-confirmed [baseline] so the UI can show an
+     * Apply/Cancel bar. In auto-apply mode every change re-baselines
+     * immediately, so no bar ever appears.
+     */
+    private fun recomputePending() {
+        if (!confirmEdits.value) {
+            baseline = routine.value
+            hasPendingChanges.value = false
+        } else {
+            hasPendingChanges.value = routine.value != baseline
+        }
+    }
+
+    /** Reverts routine fields and the day list back to the last Apply point. */
+    fun applyChanges() {
+        baseline = routine.value
+        hasPendingChanges.value = false
+    }
+
+    fun cancelChanges() {
+        viewModelScope.launch {
+            val snap = baseline ?: return@launch
+            val dao = container.db.routineDao()
+            dao.update(snap.routine)
+            val currentDays = routine.value?.days ?: emptyList()
+            val snapDayIds = snap.days.map { it.id }.toSet()
+            for (d in currentDays) if (d.id !in snapDayIds) dao.deleteDay(d)
+            // REPLACE-insert restores field values on survivors and recreates
+            // any day deleted during this editing session, under its original id.
+            container.db.backupDao().insertDays(snap.days)
         }
     }
 
@@ -119,6 +171,7 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         ProgramEditorViewModel(c, routineId)
     }
     val state by vm.routine.collectAsState()
+    val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     val r = state ?: return
     var showAddDay by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
@@ -127,9 +180,10 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     var description by remember(r.routine.id) { mutableStateOf(r.routine.description) }
     var tags by remember(r.routine.id) { mutableStateOf(r.routine.tags.joinToString(", ")) }
 
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -275,6 +329,11 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
             Spacer(Modifier.height(60.dp))
         }
+    }
+
+    if (hasPendingChanges) {
+        PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
+    }
     }
 
     if (showAddDay) {
