@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -179,6 +181,17 @@ fun WorkoutScreen(
                     }
                 },
                 actions = {
+                    content?.let { session ->
+                        IconButton(onClick = { vm.toggleLock() }) {
+                            Icon(
+                                if (session.session.locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                                contentDescription = stringResource(
+                                    if (session.session.locked) R.string.unlock_session
+                                    else R.string.lock_session
+                                ),
+                            )
+                        }
+                    }
                     TextButton(onClick = { showDiscard = true }) {
                         Text(stringResource(R.string.discard))
                     }
@@ -194,6 +207,7 @@ fun WorkoutScreen(
             Spacer(Modifier.padding(padding))
             return@Scaffold
         }
+        val locked = session.session.locked
         val removedMsg = stringResource(R.string.exercise_removed)
         val applyLabel = stringResource(R.string.apply_future_sessions)
         LazyColumn(
@@ -203,6 +217,28 @@ fun WorkoutScreen(
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (locked) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.padding(start = 10.dp),
+                            )
+                            Text(
+                                stringResource(R.string.session_locked_hint),
+                                modifier = Modifier.padding(10.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
             val blocks = session.blocks
             items(blocks.size) { blockIndex ->
                 val block = blocks[blockIndex]
@@ -237,6 +273,7 @@ fun WorkoutScreen(
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
+                                locked = locked,
                                 onRemove = { removed ->
                                     val peId = removed.sessionExercise.plannedExerciseId
                                     vm.removeExercise(removed)
@@ -263,6 +300,7 @@ fun WorkoutScreen(
             item {
                 OutlinedButton(
                     onClick = { showAddExercise = true },
+                    enabled = !locked,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.add_exercise)) }
             }
@@ -358,6 +396,7 @@ private fun ExerciseSection(
     swapOptions: List<Exercise>,
     currentSetId: Long?,
     hasRoutineDay: Boolean,
+    locked: Boolean,
     onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -379,6 +418,7 @@ private fun ExerciseSection(
                 if (swapOptions.isNotEmpty()) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.swap_exercise)) },
+                        enabled = !locked,
                         onClick = { menuOpen = false; swapOpen = true },
                     )
                 }
@@ -392,6 +432,7 @@ private fun ExerciseSection(
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.remove_exercise)) },
+                    enabled = !locked,
                     onClick = { menuOpen = false; onRemove(se) },
                 )
             }
@@ -462,14 +503,18 @@ private fun ExerciseSection(
                 settings = settings,
                 vm = vm,
                 isCurrent = set.id == currentSetId,
+                locked = locked,
             )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { vm.addSet(se) }) {
+            TextButton(onClick = { vm.addSet(se) }, enabled = !locked) {
                 Text(stringResource(R.string.add_set))
             }
-            TextButton(onClick = { vm.addSet(se, SetType.DROP_SET, sets.lastOrNull()) }) {
+            TextButton(
+                onClick = { vm.addSet(se, SetType.DROP_SET, sets.lastOrNull()) },
+                enabled = !locked,
+            ) {
                 Text(stringResource(R.string.add_drop_set))
             }
         }
@@ -477,14 +522,14 @@ private fun ExerciseSection(
         // Session edits are session-only by default; these discreet actions
         // write the change back to the routine for future sessions.
         val peId = se.sessionExercise.plannedExerciseId
-        if (peId != null && plannedSets.isNotEmpty() && plannedSets.size != sets.size) {
+        if (!locked && peId != null && plannedSets.isNotEmpty() && plannedSets.size != sets.size) {
             TextButton(onClick = { vm.applySetsToPlan(se) }) {
                 Text(
                     stringResource(R.string.apply_future_sessions),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-        } else if (peId == null && hasRoutineDay) {
+        } else if (!locked && peId == null && hasRoutineDay) {
             TextButton(onClick = { vm.addExerciseToPlan(se) }) {
                 Text(
                     stringResource(R.string.apply_future_sessions),
@@ -576,6 +621,7 @@ private fun SetRow(
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
+    locked: Boolean,
 ) {
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
@@ -597,13 +643,15 @@ private fun SetRow(
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
+        if (!locked) {
+            DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
+        }
 
         // Swipe (nearly) all the way left to remove the set from this session
         // (completed sets are protected: un-complete first). Distance-only gate,
         // so a quick short flick does nothing — only a full swipe deletes.
         FullSwipeToDeleteBox(
-            enabled = !set.completed,
+            enabled = !set.completed && !locked,
             onDelete = { vm.removeSet(se, set) },
             modifier = Modifier.weight(1f),
         ) {
@@ -623,6 +671,7 @@ private fun SetRow(
                     settings = settings,
                     vm = vm,
                     isCurrent = isCurrent,
+                    locked = locked,
                     loadText = loadText,
                     onLoadText = { loadText = it },
                     repsText = repsText,
@@ -734,6 +783,7 @@ private fun SetRowContent(
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
+    locked: Boolean,
     loadText: String,
     onLoadText: (String) -> Unit,
     repsText: String,
@@ -759,6 +809,7 @@ private fun SetRowContent(
             SetType.FAILURE -> stringResource(R.string.set_marker_failure)
         }
         AssistChip(
+            enabled = !locked,
             onClick = {
                 val next = when (set.setType) {
                     SetType.WARMUP -> SetType.STANDARD
@@ -781,7 +832,7 @@ private fun SetRowContent(
             planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
             else -> "—"
         }
-        TextButton(onClick = { if (planned != null) onOpenTarget() }) {
+        TextButton(enabled = !locked, onClick = { if (planned != null) onOpenTarget() }) {
             Text(targetText, style = MaterialTheme.typography.bodySmall)
         }
 
@@ -823,7 +874,7 @@ private fun SetRowContent(
             singleLine = true,
             modifier = Modifier.width(72.dp),
         )
-        TextButton(onClick = onOpenRest) {
+        TextButton(enabled = !locked, onClick = onOpenRest) {
             Text("${set.restSec}s", style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.weight(1f))

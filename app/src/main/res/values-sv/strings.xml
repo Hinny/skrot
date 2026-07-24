@@ -179,6 +179,9 @@
     <string name="target_reps">Målreps</string>
     <string name="rest_duration">Vilotid</string>
     <string name="rest_zero_hint">0 = ingen timer</string>
+    <string name="lock_session">Lås passet</string>
+    <string name="unlock_session">Lås upp passet</string>
+    <string name="session_locked_hint">Passet är låst — endast vikt, reps och att slutföra aktuellt set kan ändras.</string>
     <string name="swap_exercise">Byt övning</string>
     <string name="remove_exercise">Ta bort övning</string>
     <string name="exercise_note">Övningsanteckning</string>
@@ -326,6 +329,8 @@
     <string name="swap_advance">Sekvensen går vidare</string>
     <string name="comeback_threshold">Comeback-förslag efter (dagar)</string>
     <string name="keep_screen_on">Håll skärmen vaken under pass</string>
+    <string name="sessions_locked_by_default">Nya pass startar låsta</string>
+    <string name="sessions_locked_by_default_hint">Låsta pass blockerar strukturella ändringar (set, övningar, mål, vila); vikt, reps och att slutföra aktuellt set fungerar alltid. Växla hänglåset i ett pass för att åsidosätta.</string>
     <string name="progression">Progressionsförslag</string>
     <string name="increment_kg">Standardökning (kg)</string>
     <string name="increment_level">Standardökning (maskinnivåer)</string>

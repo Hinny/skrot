@@ -474,6 +474,14 @@ class WorkoutViewModel(
         }
     }
 
+    /** Toggles the session lock; locked sessions block structural edits. */
+    fun toggleLock() {
+        viewModelScope.launch {
+            val locked = session.value?.session?.locked ?: return@launch
+            db.sessionDao().setLocked(sessionId, !locked)
+        }
+    }
+
     fun finish() {
         viewModelScope.launch {
             val now = System.currentTimeMillis()

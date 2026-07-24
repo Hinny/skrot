@@ -226,6 +226,9 @@ interface SessionDao {
     @Query("UPDATE sessions SET endedAt = :endedAt WHERE id = :id")
     suspend fun finish(id: Long, endedAt: Long)
 
+    @Query("UPDATE sessions SET locked = :locked WHERE id = :id")
+    suspend fun setLocked(id: Long, locked: Boolean)
+
     @Transaction
     @Query("SELECT * FROM sessions WHERE id = :id")
     fun observeSessionWithContent(id: Long): Flow<SessionWithContent?>

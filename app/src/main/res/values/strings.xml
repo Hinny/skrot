@@ -181,6 +181,9 @@
     <string name="target_reps">Target reps</string>
     <string name="rest_duration">Rest duration</string>
     <string name="rest_zero_hint">0 = no timer</string>
+    <string name="lock_session">Lock session</string>
+    <string name="unlock_session">Unlock session</string>
+    <string name="session_locked_hint">Session locked — only weight, reps and completing the active set can be changed.</string>
     <string name="swap_exercise">Swap exercise</string>
     <string name="remove_exercise">Remove exercise</string>
     <string name="exercise_note">Exercise note</string>
@@ -347,6 +350,8 @@
     <string name="library_edits_section">Library edits</string>
     <string name="confirm_library_edits">Confirm changes to custom exercises</string>
     <string name="confirm_library_edits_hint">On: edits wait for Apply or Cancel. Off: changes stick immediately, like before.</string>
+    <string name="sessions_locked_by_default">New sessions start locked</string>
+    <string name="sessions_locked_by_default_hint">Locked sessions block structural edits (sets, exercises, targets, rest); weight, reps and completing the active set always work. Toggle the padlock in a session to override.</string>
 
     <!-- Backup / import -->
     <string name="backup_and_import">Backup &amp; import</string>

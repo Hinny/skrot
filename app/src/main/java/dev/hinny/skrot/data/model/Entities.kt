@@ -282,6 +282,12 @@ data class WorkoutSession(
     val lastActivityAt: Long,
     /** True when started in "temporary visit" mode (no gym availability filtering). */
     val temporaryVisit: Boolean = false,
+    /**
+     * When true, structural edits (add/remove/reorder sets or exercises, swap
+     * exercise, set type, target reps, rest duration) are blocked; weight,
+     * reps and completing the active set always stay editable.
+     */
+    val locked: Boolean = false,
 )
 
 /** An exercise instance inside a session. */

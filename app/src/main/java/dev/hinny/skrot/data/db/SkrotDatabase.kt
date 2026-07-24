@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -59,8 +59,15 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /** v2 -> v3: sessions can be locked against structural edits. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

@@ -154,6 +154,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ToggleSetting(stringResource(R.string.keep_screen_on), settings.keepScreenOn) {
                 scope.launch { repo.setKeepScreenOn(it) }
             }
+            ToggleSetting(
+                stringResource(R.string.sessions_locked_by_default),
+                settings.sessionsLockedByDefault,
+            ) { scope.launch { repo.setSessionsLockedByDefault(it) } }
+            Text(
+                stringResource(R.string.sessions_locked_by_default_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()
