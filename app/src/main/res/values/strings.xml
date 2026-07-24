@@ -230,6 +230,7 @@
     <string name="best_set">Best set</string>
     <string name="load_over_time">Load over time</string>
     <string name="estimated_1rm">Estimated 1RM</string>
+    <string name="builtin_locked_hint">Built-in exercise — locked. Use the clone button above to make an editable copy.</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Chest</string>

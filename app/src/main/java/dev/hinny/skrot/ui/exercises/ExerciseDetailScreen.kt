@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -177,7 +179,24 @@ fun ExerciseDetailScreen(
             }
         }
 
-        // Measurement type — editable at any time
+        // Built-in exercises are locked: clone one to get an editable copy.
+        if (!e.isCustom) {
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(R.string.builtin_locked_hint),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+
+        // Measurement type — editable for custom exercises only
         item {
             Text(stringResource(R.string.measurement_type), style = MaterialTheme.typography.titleSmall)
             Row(
@@ -186,16 +205,19 @@ fun ExerciseDetailScreen(
             ) {
                 FilterChip(
                     selected = e.measurementType == MeasurementType.WEIGHT_KG,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.WEIGHT_KG) } },
                     label = { Text(stringResource(R.string.measurement_weight)) },
                 )
                 FilterChip(
                     selected = e.measurementType == MeasurementType.MACHINE_LEVEL,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.MACHINE_LEVEL) } },
                     label = { Text(stringResource(R.string.measurement_level)) },
                 )
                 FilterChip(
                     selected = e.measurementType == MeasurementType.BODYWEIGHT,
+                    enabled = e.isCustom,
                     onClick = { vm.update { it.copy(measurementType = MeasurementType.BODYWEIGHT) } },
                     label = { Text(stringResource(R.string.measurement_bodyweight)) },
                 )
@@ -212,6 +234,7 @@ fun ExerciseDetailScreen(
                 MuscleGroup.entries.forEach { m ->
                     FilterChip(
                         selected = e.muscleGroup == m,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(muscleGroup = m, secondaryMuscles = ex.secondaryMuscles - m)
@@ -231,6 +254,7 @@ fun ExerciseDetailScreen(
                 MuscleGroup.entries.filter { it != e.muscleGroup }.forEach { m ->
                     FilterChip(
                         selected = m in e.secondaryMuscles,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(
@@ -256,6 +280,7 @@ fun ExerciseDetailScreen(
                 Equipment.entries.forEach { eq ->
                     FilterChip(
                         selected = eq in e.equipment,
+                        enabled = e.isCustom,
                         onClick = {
                             vm.update { ex ->
                                 ex.copy(
@@ -285,6 +310,7 @@ fun ExerciseDetailScreen(
                     label = { Text(stringResource(R.string.bodyweight_factor)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    enabled = e.isCustom,
                 )
             }
         }
@@ -304,6 +330,7 @@ fun ExerciseDetailScreen(
                 label = { Text(stringResource(R.string.progression_increment_override)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                enabled = e.isCustom,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -311,7 +338,7 @@ fun ExerciseDetailScreen(
         // Interchangeable-exercise group
         item {
             Text(stringResource(R.string.exercise_group), style = MaterialTheme.typography.titleSmall)
-            OutlinedButton(onClick = { groupMenu = true }) {
+            OutlinedButton(onClick = { groupMenu = true }, enabled = e.isCustom) {
                 Text(
                     groups.find { it.id == e.groupId }
                         ?.let { if (Locale.getDefault().language == "sv") it.nameSv else it.nameEn }
