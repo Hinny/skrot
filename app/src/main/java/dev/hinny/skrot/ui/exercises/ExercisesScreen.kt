@@ -86,6 +86,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
     var query by remember { mutableStateOf("") }
     var muscleFilters by remember { mutableStateOf(setOf<MuscleGroup>()) }
     var equipmentFilters by remember { mutableStateOf(setOf<Equipment>()) }
+    var categoryFilter by remember { mutableStateOf<Boolean?>(null) }
     var showCreate by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -114,6 +115,28 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 6.dp),
+            ) {
+                FilterChip(
+                    selected = categoryFilter == null,
+                    onClick = { categoryFilter = null },
+                    label = { Text(stringResource(R.string.category_all)) },
+                )
+                FilterChip(
+                    selected = categoryFilter == false,
+                    onClick = { categoryFilter = false },
+                    label = { Text(stringResource(R.string.category_builtin)) },
+                )
+                FilterChip(
+                    selected = categoryFilter == true,
+                    onClick = { categoryFilter = true },
+                    label = { Text(stringResource(R.string.category_custom)) },
+                )
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
@@ -155,6 +178,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                 query = query,
                 muscleFilters = muscleFilters,
                 equipmentFilters = equipmentFilters,
+                customFilter = categoryFilter,
                 muscleNames = searchMuscleNames(),
                 equipmentNames = searchEquipmentNames(),
             )

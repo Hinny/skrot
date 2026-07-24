@@ -231,6 +231,9 @@
     <string name="load_over_time">Load over time</string>
     <string name="estimated_1rm">Estimated 1RM</string>
     <string name="builtin_locked_hint">Built-in exercise — locked. Use the clone button above to make an editable copy.</string>
+    <string name="category_all">All</string>
+    <string name="category_builtin">Built-in</string>
+    <string name="category_custom">Custom</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Chest</string>

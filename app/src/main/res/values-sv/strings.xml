@@ -229,6 +229,9 @@
     <string name="load_over_time">Belastning över tid</string>
     <string name="estimated_1rm">Uppskattat 1RM</string>
     <string name="builtin_locked_hint">Inbyggd övning — låst. Använd klonknappen ovan för att göra en redigerbar kopia.</string>
+    <string name="category_all">Alla</string>
+    <string name="category_builtin">Inbyggda</string>
+    <string name="category_custom">Egna</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Bröst</string>
