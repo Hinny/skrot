@@ -16,6 +16,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Avbryt</string>
     <string name="save">Spara</string>
+    <string name="apply">Tillämpa</string>
     <string name="delete">Ta bort</string>
     <string name="create">Skapa</string>
     <string name="done">Klar</string>
@@ -232,6 +233,13 @@
     <string name="category_all">Alla</string>
     <string name="category_builtin">Inbyggda</string>
     <string name="category_custom">Egna</string>
+    <string name="n_selected">%1$d markerade</string>
+    <string name="bulk_edit">Massredigera</string>
+    <string name="bulk_edit_title">Redigera %1$d övningar</string>
+    <string name="bulk_set_primary_muscle">Ange primär muskel</string>
+    <string name="bulk_set_measurement_type">Ange mätningstyp</string>
+    <string name="bulk_add_equipment">Lägg till utrustning</string>
+    <string name="bulk_remove_equipment">Ta bort utrustning</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Bröst</string>

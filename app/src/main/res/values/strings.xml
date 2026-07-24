@@ -18,6 +18,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="apply">Apply</string>
     <string name="delete">Delete</string>
     <string name="create">Create</string>
     <string name="done">Done</string>
@@ -234,6 +235,13 @@
     <string name="category_all">All</string>
     <string name="category_builtin">Built-in</string>
     <string name="category_custom">Custom</string>
+    <string name="n_selected">%1$d selected</string>
+    <string name="bulk_edit">Bulk edit</string>
+    <string name="bulk_edit_title">Edit %1$d exercises</string>
+    <string name="bulk_set_primary_muscle">Set primary muscle</string>
+    <string name="bulk_set_measurement_type">Set measurement type</string>
+    <string name="bulk_add_equipment">Add equipment</string>
+    <string name="bulk_remove_equipment">Remove equipment</string>
 
     <!-- Muscle groups -->
     <string name="muscle_chest">Chest</string>
