@@ -344,6 +344,9 @@
     <string name="frequency_medium">Medium</string>
     <string name="frequency_high">High</string>
     <string name="default_gym_setting">Gyms &amp; default gym</string>
+    <string name="library_edits_section">Library edits</string>
+    <string name="confirm_library_edits">Confirm changes to custom exercises</string>
+    <string name="confirm_library_edits_hint">On: edits wait for Apply or Cancel. Off: changes stick immediately, like before.</string>
 
     <!-- Backup / import -->
     <string name="backup_and_import">Backup &amp; import</string>

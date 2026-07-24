@@ -206,6 +206,20 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
 
         HorizontalDivider()
 
+        // Exercise library
+        SettingSection(stringResource(R.string.library_edits_section)) {
+            ToggleSetting(
+                stringResource(R.string.confirm_library_edits),
+                settings.confirmLibraryEdits,
+            ) { scope.launch { repo.setConfirmLibraryEdits(it) } }
+            Text(
+                stringResource(R.string.confirm_library_edits_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        HorizontalDivider()
+
         // Backup reminder
         SettingSection(stringResource(R.string.backup)) {
             NumberSetting(

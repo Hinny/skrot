@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -28,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,14 +76,26 @@ class ExerciseDetailViewModel(
     private val exerciseId: Long,
 ) : ViewModel() {
     private val db = container.db
+
+    /** Last-persisted value, as loaded from the database. */
     val exercise = MutableStateFlow<Exercise?>(null)
+
+    /** Working copy shown in the UI; may hold unsaved edits when confirm mode is on. */
+    val draft = MutableStateFlow<Exercise?>(null)
+    val confirmEdits = MutableStateFlow(true)
     val sets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val groups = MutableStateFlow<List<ExerciseGroup>>(emptyList())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
 
     init {
         viewModelScope.launch {
-            db.exerciseDao().observeById(exerciseId).collect { exercise.value = it }
+            db.exerciseDao().observeById(exerciseId).collect { e ->
+                exercise.value = e
+                if (draft.value?.id != e?.id) draft.value = e
+            }
+        }
+        viewModelScope.launch {
+            container.settings.settings.collect { confirmEdits.value = it.confirmLibraryEdits }
         }
         viewModelScope.launch {
             db.sessionDao().observeSetsForExercise(exerciseId).collect { sets.value = it }
@@ -94,10 +108,29 @@ class ExerciseDetailViewModel(
         }
     }
 
+    /**
+     * Applies [transform] to the draft. In auto-apply mode (confirm mode off)
+     * this also persists immediately, matching the classic behavior; in
+     * confirm mode the change stays pending until [applyChanges].
+     */
     fun update(transform: (Exercise) -> Exercise) {
-        viewModelScope.launch {
-            exercise.value?.let { db.exerciseDao().update(transform(it)) }
-        }
+        val current = draft.value ?: return
+        val updated = transform(current)
+        if (updated == current) return
+        draft.value = updated
+        if (!confirmEdits.value) persist(updated)
+    }
+
+    fun applyChanges() {
+        draft.value?.let { persist(it) }
+    }
+
+    fun cancelChanges() {
+        draft.value = exercise.value
+    }
+
+    private fun persist(e: Exercise) {
+        viewModelScope.launch { db.exerciseDao().update(e) }
     }
 
     fun delete(onDone: () -> Unit) {
@@ -135,11 +168,13 @@ fun ExerciseDetailScreen(
     val vm = containerViewModel(container, key = "exercise_$exerciseId") { c, _ ->
         ExerciseDetailViewModel(c, exerciseId)
     }
-    val exercise by vm.exercise.collectAsState()
+    val saved by vm.exercise.collectAsState()
+    val draft by vm.draft.collectAsState()
+    val confirmEdits by vm.confirmEdits.collectAsState()
     val sets by vm.sets.collectAsState()
     val groups by vm.groups.collectAsState()
     val gyms by vm.gyms.collectAsState()
-    val e = exercise ?: return
+    val e = draft ?: return
     var groupMenu by remember { mutableStateOf(false) }
     var gymFilter by remember { mutableStateOf<Long?>(null) }
 
@@ -151,10 +186,12 @@ fun ExerciseDetailScreen(
     val zone = ZoneId.systemDefault()
     val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val hasPendingChanges = confirmEdits && draft != saved
 
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -509,6 +546,26 @@ fun ExerciseDetailScreen(
             }
         }
         item { Spacer(Modifier.height(40.dp)) }
+    }
+
+    if (hasPendingChanges) {
+        Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = { vm.cancelChanges() }) {
+                    Text(stringResource(R.string.cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { vm.applyChanges() }) {
+                    Text(stringResource(R.string.apply))
+                }
+            }
+        }
+    }
     }
 }
 

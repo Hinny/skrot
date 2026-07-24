@@ -342,6 +342,9 @@
     <string name="frequency_medium">Mellan</string>
     <string name="frequency_high">Hög</string>
     <string name="default_gym_setting">Gym &amp; standardgym</string>
+    <string name="library_edits_section">Biblioteksredigeringar</string>
+    <string name="confirm_library_edits">Bekräfta ändringar av egna övningar</string>
+    <string name="confirm_library_edits_hint">På: ändringar väntar på Tillämpa eller Avbryt. Av: ändringar gäller direkt, som tidigare.</string>
 
     <!-- Backup / import -->
     <string name="backup_and_import">Säkerhetskopia &amp; import</string>
