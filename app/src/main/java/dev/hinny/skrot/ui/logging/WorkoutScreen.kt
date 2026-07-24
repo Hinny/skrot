@@ -1,8 +1,11 @@
 package dev.hinny.skrot.ui.logging
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,17 +43,15 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,10 +59,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
@@ -85,6 +90,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -589,43 +595,12 @@ private fun SetRow(
         return Units.fromDisplay(raw, settings.unit, measurement)
     }
 
-    // Swipe left to remove the set from this session (completed sets are
-    // protected: un-complete first).
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart && !set.completed) {
-                vm.removeSet(se, set)
-                true
-            } else {
-                false
-            }
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = !set.completed,
-        backgroundContent = {
-            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer,
-                            RoundedCornerShape(10.dp),
-                        )
-                        .padding(end = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.remove_set),
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
-            }
-        },
+    // Swipe (nearly) all the way left to remove the set from this session
+    // (completed sets are protected: un-complete first). Distance-only gate,
+    // so a quick short flick does nothing — only a full swipe deletes.
+    FullSwipeToDeleteBox(
+        enabled = !set.completed,
+        onDelete = { vm.removeSet(se, set) },
     ) {
         Surface(
             color = if (isCurrent) {
@@ -669,6 +644,77 @@ private fun SetRow(
             onSave = { sec, applyToPlan -> vm.updateRest(se, set, sec, applyToPlan) },
             onDismiss = { restOpen = false },
         )
+    }
+}
+
+/** Fraction of the row width the finger must travel before [onDelete] fires. */
+private const val FULL_SWIPE_FRACTION = 0.75f
+
+/**
+ * Swipe-left-to-delete gated purely on drag distance. Material3's
+ * SwipeToDismissBox can also dismiss on a fast short flick (velocity-based),
+ * which made it too easy to remove a set by accident; this only ever fires
+ * once the drag has covered [FULL_SWIPE_FRACTION] of the row's width.
+ */
+@Composable
+private fun FullSwipeToDeleteBox(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    var widthPx by remember { mutableFloatStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val animatedOffset by animateFloatAsState(dragOffset, label = "setSwipeOffset")
+    val progress = if (widthPx > 0f) (-dragOffset / widthPx).coerceIn(0f, 1f) else 0f
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { widthPx = it.width.toFloat() },
+    ) {
+        if (progress > 0f) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(10.dp))
+                    .padding(end = 16.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.remove_set),
+                    tint = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = progress),
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffset.roundToInt(), 0) }
+                .then(
+                    if (enabled) {
+                        Modifier.pointerInput(widthPx) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (widthPx > 0f && -dragOffset > widthPx * FULL_SWIPE_FRACTION) {
+                                        onDelete()
+                                    }
+                                    dragOffset = 0f
+                                },
+                                onDragCancel = { dragOffset = 0f },
+                                onHorizontalDrag = { change, delta ->
+                                    change.consume()
+                                    dragOffset = (dragOffset + delta).coerceIn(-widthPx, 0f)
+                                },
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
+                ),
+        ) {
+            content()
+        }
     }
 }
 
