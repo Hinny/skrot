@@ -31,6 +31,8 @@
     <string name="increase">Öka</string>
     <string name="decrease">Minska</string>
     <string name="reorder">Ändra ordning</string>
+    <string name="undo">Ångra</string>
+    <string name="redo">Gör om</string>
     <string name="today">Idag</string>
     <string name="yesterday">Igår</string>
     <string name="days_ago">%1$d dagar sedan</string>

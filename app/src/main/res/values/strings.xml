@@ -33,6 +33,8 @@
     <string name="increase">Increase</string>
     <string name="decrease">Decrease</string>
     <string name="reorder">Reorder</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="days_ago">%1$d days ago</string>

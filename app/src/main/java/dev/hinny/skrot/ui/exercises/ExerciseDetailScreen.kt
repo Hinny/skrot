@@ -17,6 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -86,12 +88,22 @@ class ExerciseDetailViewModel(
     val sets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val groups = MutableStateFlow<List<ExerciseGroup>>(emptyList())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
+    val canUndo = MutableStateFlow(false)
+    val canRedo = MutableStateFlow(false)
+
+    private val undoStack = ArrayDeque<Exercise>()
+    private val redoStack = ArrayDeque<Exercise>()
 
     init {
         viewModelScope.launch {
             db.exerciseDao().observeById(exerciseId).collect { e ->
                 exercise.value = e
-                if (draft.value?.id != e?.id) draft.value = e
+                if (draft.value?.id != e?.id) {
+                    draft.value = e
+                    undoStack.clear()
+                    redoStack.clear()
+                    updateUndoRedoFlags()
+                }
             }
         }
         viewModelScope.launch {
@@ -109,16 +121,38 @@ class ExerciseDetailViewModel(
     }
 
     /**
-     * Applies [transform] to the draft. In auto-apply mode (confirm mode off)
-     * this also persists immediately, matching the classic behavior; in
-     * confirm mode the change stays pending until [applyChanges].
+     * Applies [transform] to the draft, recording an undo step. In auto-apply
+     * mode (confirm mode off) this also persists immediately, matching the
+     * classic behavior; in confirm mode the change stays pending until
+     * [applyChanges].
      */
     fun update(transform: (Exercise) -> Exercise) {
         val current = draft.value ?: return
         val updated = transform(current)
         if (updated == current) return
+        undoStack.addLast(current)
+        redoStack.clear()
         draft.value = updated
+        updateUndoRedoFlags()
         if (!confirmEdits.value) persist(updated)
+    }
+
+    fun undo() {
+        val current = draft.value ?: return
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(current)
+        draft.value = previous
+        updateUndoRedoFlags()
+        if (!confirmEdits.value) persist(previous)
+    }
+
+    fun redo() {
+        val current = draft.value ?: return
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(current)
+        draft.value = next
+        updateUndoRedoFlags()
+        if (!confirmEdits.value) persist(next)
     }
 
     fun applyChanges() {
@@ -127,6 +161,14 @@ class ExerciseDetailViewModel(
 
     fun cancelChanges() {
         draft.value = exercise.value
+        undoStack.clear()
+        redoStack.clear()
+        updateUndoRedoFlags()
+    }
+
+    private fun updateUndoRedoFlags() {
+        canUndo.value = undoStack.isNotEmpty()
+        canRedo.value = redoStack.isNotEmpty()
     }
 
     private fun persist(e: Exercise) {
@@ -171,6 +213,8 @@ fun ExerciseDetailScreen(
     val saved by vm.exercise.collectAsState()
     val draft by vm.draft.collectAsState()
     val confirmEdits by vm.confirmEdits.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
     val sets by vm.sets.collectAsState()
     val groups by vm.groups.collectAsState()
     val gyms by vm.gyms.collectAsState()
@@ -202,6 +246,14 @@ fun ExerciseDetailScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f),
                 )
+                if (e.isCustom) {
+                    IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                        Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                    }
+                    IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                        Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                    }
+                }
                 val copySuffix = stringResource(R.string.clone_suffix)
                 IconButton(onClick = {
                     vm.clone(copySuffix) { id -> nav.navigate(Routes.exercise(id)) }
