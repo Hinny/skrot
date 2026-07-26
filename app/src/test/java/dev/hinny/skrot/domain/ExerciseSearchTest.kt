@@ -14,12 +14,14 @@ class ExerciseSearchTest {
         muscle: MuscleGroup = MuscleGroup.CHEST,
         secondary: List<MuscleGroup> = emptyList(),
         equipment: List<Equipment> = emptyList(),
+        isCustom: Boolean = false,
     ) = Exercise(
         nameEn = nameEn,
         nameSv = nameSv,
         muscleGroup = muscle,
         secondaryMuscles = secondary,
         equipment = equipment,
+        isCustom = isCustom,
     )
 
     private val muscleNames = mapOf(
@@ -85,5 +87,14 @@ class ExerciseSearchTest {
     @Test
     fun `blank query with no filters returns everything in original order`() {
         assertEquals(all, ExerciseSearch.search(all, "  "))
+    }
+
+    @Test
+    fun `custom filter narrows to built-in or custom exercises only`() {
+        val custom = ex("My Curl", isCustom = true)
+        val withCustom = all + custom
+        assertEquals(withCustom, ExerciseSearch.search(withCustom, "", customFilter = null))
+        assertEquals(listOf(custom), ExerciseSearch.search(withCustom, "", customFilter = true))
+        assertEquals(all, ExerciseSearch.search(withCustom, "", customFilter = false))
     }
 }

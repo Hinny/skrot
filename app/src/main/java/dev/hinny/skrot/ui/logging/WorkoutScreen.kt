@@ -1,8 +1,11 @@
 package dev.hinny.skrot.ui.logging
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -39,17 +45,15 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,10 +61,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
@@ -77,6 +84,7 @@ import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
+import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
@@ -85,6 +93,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,6 +181,17 @@ fun WorkoutScreen(
                     }
                 },
                 actions = {
+                    content?.let { session ->
+                        IconButton(onClick = { vm.toggleLock() }) {
+                            Icon(
+                                if (session.session.locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                                contentDescription = stringResource(
+                                    if (session.session.locked) R.string.unlock_session
+                                    else R.string.lock_session
+                                ),
+                            )
+                        }
+                    }
                     TextButton(onClick = { showDiscard = true }) {
                         Text(stringResource(R.string.discard))
                     }
@@ -187,6 +207,7 @@ fun WorkoutScreen(
             Spacer(Modifier.padding(padding))
             return@Scaffold
         }
+        val locked = session.session.locked
         val removedMsg = stringResource(R.string.exercise_removed)
         val applyLabel = stringResource(R.string.apply_future_sessions)
         LazyColumn(
@@ -196,19 +217,44 @@ fun WorkoutScreen(
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (locked) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.padding(start = 10.dp),
+                            )
+                            Text(
+                                stringResource(R.string.session_locked_hint),
+                                modifier = Modifier.padding(10.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
             val blocks = session.blocks
-            items(blocks.size) { blockIndex ->
-                val block = blocks[blockIndex]
-                // The set to do next in this block: supersets alternate between the
-                // linked exercises (A1, B1, A2, B2, ...).
-                val currentSetId = block
+            // The single set to do next in the whole session: the first block
+            // (in order) with an incomplete set, alternating within a superset
+            // (A1, B1, A2, B2, ...). Only one set is ever "current" at a time —
+            // not one per exercise/block.
+            val currentSetId = blocks.firstNotNullOfOrNull { block ->
+                block
                     .flatMapIndexed { exIndex, se ->
                         se.sortedSets.mapIndexedNotNull { setIndex, s ->
                             if (!s.completed) Triple(setIndex, exIndex, s.id) else null
                         }
                     }
                     .minWithOrNull(compareBy({ it.first }, { it.second }))
-                    ?.third
+            }?.third
+            items(blocks.size) { blockIndex ->
+                val block = blocks[blockIndex]
                 Card {
                     Column(Modifier.padding(10.dp)) {
                         if (block.size > 1) {
@@ -230,6 +276,7 @@ fun WorkoutScreen(
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
+                                locked = locked,
                                 onRemove = { removed ->
                                     val peId = removed.sessionExercise.plannedExerciseId
                                     vm.removeExercise(removed)
@@ -256,6 +303,7 @@ fun WorkoutScreen(
             item {
                 OutlinedButton(
                     onClick = { showAddExercise = true },
+                    enabled = !locked,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.add_exercise)) }
             }
@@ -351,6 +399,7 @@ private fun ExerciseSection(
     swapOptions: List<Exercise>,
     currentSetId: Long?,
     hasRoutineDay: Boolean,
+    locked: Boolean,
     onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -372,6 +421,7 @@ private fun ExerciseSection(
                 if (swapOptions.isNotEmpty()) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.swap_exercise)) },
+                        enabled = !locked,
                         onClick = { menuOpen = false; swapOpen = true },
                     )
                 }
@@ -385,6 +435,7 @@ private fun ExerciseSection(
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.remove_exercise)) },
+                    enabled = !locked,
                     onClick = { menuOpen = false; onRemove(se) },
                 )
             }
@@ -455,14 +506,18 @@ private fun ExerciseSection(
                 settings = settings,
                 vm = vm,
                 isCurrent = set.id == currentSetId,
+                locked = locked,
             )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { vm.addSet(se) }) {
+            TextButton(onClick = { vm.addSet(se) }, enabled = !locked) {
                 Text(stringResource(R.string.add_set))
             }
-            TextButton(onClick = { vm.addSet(se, SetType.DROP_SET, sets.lastOrNull()) }) {
+            TextButton(
+                onClick = { vm.addSet(se, SetType.DROP_SET, sets.lastOrNull()) },
+                enabled = !locked,
+            ) {
                 Text(stringResource(R.string.add_drop_set))
             }
         }
@@ -470,14 +525,14 @@ private fun ExerciseSection(
         // Session edits are session-only by default; these discreet actions
         // write the change back to the routine for future sessions.
         val peId = se.sessionExercise.plannedExerciseId
-        if (peId != null && plannedSets.isNotEmpty() && plannedSets.size != sets.size) {
+        if (!locked && peId != null && plannedSets.isNotEmpty() && plannedSets.size != sets.size) {
             TextButton(onClick = { vm.applySetsToPlan(se) }) {
                 Text(
                     stringResource(R.string.apply_future_sessions),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-        } else if (peId == null && hasRoutineDay) {
+        } else if (!locked && peId == null && hasRoutineDay) {
             TextButton(onClick = { vm.addExerciseToPlan(se) }) {
                 Text(
                     stringResource(R.string.apply_future_sessions),
@@ -569,6 +624,7 @@ private fun SetRow(
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
+    locked: Boolean,
 ) {
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
@@ -589,68 +645,45 @@ private fun SetRow(
         return Units.fromDisplay(raw, settings.unit, measurement)
     }
 
-    // Swipe left to remove the set from this session (completed sets are
-    // protected: un-complete first).
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart && !set.completed) {
-                vm.removeSet(se, set)
-                true
-            } else {
-                false
-            }
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = !set.completed,
-        backgroundContent = {
-            if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer,
-                            RoundedCornerShape(10.dp),
-                        )
-                        .padding(end = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.remove_set),
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
-            }
-        },
-    ) {
-        Surface(
-            color = if (isCurrent) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-            } else {
-                Color.Transparent
-            },
-            shape = RoundedCornerShape(10.dp),
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (!locked) {
+            DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
+        }
+
+        // Swipe (nearly) all the way left to remove the set from this session
+        // (completed sets are protected: un-complete first). Distance-only gate,
+        // so a quick short flick does nothing — only a full swipe deletes.
+        FullSwipeToDeleteBox(
+            enabled = !set.completed && !locked,
+            onDelete = { vm.removeSet(se, set) },
+            modifier = Modifier.weight(1f),
         ) {
-            SetRowContent(
-                se = se,
-                set = set,
-                number = number,
-                planned = planned,
-                settings = settings,
-                vm = vm,
-                isCurrent = isCurrent,
-                loadText = loadText,
-                onLoadText = { loadText = it },
-                repsText = repsText,
-                onRepsText = { repsText = it },
-                currentLoadKg = ::currentLoadKg,
-                onOpenTarget = { targetOpen = true },
-                onOpenRest = { restOpen = true },
-            )
+            Surface(
+                color = if (isCurrent) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                } else {
+                    Color.Transparent
+                },
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                SetRowContent(
+                    se = se,
+                    set = set,
+                    number = number,
+                    planned = planned,
+                    settings = settings,
+                    vm = vm,
+                    isCurrent = isCurrent,
+                    locked = locked,
+                    loadText = loadText,
+                    onLoadText = { loadText = it },
+                    repsText = repsText,
+                    onRepsText = { repsText = it },
+                    currentLoadKg = ::currentLoadKg,
+                    onOpenTarget = { targetOpen = true },
+                    onOpenRest = { restOpen = true },
+                )
+            }
         }
     }
 
@@ -672,6 +705,78 @@ private fun SetRow(
     }
 }
 
+/** Fraction of the row width the finger must travel before [onDelete] fires. */
+private const val FULL_SWIPE_FRACTION = 0.75f
+
+/**
+ * Swipe-left-to-delete gated purely on drag distance. Material3's
+ * SwipeToDismissBox can also dismiss on a fast short flick (velocity-based),
+ * which made it too easy to remove a set by accident; this only ever fires
+ * once the drag has covered [FULL_SWIPE_FRACTION] of the row's width.
+ */
+@Composable
+private fun FullSwipeToDeleteBox(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    var widthPx by remember { mutableFloatStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val animatedOffset by animateFloatAsState(dragOffset, label = "setSwipeOffset")
+    val progress = if (widthPx > 0f) (-dragOffset / widthPx).coerceIn(0f, 1f) else 0f
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .onSizeChanged { widthPx = it.width.toFloat() },
+    ) {
+        if (progress > 0f) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(10.dp))
+                    .padding(end = 16.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.remove_set),
+                    tint = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = progress),
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffset.roundToInt(), 0) }
+                .then(
+                    if (enabled) {
+                        Modifier.pointerInput(widthPx) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (widthPx > 0f && -dragOffset > widthPx * FULL_SWIPE_FRACTION) {
+                                        onDelete()
+                                    }
+                                    dragOffset = 0f
+                                },
+                                onDragCancel = { dragOffset = 0f },
+                                onHorizontalDrag = { change, delta ->
+                                    change.consume()
+                                    dragOffset = (dragOffset + delta).coerceIn(-widthPx, 0f)
+                                },
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
+                ),
+        ) {
+            content()
+        }
+    }
+}
+
 @Composable
 private fun SetRowContent(
     se: SessionExerciseWithDetails,
@@ -681,6 +786,7 @@ private fun SetRowContent(
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
+    locked: Boolean,
     loadText: String,
     onLoadText: (String) -> Unit,
     repsText: String,
@@ -706,6 +812,7 @@ private fun SetRowContent(
             SetType.FAILURE -> stringResource(R.string.set_marker_failure)
         }
         AssistChip(
+            enabled = !locked,
             onClick = {
                 val next = when (set.setType) {
                     SetType.WARMUP -> SetType.STANDARD
@@ -728,7 +835,7 @@ private fun SetRowContent(
             planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
             else -> "—"
         }
-        TextButton(onClick = { if (planned != null) onOpenTarget() }) {
+        TextButton(enabled = !locked, onClick = { if (planned != null) onOpenTarget() }) {
             Text(targetText, style = MaterialTheme.typography.bodySmall)
         }
 
@@ -770,7 +877,7 @@ private fun SetRowContent(
             singleLine = true,
             modifier = Modifier.width(72.dp),
         )
-        TextButton(onClick = onOpenRest) {
+        TextButton(enabled = !locked, onClick = onOpenRest) {
             Text("${set.restSec}s", style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.weight(1f))

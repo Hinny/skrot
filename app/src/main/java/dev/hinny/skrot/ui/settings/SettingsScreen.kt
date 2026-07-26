@@ -88,6 +88,18 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             }
         }
 
+        // Exercise name language (independent of the UI language above)
+        SettingSection(stringResource(R.string.exercise_name_language)) {
+            ChipRow(
+                options = listOf(
+                    AppLanguage.SYSTEM to stringResource(R.string.follow_app_language),
+                    AppLanguage.ENGLISH to "English",
+                    AppLanguage.SWEDISH to "Svenska",
+                ),
+                selected = settings.exerciseNameLanguage,
+            ) { language -> scope.launch { repo.setExerciseNameLanguage(language) } }
+        }
+
         // Display unit
         SettingSection(stringResource(R.string.display_unit)) {
             ChipRow(
@@ -154,6 +166,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ToggleSetting(stringResource(R.string.keep_screen_on), settings.keepScreenOn) {
                 scope.launch { repo.setKeepScreenOn(it) }
             }
+            ToggleSetting(
+                stringResource(R.string.sessions_locked_by_default),
+                settings.sessionsLockedByDefault,
+            ) { scope.launch { repo.setSessionsLockedByDefault(it) } }
+            Text(
+                stringResource(R.string.sessions_locked_by_default_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()
@@ -202,6 +222,20 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     selected = settings.coachFrequency,
                 ) { scope.launch { repo.setCoachFrequency(it) } }
             }
+        }
+
+        HorizontalDivider()
+
+        // Exercise library
+        SettingSection(stringResource(R.string.library_edits_section)) {
+            ToggleSetting(
+                stringResource(R.string.confirm_library_edits),
+                settings.confirmLibraryEdits,
+            ) { scope.launch { repo.setConfirmLibraryEdits(it) } }
+            Text(
+                stringResource(R.string.confirm_library_edits_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()

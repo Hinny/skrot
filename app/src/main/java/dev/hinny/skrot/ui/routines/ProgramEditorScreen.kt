@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -50,6 +52,7 @@ import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.DragHandle
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,20 +63,108 @@ class ProgramEditorViewModel(
     private val routineId: Long,
 ) : ViewModel() {
     val routine = MutableStateFlow<RoutineWithDays?>(null)
+    val confirmEdits = MutableStateFlow(true)
+    val hasPendingChanges = MutableStateFlow(false)
+    val canUndo = MutableStateFlow(false)
+    val canRedo = MutableStateFlow(false)
+
+    /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
+    private var baseline: RoutineWithDays? = null
+
+    private val undoStack = ArrayDeque<RoutineWithDays>()
+    private val redoStack = ArrayDeque<RoutineWithDays>()
 
     init {
         viewModelScope.launch {
-            container.db.routineDao().observeWithDays(routineId).collect { routine.value = it }
+            container.db.routineDao().observeWithDays(routineId).collect { r ->
+                routine.value = r
+                if (baseline == null) baseline = r
+                recomputePending()
+            }
+        }
+        viewModelScope.launch {
+            container.settings.settings.collect {
+                confirmEdits.value = it.confirmLibraryEdits
+                recomputePending()
+            }
         }
     }
 
+    /**
+     * Every mutation below writes straight to the database as before (add day,
+     * reorder, field edits, ...); this just tracks whether the live state has
+     * drifted from the last-confirmed [baseline] so the UI can show an
+     * Apply/Cancel bar. In auto-apply mode every change re-baselines
+     * immediately, so no bar ever appears.
+     */
+    private fun recomputePending() {
+        if (!confirmEdits.value) {
+            baseline = routine.value
+            hasPendingChanges.value = false
+        } else {
+            hasPendingChanges.value = routine.value != baseline
+        }
+    }
+
+    /** Reverts routine fields and the day list back to the last Apply point. */
+    fun applyChanges() {
+        baseline = routine.value
+        hasPendingChanges.value = false
+    }
+
+    fun cancelChanges() {
+        viewModelScope.launch { restoreSnapshot(baseline ?: return@launch) }
+    }
+
+    private suspend fun restoreSnapshot(snap: RoutineWithDays) {
+        val dao = container.db.routineDao()
+        dao.update(snap.routine)
+        val currentDays = routine.value?.days ?: emptyList()
+        val snapDayIds = snap.days.map { it.id }.toSet()
+        for (d in currentDays) if (d.id !in snapDayIds) dao.deleteDay(d)
+        // REPLACE-insert restores field values on survivors and recreates
+        // any day deleted during this editing session, under its original id.
+        container.db.backupDao().insertDays(snap.days)
+    }
+
+    /** Records the pre-change snapshot so [undo] can revert this step. */
+    private fun pushUndo() {
+        val r = routine.value ?: return
+        undoStack.addLast(r)
+        redoStack.clear()
+        updateUndoRedoFlags()
+    }
+
+    private fun updateUndoRedoFlags() {
+        canUndo.value = undoStack.isNotEmpty()
+        canRedo.value = redoStack.isNotEmpty()
+    }
+
+    fun undo() {
+        val current = routine.value ?: return
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(current)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(previous) }
+    }
+
+    fun redo() {
+        val current = routine.value ?: return
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(current)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(next) }
+    }
+
     fun update(transform: (Routine) -> Routine) {
+        pushUndo()
         viewModelScope.launch {
             routine.value?.let { container.db.routineDao().update(transform(it.routine)) }
         }
     }
 
     fun addDay(name: String) {
+        pushUndo()
         viewModelScope.launch {
             val position = (routine.value?.days?.maxOfOrNull { it.position } ?: -1) + 1
             container.db.routineDao().insertDay(
@@ -83,19 +174,22 @@ class ProgramEditorViewModel(
     }
 
     fun updateDay(day: RoutineDay) {
+        pushUndo()
         viewModelScope.launch { container.db.routineDao().updateDay(day) }
     }
 
     fun deleteDay(day: RoutineDay) {
+        pushUndo()
         viewModelScope.launch { container.db.routineDao().deleteDay(day) }
     }
 
     fun moveDay(day: RoutineDay, delta: Int) {
+        val days = routine.value?.sortedDays ?: return
+        val index = days.indexOfFirst { it.id == day.id }
+        val target = index + delta
+        if (index < 0 || target < 0 || target >= days.size) return
+        pushUndo()
         viewModelScope.launch {
-            val days = routine.value?.sortedDays ?: return@launch
-            val index = days.indexOfFirst { it.id == day.id }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= days.size) return@launch
             val reordered = days.toMutableList()
             val moved = reordered.removeAt(index)
             reordered.add(target, moved)
@@ -119,6 +213,9 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         ProgramEditorViewModel(c, routineId)
     }
     val state by vm.routine.collectAsState()
+    val hasPendingChanges by vm.hasPendingChanges.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
     val r = state ?: return
     var showAddDay by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
@@ -127,9 +224,10 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     var description by remember(r.routine.id) { mutableStateOf(r.routine.description) }
     var tags by remember(r.routine.id) { mutableStateOf(r.routine.tags.joinToString(", ")) }
 
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -148,6 +246,15 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                    Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                }
+                IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                    Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                }
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
+                }
                 IconButton(onClick = { showDelete = true }) {
                     Icon(Icons.Filled.Delete, stringResource(R.string.delete))
                 }
@@ -275,6 +382,11 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
             Spacer(Modifier.height(60.dp))
         }
+    }
+
+    if (hasPendingChanges) {
+        PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
+    }
     }
 
     if (showAddDay) {

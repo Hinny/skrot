@@ -53,6 +53,7 @@ import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.NewExercise
+import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -67,13 +68,78 @@ class DayEditorViewModel(
     private val db = container.db
     val day = MutableStateFlow<DayWithContent?>(null)
     val allExercises = MutableStateFlow<List<Exercise>>(emptyList())
+    val confirmEdits = MutableStateFlow(true)
+    val hasPendingChanges = MutableStateFlow(false)
+
+    /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
+    private var baseline: DayWithContent? = null
 
     init {
         viewModelScope.launch {
-            db.routineDao().observeDayWithContent(dayId).collect { day.value = it }
+            db.routineDao().observeDayWithContent(dayId).collect { d ->
+                day.value = d
+                if (baseline == null) baseline = d
+                recomputePending()
+            }
         }
         viewModelScope.launch {
             db.exerciseDao().observeAll().collect { allExercises.value = it }
+        }
+        viewModelScope.launch {
+            container.settings.settings.collect {
+                confirmEdits.value = it.confirmLibraryEdits
+                recomputePending()
+            }
+        }
+    }
+
+    /**
+     * Every mutation below writes straight to the database as before (add/move
+     * a block, edit a set, ...); this just tracks whether the live state has
+     * drifted from the last-confirmed [baseline] so the UI can show an
+     * Apply/Cancel bar. In auto-apply mode every change re-baselines
+     * immediately, so no bar ever appears.
+     */
+    private fun recomputePending() {
+        if (!confirmEdits.value) {
+            baseline = day.value
+            hasPendingChanges.value = false
+        } else {
+            hasPendingChanges.value = day.value != baseline
+        }
+    }
+
+    fun applyChanges() {
+        baseline = day.value
+        hasPendingChanges.value = false
+    }
+
+    /** Reverts day fields, blocks/exercises and their sets to the last Apply point. */
+    fun cancelChanges() {
+        viewModelScope.launch {
+            val snap = baseline ?: return@launch
+            val dao = db.routineDao()
+            val backupDao = db.backupDao()
+
+            dao.updateDay(snap.day)
+
+            val currentPeIds = day.value?.exercises?.map { it.planned.id }?.toSet() ?: emptySet()
+            val snapPeIds = snap.exercises.map { it.planned.id }.toSet()
+            for (peId in currentPeIds - snapPeIds) {
+                dao.plannedExerciseById(peId)?.let { dao.deletePlannedExercise(it) }
+            }
+            // REPLACE-insert restores field values on survivors (including
+            // blockPos/inBlockPos, so reordering/link/unlink undoes too) and
+            // recreates anything deleted during this editing session, under
+            // its original id.
+            backupDao.insertPlannedExercises(snap.exercises.map { it.planned })
+
+            for (pe in snap.exercises) {
+                val currentSets = dao.plannedSets(pe.planned.id)
+                val snapSetIds = pe.sets.map { it.id }.toSet()
+                for (s in currentSets) if (s.id !in snapSetIds) dao.deletePlannedSet(s)
+            }
+            backupDao.insertPlannedSets(snap.exercises.flatMap { it.sets })
         }
     }
 
@@ -86,6 +152,13 @@ class DayEditorViewModel(
                     description = description ?: current.description,
                 )
             )
+        }
+    }
+
+    fun updateIcon(icon: dev.hinny.skrot.data.model.ProgramIcon) {
+        viewModelScope.launch {
+            val current = day.value?.day ?: return@launch
+            db.routineDao().updateDay(current.copy(icon = icon))
         }
     }
 
@@ -236,15 +309,17 @@ fun DayEditorScreen(
     }
     val content by vm.day.collectAsState()
     val exercises by vm.allExercises.collectAsState()
+    val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     val d = content ?: return
     var pickerTarget by remember { mutableStateOf<Int?>(-1) } // -1 closed, null new block, else block
     var showIconPicker by remember { mutableStateOf(false) }
     var name by remember(d.day.id) { mutableStateOf(d.day.name) }
     var description by remember(d.day.id) { mutableStateOf(d.day.description) }
 
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -320,12 +395,15 @@ fun DayEditorScreen(
         }
     }
 
+    if (hasPendingChanges) {
+        PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
+    }
+    }
+
     if (showIconPicker) {
         IconPickerDialog(
             onPick = { icon ->
-                vm.viewModelScope.launch {
-                    container.db.routineDao().updateDay(d.day.copy(icon = icon))
-                }
+                vm.updateIcon(icon)
                 showIconPicker = false
             },
             onDismiss = { showIconPicker = false },

@@ -232,6 +232,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 gymId = pending.gymId,
                 lastActivityAt = now,
                 temporaryVisit = pending.temporaryVisit,
+                locked = settings.sessionsLockedByDefault,
             )
         )
 
@@ -311,8 +312,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     suspend fun startEmptySession(gymId: Long?): Long {
         val now = System.currentTimeMillis()
+        val locked = container.settings.settings.first().sessionsLockedByDefault
         return db.sessionDao().insertSession(
-            WorkoutSession(startedAt = now, gymId = gymId, lastActivityAt = now)
+            WorkoutSession(startedAt = now, gymId = gymId, lastActivityAt = now, locked = locked)
         )
     }
 }

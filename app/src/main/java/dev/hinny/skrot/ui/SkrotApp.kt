@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.body.BodyScreen
+import dev.hinny.skrot.ui.common.LocalExerciseNameLanguage
 import dev.hinny.skrot.ui.exercises.ExerciseDetailScreen
 import dev.hinny.skrot.ui.exercises.ExercisesScreen
 import dev.hinny.skrot.ui.gyms.GymsScreen
@@ -143,6 +145,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     val hideBars = currentRoute?.startsWith("workout/") == true ||
         currentRoute?.startsWith("summary/") == true
 
+    CompositionLocalProvider(LocalExerciseNameLanguage provides settings.exerciseNameLanguage) {
     Scaffold(
         bottomBar = {
             Column {
@@ -216,6 +219,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             composable(Routes.BACKUP) { BackupScreen(container) }
             composable(Routes.ABOUT) { AboutScreen() }
         }
+    }
     }
 }
 

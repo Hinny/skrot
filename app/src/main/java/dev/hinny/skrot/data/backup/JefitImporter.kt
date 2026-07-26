@@ -6,7 +6,6 @@ import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.data.model.PlannedExercise
 import dev.hinny.skrot.data.model.PlannedSet
 import dev.hinny.skrot.data.model.Routine
@@ -14,6 +13,7 @@ import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.SessionExercise
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.WorkoutSession
+import dev.hinny.skrot.domain.ExerciseGuesser
 import java.time.Instant
 import java.time.ZoneId
 
@@ -105,6 +105,10 @@ class JefitImporter(private val db: SkrotDatabase) {
         val zone = ZoneId.systemDefault()
 
         db.withTransaction {
+            // JEFIT's export carries no muscle group or equipment data, so exercises
+            // created here are classified from their name (best-effort) rather than
+            // left unspecified — otherwise every imported custom exercise would fall
+            // outside muscle/equipment filters and gym availability checks.
             suspend fun resolveExercise(name: String): Long =
                 match(name)?.id ?: createdByName.getOrPut(normalize(name)) {
                     created++
@@ -112,7 +116,8 @@ class JefitImporter(private val db: SkrotDatabase) {
                         Exercise(
                             nameEn = name,
                             nameSv = name,
-                            muscleGroup = MuscleGroup.FULL_BODY,
+                            muscleGroup = ExerciseGuesser.guessMuscleGroup(name),
+                            equipment = ExerciseGuesser.guessEquipment(name),
                             measurementType = MeasurementType.WEIGHT_KG,
                             isCustom = true,
                         )

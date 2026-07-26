@@ -43,11 +43,16 @@ object ExerciseSearch {
         return null
     }
 
+    /**
+     * @param customFilter null = both; true = custom exercises only; false =
+     *   built-in exercises only.
+     */
     fun search(
         exercises: List<Exercise>,
         query: String,
         muscleFilters: Set<MuscleGroup> = emptySet(),
         equipmentFilters: Set<Equipment> = emptySet(),
+        customFilter: Boolean? = null,
         muscleNames: Map<MuscleGroup, List<String>> = defaultMuscleNames,
         equipmentNames: Map<Equipment, List<String>> = defaultEquipmentNames,
     ): List<Exercise> =
@@ -58,6 +63,9 @@ object ExerciseSearch {
                     return@mapNotNull null
                 }
                 if (equipmentFilters.isNotEmpty() && e.equipment.none { it in equipmentFilters }) {
+                    return@mapNotNull null
+                }
+                if (customFilter != null && e.isCustom != customFilter) {
                     return@mapNotNull null
                 }
                 rank(e, query, muscleNames, equipmentNames)?.let { r -> e to r }
