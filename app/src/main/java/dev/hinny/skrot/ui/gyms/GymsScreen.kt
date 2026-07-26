@@ -16,7 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -70,10 +72,15 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     val editingAvailable = MutableStateFlow<Set<Long>>(emptySet())
     val confirmEdits = MutableStateFlow(true)
     val hasPendingChanges = MutableStateFlow(false)
+    val canUndo = MutableStateFlow(false)
+    val canRedo = MutableStateFlow(false)
 
     /** Last-confirmed state for the gym being edited; only meaningful while [confirmEdits] is on. */
     private var baselineGym: Gym? = null
     private var baselineAvailable: Set<Long> = emptySet()
+
+    private val undoStack = ArrayDeque<Pair<Gym, Set<Long>>>()
+    private val redoStack = ArrayDeque<Pair<Gym, Set<Long>>>()
 
     init {
         viewModelScope.launch { db.gymDao().observeAll().collect { gyms.value = it } }
@@ -98,6 +105,9 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
                 } else if (switchedGym) {
                     baselineGym = gym
                     baselineAvailable = available
+                    undoStack.clear()
+                    redoStack.clear()
+                    updateUndoRedoFlags()
                 }
                 recomputePending()
             }
@@ -140,14 +150,44 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 
     /** Reverts the edited gym's name and available-exercise list to the last Apply point. */
     fun cancelChanges() {
-        viewModelScope.launch {
-            val gym = baselineGym ?: return@launch
-            db.gymDao().update(gym)
-            val current = db.gymDao().exerciseIdsAt(gym.id).toSet()
-            for (id in current - baselineAvailable) db.gymDao().removeExercise(gym.id, id)
-            val toAdd = baselineAvailable - current
-            if (toAdd.isNotEmpty()) db.gymDao().addExercises(toAdd.map { GymExercise(gym.id, it) })
-        }
+        viewModelScope.launch { restoreSnapshot(baselineGym ?: return@launch, baselineAvailable) }
+    }
+
+    private suspend fun restoreSnapshot(gym: Gym, available: Set<Long>) {
+        db.gymDao().update(gym)
+        val current = db.gymDao().exerciseIdsAt(gym.id).toSet()
+        for (id in current - available) db.gymDao().removeExercise(gym.id, id)
+        val toAdd = available - current
+        if (toAdd.isNotEmpty()) db.gymDao().addExercises(toAdd.map { GymExercise(gym.id, it) })
+    }
+
+    /** Records the pre-change snapshot so [undo] can revert this step. */
+    private fun pushUndo() {
+        val gym = editingGym.value ?: return
+        undoStack.addLast(gym to editingAvailable.value)
+        redoStack.clear()
+        updateUndoRedoFlags()
+    }
+
+    private fun updateUndoRedoFlags() {
+        canUndo.value = undoStack.isNotEmpty()
+        canRedo.value = redoStack.isNotEmpty()
+    }
+
+    fun undo() {
+        val current = editingGym.value ?: return
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(current to editingAvailable.value)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(previous.first, previous.second) }
+    }
+
+    fun redo() {
+        val current = editingGym.value ?: return
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(current to editingAvailable.value)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(next.first, next.second) }
     }
 
     fun enterEditing(gymId: Long) {
@@ -167,6 +207,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun rename(gym: Gym, name: String) {
+        pushUndo()
         viewModelScope.launch { db.gymDao().update(gym.copy(name = name)) }
     }
 
@@ -182,6 +223,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun toggleExercise(gymId: Long, exerciseId: Long, available: Boolean) {
+        pushUndo()
         viewModelScope.launch {
             if (available) db.gymDao().addExercise(GymExercise(gymId, exerciseId))
             else db.gymDao().removeExercise(gymId, exerciseId)
@@ -190,6 +232,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 
     /** Bulk helper: mark every exercise with this equipment as available. */
     fun addAllWithEquipment(gymId: Long, equipment: Equipment) {
+        pushUndo()
         viewModelScope.launch {
             db.gymDao().addExercises(
                 exercises.value
@@ -200,6 +243,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun addAll(gymId: Long) {
+        pushUndo()
         viewModelScope.launch {
             db.gymDao().addExercises(exercises.value.map { GymExercise(gymId, it.id) })
         }
@@ -214,6 +258,8 @@ fun GymsScreen(container: AppContainer) {
     val editing by vm.editingGym.collectAsState()
     val available by vm.editingAvailable.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
@@ -285,6 +331,7 @@ fun GymsScreen(container: AppContainer) {
     } else {
         // Gym editor: which exercises are available here
         var name by remember(gym.id) { mutableStateOf(gym.name) }
+        val exerciseNames = exercises.associateWith { it.displayName() }
         Column(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -304,6 +351,12 @@ fun GymsScreen(container: AppContainer) {
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                        Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                    }
+                    IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                        Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                    }
                     TextButton(onClick = { vm.exitEditing() }) {
                         Text(stringResource(R.string.done))
                     }
@@ -340,7 +393,7 @@ fun GymsScreen(container: AppContainer) {
                 )
             }
             val filtered = exercises.filter {
-                query.isBlank() || it.displayName().contains(query, ignoreCase = true)
+                query.isBlank() || (exerciseNames[it] ?: "").contains(query, ignoreCase = true)
             }
             items(filtered.size) { i ->
                 val e = filtered[i]

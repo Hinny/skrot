@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -63,9 +65,14 @@ class ProgramEditorViewModel(
     val routine = MutableStateFlow<RoutineWithDays?>(null)
     val confirmEdits = MutableStateFlow(true)
     val hasPendingChanges = MutableStateFlow(false)
+    val canUndo = MutableStateFlow(false)
+    val canRedo = MutableStateFlow(false)
 
     /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
     private var baseline: RoutineWithDays? = null
+
+    private val undoStack = ArrayDeque<RoutineWithDays>()
+    private val redoStack = ArrayDeque<RoutineWithDays>()
 
     init {
         viewModelScope.launch {
@@ -106,26 +113,58 @@ class ProgramEditorViewModel(
     }
 
     fun cancelChanges() {
-        viewModelScope.launch {
-            val snap = baseline ?: return@launch
-            val dao = container.db.routineDao()
-            dao.update(snap.routine)
-            val currentDays = routine.value?.days ?: emptyList()
-            val snapDayIds = snap.days.map { it.id }.toSet()
-            for (d in currentDays) if (d.id !in snapDayIds) dao.deleteDay(d)
-            // REPLACE-insert restores field values on survivors and recreates
-            // any day deleted during this editing session, under its original id.
-            container.db.backupDao().insertDays(snap.days)
-        }
+        viewModelScope.launch { restoreSnapshot(baseline ?: return@launch) }
+    }
+
+    private suspend fun restoreSnapshot(snap: RoutineWithDays) {
+        val dao = container.db.routineDao()
+        dao.update(snap.routine)
+        val currentDays = routine.value?.days ?: emptyList()
+        val snapDayIds = snap.days.map { it.id }.toSet()
+        for (d in currentDays) if (d.id !in snapDayIds) dao.deleteDay(d)
+        // REPLACE-insert restores field values on survivors and recreates
+        // any day deleted during this editing session, under its original id.
+        container.db.backupDao().insertDays(snap.days)
+    }
+
+    /** Records the pre-change snapshot so [undo] can revert this step. */
+    private fun pushUndo() {
+        val r = routine.value ?: return
+        undoStack.addLast(r)
+        redoStack.clear()
+        updateUndoRedoFlags()
+    }
+
+    private fun updateUndoRedoFlags() {
+        canUndo.value = undoStack.isNotEmpty()
+        canRedo.value = redoStack.isNotEmpty()
+    }
+
+    fun undo() {
+        val current = routine.value ?: return
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(current)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(previous) }
+    }
+
+    fun redo() {
+        val current = routine.value ?: return
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(current)
+        updateUndoRedoFlags()
+        viewModelScope.launch { restoreSnapshot(next) }
     }
 
     fun update(transform: (Routine) -> Routine) {
+        pushUndo()
         viewModelScope.launch {
             routine.value?.let { container.db.routineDao().update(transform(it.routine)) }
         }
     }
 
     fun addDay(name: String) {
+        pushUndo()
         viewModelScope.launch {
             val position = (routine.value?.days?.maxOfOrNull { it.position } ?: -1) + 1
             container.db.routineDao().insertDay(
@@ -135,19 +174,22 @@ class ProgramEditorViewModel(
     }
 
     fun updateDay(day: RoutineDay) {
+        pushUndo()
         viewModelScope.launch { container.db.routineDao().updateDay(day) }
     }
 
     fun deleteDay(day: RoutineDay) {
+        pushUndo()
         viewModelScope.launch { container.db.routineDao().deleteDay(day) }
     }
 
     fun moveDay(day: RoutineDay, delta: Int) {
+        val days = routine.value?.sortedDays ?: return
+        val index = days.indexOfFirst { it.id == day.id }
+        val target = index + delta
+        if (index < 0 || target < 0 || target >= days.size) return
+        pushUndo()
         viewModelScope.launch {
-            val days = routine.value?.sortedDays ?: return@launch
-            val index = days.indexOfFirst { it.id == day.id }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= days.size) return@launch
             val reordered = days.toMutableList()
             val moved = reordered.removeAt(index)
             reordered.add(target, moved)
@@ -172,6 +214,8 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     }
     val state by vm.routine.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
     val r = state ?: return
     var showAddDay by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
@@ -202,6 +246,15 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                    Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                }
+                IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                    Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                }
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
+                }
                 IconButton(onClick = { showDelete = true }) {
                     Icon(Icons.Filled.Delete, stringResource(R.string.delete))
                 }

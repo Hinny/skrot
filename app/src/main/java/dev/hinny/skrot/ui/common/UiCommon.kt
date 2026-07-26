@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,13 +40,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.ProgramIcon
 import java.util.Locale
 
-/** Locale-aware display name: Swedish name when the UI language is Swedish. */
-fun Exercise.displayName(): String =
-    if (Locale.getDefault().language == "sv") nameSv else nameEn
+/**
+ * Which language exercise names are displayed in; set once at the app root from
+ * [dev.hinny.skrot.data.prefs.Settings.exerciseNameLanguage] so it can be chosen
+ * independently of the app's own UI language.
+ */
+val LocalExerciseNameLanguage = compositionLocalOf { AppLanguage.SYSTEM }
+
+/** Display name honoring [LocalExerciseNameLanguage], falling back to the UI locale on SYSTEM. */
+@Composable
+fun Exercise.displayName(): String = when (LocalExerciseNameLanguage.current) {
+    AppLanguage.ENGLISH -> nameEn
+    AppLanguage.SWEDISH -> nameSv
+    AppLanguage.SYSTEM -> if (Locale.getDefault().language == "sv") nameSv else nameEn
+}
 
 fun ProgramIcon.vector(): ImageVector = when (this) {
     ProgramIcon.BARBELL -> Icons.Filled.FitnessCenter

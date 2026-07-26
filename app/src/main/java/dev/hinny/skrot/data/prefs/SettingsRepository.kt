@@ -59,6 +59,8 @@ data class Settings(
     val confirmLibraryEdits: Boolean = true,
     /** Whether newly started sessions begin locked against structural edits. */
     val sessionsLockedByDefault: Boolean = false,
+    /** Which language exercise names are shown in, independent of the app's UI language. */
+    val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -90,6 +92,7 @@ class SettingsRepository(private val context: Context) {
         val profileSex = stringPreferencesKey("profile_sex")
         val confirmLibraryEdits = booleanPreferencesKey("confirm_library_edits")
         val sessionsLockedByDefault = booleanPreferencesKey("sessions_locked_by_default")
+        val exerciseNameLanguage = stringPreferencesKey("exercise_name_language")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -122,6 +125,7 @@ class SettingsRepository(private val context: Context) {
             profileSex = p[Keys.profileSex].toEnum(defaults.profileSex),
             confirmLibraryEdits = p[Keys.confirmLibraryEdits] ?: defaults.confirmLibraryEdits,
             sessionsLockedByDefault = p[Keys.sessionsLockedByDefault] ?: defaults.sessionsLockedByDefault,
+            exerciseNameLanguage = p[Keys.exerciseNameLanguage].toEnum(defaults.exerciseNameLanguage),
         )
     }
 
@@ -152,4 +156,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.confirmLibraryEdits] = v }
     suspend fun setSessionsLockedByDefault(v: Boolean) =
         context.dataStore.edit { it[Keys.sessionsLockedByDefault] = v }
+    suspend fun setExerciseNameLanguage(v: AppLanguage) =
+        context.dataStore.edit { it[Keys.exerciseNameLanguage] = v.name }
 }

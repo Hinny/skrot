@@ -316,6 +316,8 @@
     <string name="settings">Inställningar</string>
     <string name="language">Språk</string>
     <string name="follow_system">Följ systemet</string>
+    <string name="exercise_name_language">Övningsnamnens språk</string>
+    <string name="follow_app_language">Följ appens språk</string>
     <string name="display_unit">Visningsenhet</string>
     <string name="theme">Tema</string>
     <string name="theme_dark">Mörkt</string>

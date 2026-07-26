@@ -88,6 +88,18 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             }
         }
 
+        // Exercise name language (independent of the UI language above)
+        SettingSection(stringResource(R.string.exercise_name_language)) {
+            ChipRow(
+                options = listOf(
+                    AppLanguage.SYSTEM to stringResource(R.string.follow_app_language),
+                    AppLanguage.ENGLISH to "English",
+                    AppLanguage.SWEDISH to "Svenska",
+                ),
+                selected = settings.exerciseNameLanguage,
+            ) { language -> scope.launch { repo.setExerciseNameLanguage(language) } }
+        }
+
         // Display unit
         SettingSection(stringResource(R.string.display_unit)) {
             ChipRow(

@@ -241,11 +241,27 @@ fun ExerciseDetailScreen(
     ) {
         item {
             Row(modifier = Modifier.padding(top = 12.dp)) {
-                Text(
-                    e.displayName(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f),
-                )
+                if (e.isCustom) {
+                    val initialName = e.displayName()
+                    var name by remember(e.id) { mutableStateOf(initialName) }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = {
+                            name = it
+                            vm.update { ex -> ex.copy(nameEn = it, nameSv = it) }
+                        },
+                        label = { Text(stringResource(R.string.exercise_name)) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Text(
+                        e.displayName(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 if (e.isCustom) {
                     IconButton(onClick = { vm.undo() }, enabled = canUndo) {
                         Icon(Icons.Filled.Undo, stringResource(R.string.undo))
@@ -253,6 +269,9 @@ fun ExerciseDetailScreen(
                     IconButton(onClick = { vm.redo() }, enabled = canRedo) {
                         Icon(Icons.Filled.Redo, stringResource(R.string.redo))
                     }
+                }
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
                 }
                 val copySuffix = stringResource(R.string.clone_suffix)
                 IconButton(onClick = {
