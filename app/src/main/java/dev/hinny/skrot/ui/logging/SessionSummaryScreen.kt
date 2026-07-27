@@ -134,7 +134,10 @@ fun SessionSummaryScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.session_summary), style = MaterialTheme.typography.headlineSmall)
+        Text(
+            stringResource(R.string.session_summary),
+            style = MaterialTheme.typography.headlineMedium,
+        )
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

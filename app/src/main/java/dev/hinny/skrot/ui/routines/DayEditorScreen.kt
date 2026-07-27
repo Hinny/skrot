@@ -325,12 +325,21 @@ fun DayEditorScreen(
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
+                }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showIconPicker = true }) {
                     Icon(
                         (d.day.icon ?: dev.hinny.skrot.data.model.ProgramIcon.BARBELL).vector(),
                         stringResource(R.string.icon),
                     )
                 }
+                Spacer(Modifier.width(4.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it; vm.updateDayFields(name = it) },

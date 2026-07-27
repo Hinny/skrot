@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -239,29 +240,13 @@ fun ExerciseDetailScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Actions on their own row, name below at full width: the same shape
+        // the program, day and gym editors use.
         item {
-            Row(modifier = Modifier.padding(top = 12.dp)) {
-                if (e.isCustom) {
-                    val initialName = e.displayName()
-                    var name by remember(e.id) { mutableStateOf(initialName) }
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = {
-                            name = it
-                            vm.update { ex -> ex.copy(nameEn = it, nameSv = it) }
-                        },
-                        label = { Text(stringResource(R.string.exercise_name)) },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Text(
-                        e.displayName(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 12.dp),
+            ) {
                 if (e.isCustom) {
                     IconButton(onClick = { vm.undo() }, enabled = canUndo) {
                         Icon(Icons.Filled.Undo, stringResource(R.string.undo))
@@ -269,9 +254,6 @@ fun ExerciseDetailScreen(
                     IconButton(onClick = { vm.redo() }, enabled = canRedo) {
                         Icon(Icons.Filled.Redo, stringResource(R.string.redo))
                     }
-                }
-                TextButton(onClick = { nav.popBackStack() }) {
-                    Text(stringResource(R.string.done))
                 }
                 val copySuffix = stringResource(R.string.clone_suffix)
                 IconButton(onClick = {
@@ -284,7 +266,28 @@ fun ExerciseDetailScreen(
                         Icon(Icons.Filled.Delete, stringResource(R.string.delete))
                     }
                 }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
+                }
             }
+        }
+        item {
+            val initialName = e.displayName()
+            var name by remember(e.id) { mutableStateOf(initialName) }
+            OutlinedTextField(
+                value = if (e.isCustom) name else e.displayName(),
+                onValueChange = {
+                    name = it
+                    vm.update { ex -> ex.copy(nameEn = it, nameSv = it) }
+                },
+                // Built-ins are read-only, but keep the same field so a name
+                // reads identically wherever it appears.
+                readOnly = !e.isCustom,
+                label = { Text(stringResource(R.string.name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         // Built-in exercises are locked: clone one to get an editable copy.
