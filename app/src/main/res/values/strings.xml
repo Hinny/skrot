@@ -223,6 +223,7 @@
     <string name="exercise_name">Exercise name</string>
     <string name="search_exercises">Search exercises</string>
     <string name="clone_exercise">Clone exercise</string>
+    <string name="copy_program">Copy program</string>
     <string name="clone_suffix">(copy)</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>

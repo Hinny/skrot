@@ -127,6 +127,41 @@ interface RoutineDao {
     @Query("UPDATE routines SET nextDayIndex = :index WHERE id = :id")
     suspend fun setNextDayIndex(id: Long, index: Int)
 
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM routines")
+    suspend fun nextPosition(): Int
+
+    /**
+     * Deep-copies a program: days, their planned exercises and every planned set.
+     * The copy is never the active program and starts its rotation from the top.
+     * Gym overrides are not copied — they point at the original planned exercises.
+     * Returns the new program's id, or null if [id] no longer exists.
+     */
+    @Transaction
+    suspend fun copyRoutine(id: Long, newName: String): Long? {
+        val source = withDays(id) ?: return null
+        val position = nextPosition()
+        val copyId = insert(
+            source.routine.copy(
+                id = 0,
+                name = newName,
+                isActive = false,
+                nextDayIndex = 0,
+                position = position,
+            )
+        )
+        for (day in source.sortedDays) {
+            val content = dayWithContent(day.id) ?: continue
+            val newDayId = insertDay(day.copy(id = 0, routineId = copyId))
+            for (pe in content.exercises) {
+                val newPeId = insertPlannedExercise(pe.planned.copy(id = 0, dayId = newDayId))
+                for (set in pe.sortedSets) {
+                    insertPlannedSet(set.copy(id = 0, plannedExerciseId = newPeId))
+                }
+            }
+        }
+        return copyId
+    }
+
     @Query("SELECT * FROM routine_days WHERE id = :id")
     suspend fun dayById(id: Long): RoutineDay?
 
