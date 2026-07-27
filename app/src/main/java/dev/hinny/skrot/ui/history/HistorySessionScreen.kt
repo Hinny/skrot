@@ -231,6 +231,12 @@ class HistorySessionViewModel(
      */
     fun applyChanges() {
         val content = draft.value ?: return
+        // Only rows the draft invented need their real ids read back; a plain
+        // field edit must not re-read the session (auto-apply mode writes on
+        // every keystroke, and reloading under the cursor loses input).
+        val hasNewRows = content.exercises.any { se ->
+            se.sessionExercise.id <= 0 || se.sets.any { it.id <= 0 }
+        } || (baseline?.exercises?.size ?: 0) != content.exercises.size
         viewModelScope.launch {
             val dao = db.sessionDao()
             dao.updateSession(content.session)
@@ -260,7 +266,12 @@ class HistorySessionViewModel(
                     else dao.insertLoggedSet(setRow.copy(id = 0))
                 }
             }
-            reload()
+            if (hasNewRows) {
+                reload()
+            } else {
+                baseline = content
+                recomputePending()
+            }
         }
     }
 

@@ -73,7 +73,7 @@
     <string name="guide_library_t">Exercises, search and your own</string>
     <string name="guide_library_b">The Library tab gathers programs, exercises and gyms. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once — with name hits first. Create your own exercise, or clone an existing one and adjust it.</string>
     <string name="guide_stats_t">Statistics and history</string>
-    <string name="guide_stats_b">Statistics shows training frequency, how sets are spread over muscle groups, and per-exercise charts: heaviest set, estimated one-rep max and volume per session. In the history list you can open a logged session to fix mistakes, or delete it. Body weight and measurements can be logged here too.</string>
+    <string name="guide_stats_b">Statistics opens with a summary of the selected range — sessions, sets, volume, average length and your run of training weeks — then training frequency, muscle-group balance, volume per week, your most trained exercises and per-exercise charts with personal records. Body weight can be logged and followed here too. The list of logged workouts lives under Library → Workout history, where opening one lets you correct it with undo/redo, or delete it.</string>
     <string name="guide_backup_t">Backups</string>
     <string name="guide_backup_b">Everything is stored offline on your phone — no account, no cloud. Export a JSON backup from More → Backup and keep it somewhere safe; importing it restores everything, including on a new phone. Skrot reminds you when it is time; the interval is set in Settings.</string>
     <string name="guide_gyms_t">Gyms and equipment</string>
