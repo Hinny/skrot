@@ -54,9 +54,10 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.body.BodyMetricDialog
-import dev.hinny.skrot.ui.charts.CalendarHeatmap
 import dev.hinny.skrot.ui.charts.HorizontalBarChart
 import dev.hinny.skrot.ui.charts.LineChart
+import dev.hinny.skrot.ui.charts.MonthCalendarHeatmap
+import dev.hinny.skrot.ui.charts.WeekCalendarHeatmap
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
@@ -66,8 +67,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 enum class StatsRange(val labelRes: Int, val days: Long?) {
     M1(R.string.range_1m, 30),
@@ -212,13 +215,27 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             Column(Modifier.padding(12.dp)) {
                 Text(stringResource(R.string.training_frequency), style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
-                CalendarHeatmap(
-                    countsByDay = dates.groupingBy {
-                        Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-                    }.eachCount(),
-                    // The grid covers exactly the selected range ("all" shows a year).
-                    weeks = range.days?.let { ((it + 6) / 7).toInt() } ?: 52,
-                )
+                val countsByDay = dates
+                    .groupingBy { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+                    .eachCount()
+                // Short ranges get one row per week; a year or more would be an
+                // unreadably tall grid that way, so those get one row per month.
+                if (range == StatsRange.Y1 || range == StatsRange.ALL) {
+                    val today = LocalDate.now()
+                    val earliest = countsByDay.keys.minOrNull()
+                    val months = when {
+                        range == StatsRange.Y1 || earliest == null -> 12
+                        else -> ChronoUnit.MONTHS
+                            .between(YearMonth.from(earliest), YearMonth.from(today))
+                            .toInt() + 1
+                    }
+                    MonthCalendarHeatmap(countsByDay, months = months.coerceIn(1, 60))
+                } else {
+                    WeekCalendarHeatmap(
+                        countsByDay,
+                        weeks = ((range.days!! + 6) / 7).toInt(),
+                    )
+                }
             }
         }
 
