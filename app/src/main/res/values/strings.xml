@@ -43,6 +43,10 @@
     <string name="seconds">Seconds</string>
     <string name="notes">Notes</string>
     <string name="history">History</string>
+    <string name="session_history">Workout history</string>
+    <string name="search_history">Search workouts</string>
+    <string name="history_counts">%1$d exercises · %2$d sets</string>
+    <string name="library_history_hint">Look back at and edit logged workouts</string>
 
     <!-- Home -->
     <string name="workout_in_progress">Workout in progress</string>

@@ -1,5 +1,6 @@
 package dev.hinny.skrot.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,13 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -401,73 +403,34 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             }
         }
 
-        // Logged sessions: open to edit, or delete
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    stringResource(R.string.history),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
-                val inRange = finished.filter { it.startedAt >= fromMs }
-                if (inRange.isEmpty()) {
+        // The session list itself lives under Library -> Workout history.
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { nav.navigate(Routes.HISTORY) },
+        ) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.History, null)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.no_data_yet),
+                        stringResource(R.string.session_history),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        stringResource(R.string.library_history_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                inRange.forEach { session ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                session.routineDayId?.let { dayNames[it] }
-                                    ?: stringResource(R.string.freestyle_session),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                Instant.ofEpochMilli(session.startedAt).atZone(zone)
-                                    .toLocalDate().format(dateFormat) +
-                                    (session.gymId?.let { g ->
-                                        gyms[g]?.let { " · $it" }
-                                    } ?: ""),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        IconButton(onClick = { nav.navigate(Routes.workout(session.id)) }) {
-                            Icon(Icons.Filled.Edit, stringResource(R.string.edit_session))
-                        }
-                        IconButton(onClick = { sessionToDelete = session }) {
-                            Icon(Icons.Filled.Delete, stringResource(R.string.delete))
-                        }
-                    }
-                }
             }
         }
         Spacer(Modifier.height(40.dp))
-    }
-
-    sessionToDelete?.let { session ->
-        AlertDialog(
-            onDismissRequest = { sessionToDelete = null },
-            title = { Text(stringResource(R.string.delete_session)) },
-            text = { Text(stringResource(R.string.delete_session_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.deleteSession(session.id)
-                    sessionToDelete = null
-                }) { Text(stringResource(R.string.delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { sessionToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
     }
 
     if (showBodyDialog) {

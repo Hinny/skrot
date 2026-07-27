@@ -41,6 +41,10 @@
     <string name="seconds">Sekunder</string>
     <string name="notes">Anteckningar</string>
     <string name="history">Historik</string>
+    <string name="session_history">Passhistorik</string>
+    <string name="search_history">Sök pass</string>
+    <string name="history_counts">%1$d övningar · %2$d set</string>
+    <string name="library_history_hint">Bläddra i och redigera loggade pass</string>
 
     <!-- Home -->
     <string name="workout_in_progress">Pågående pass</string>

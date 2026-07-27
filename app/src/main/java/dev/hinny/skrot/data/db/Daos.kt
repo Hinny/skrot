@@ -234,6 +234,7 @@ interface RoutineDao {
 data class RoutineLastPerformed(val routineId: Long, val last: Long)
 data class DayLastPerformed(val dayId: Long, val last: Long)
 data class MuscleGroupSets(val muscleGroup: MuscleGroup, val setCount: Int)
+data class SessionCounts(val sessionId: Long, val exerciseCount: Int, val setCount: Int)
 
 @Dao
 interface SessionDao {
@@ -277,6 +278,16 @@ interface SessionDao {
 
     @Query("SELECT MAX(startedAt) FROM sessions WHERE endedAt IS NOT NULL")
     suspend fun lastFinishedSessionDate(): Long?
+
+    /** Exercise and completed-set counts per session, for the history list. */
+    @Query(
+        "SELECT se.sessionId AS sessionId, COUNT(DISTINCT se.id) AS exerciseCount, " +
+            "COALESCE(SUM(CASE WHEN ls.completed = 1 THEN 1 ELSE 0 END), 0) AS setCount " +
+            "FROM session_exercises se " +
+            "LEFT JOIN logged_sets ls ON ls.sessionExerciseId = se.id " +
+            "GROUP BY se.sessionId"
+    )
+    fun observeSessionCounts(): Flow<List<SessionCounts>>
 
     @Insert
     suspend fun insertSessionExercise(se: SessionExercise): Long

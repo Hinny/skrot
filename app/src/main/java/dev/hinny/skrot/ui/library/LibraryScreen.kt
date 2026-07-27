@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Card
@@ -57,6 +58,11 @@ fun LibraryScreen(nav: NavHostController) {
             label = stringResource(R.string.gyms),
             hint = stringResource(R.string.library_gyms_hint),
         ) { nav.navigate(Routes.GYMS) }
+        LibraryItem(
+            icon = Icons.Filled.History,
+            label = stringResource(R.string.session_history),
+            hint = stringResource(R.string.library_history_hint),
+        ) { nav.navigate(Routes.HISTORY) }
     }
 }
 

@@ -62,6 +62,8 @@ import dev.hinny.skrot.ui.common.LocalMuscleDisplay
 import dev.hinny.skrot.ui.exercises.ExerciseDetailScreen
 import dev.hinny.skrot.ui.exercises.ExercisesScreen
 import dev.hinny.skrot.ui.gyms.GymsScreen
+import dev.hinny.skrot.ui.history.HistorySessionScreen
+import dev.hinny.skrot.ui.history.SessionHistoryScreen
 import dev.hinny.skrot.ui.home.HomeScreen
 import dev.hinny.skrot.ui.importexport.BackupScreen
 import dev.hinny.skrot.ui.library.LibraryScreen
@@ -106,11 +108,13 @@ object Routes {
     const val ABOUT = "about"
     const val PROFILE = "profile"
     const val GUIDE = "guide"
+    const val HISTORY = "history"
     fun program(id: Long) = "program/$id"
     fun day(id: Long) = "day/$id"
     fun workout(id: Long) = "workout/$id"
     fun summary(id: Long) = "summary/$id"
     fun exercise(id: Long) = "exercise/$id"
+    fun historySession(id: Long) = "history/$id"
 
     /** Maps any route to the bottom-bar tab it belongs under (for highlighting). */
     fun tabFor(route: String?): String? = when {
@@ -118,8 +122,8 @@ object Routes {
         route == HOME -> HOME
         route == SESSION || route.startsWith("workout/") || route.startsWith("summary/") -> SESSION
         route == LIBRARY || route == PROGRAMS || route == EXERCISES || route == GYMS ||
-            route.startsWith("program/") || route.startsWith("day/") ||
-            route.startsWith("exercise/") -> LIBRARY
+            route == HISTORY || route.startsWith("program/") || route.startsWith("day/") ||
+            route.startsWith("exercise/") || route.startsWith("history/") -> LIBRARY
 
         route == STATS -> STATS
         else -> MORE
@@ -211,6 +215,11 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { SessionSummaryScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(Routes.EXERCISES) { ExercisesScreen(container, navController) }
+            composable(Routes.HISTORY) { SessionHistoryScreen(container, navController) }
+            composable(
+                "history/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { HistorySessionScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(
                 "exercise/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
