@@ -49,13 +49,14 @@ data class NewExercise(
 fun ExercisePickerDialog(
     exercises: List<Exercise>,
     onPick: (Exercise) -> Unit,
-    onCreate: (NewExercise) -> Unit,
     onDismiss: () -> Unit,
+    onCreate: ((NewExercise) -> Unit)? = null,
+    title: String = stringResource(R.string.pick_exercise),
 ) {
     var query by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
 
-    if (creating) {
+    if (creating && onCreate != null) {
         CreateExerciseDialog(
             onSave = { onCreate(it) },
             onDismiss = { creating = false },
@@ -65,7 +66,7 @@ fun ExercisePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.pick_exercise)) },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(
@@ -98,8 +99,10 @@ fun ExercisePickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { creating = true }) {
-                Text(stringResource(R.string.new_exercise))
+            if (onCreate != null) {
+                TextButton(onClick = { creating = true }) {
+                    Text(stringResource(R.string.new_exercise))
+                }
             }
         },
         dismissButton = {

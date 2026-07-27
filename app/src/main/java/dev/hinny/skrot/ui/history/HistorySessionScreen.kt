@@ -394,7 +394,6 @@ fun HistorySessionScreen(
         ExercisePickerDialog(
             exercises = allExercises,
             onPick = { vm.addExercise(it); showAddExercise = false },
-            onCreate = { showAddExercise = false },
             onDismiss = { showAddExercise = false },
         )
     }

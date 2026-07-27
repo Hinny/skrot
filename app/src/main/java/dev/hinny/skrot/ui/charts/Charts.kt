@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -158,6 +159,60 @@ fun HorizontalBarChart(
                 Spacer(Modifier.width(8.dp))
                 Text(value.toString(), style = MaterialTheme.typography.labelMedium)
             }
+        }
+    }
+}
+
+/** Columns over time — weekly totals and similar; same single-hue system. */
+@Composable
+fun VerticalBarChart(
+    items: List<Pair<String, Double>>,
+    modifier: Modifier = Modifier,
+    valueFormatter: (Double) -> String = { Units.formatValue(it) },
+) {
+    if (items.isEmpty() || items.all { it.second <= 0.0 }) {
+        EmptyChartHint(modifier)
+        return
+    }
+    val barColor = MaterialTheme.colorScheme.primary
+    val max = items.maxOf { it.second }.coerceAtLeast(0.001)
+    Column(modifier.fillMaxWidth()) {
+        Text(
+            valueFormatter(max),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            items.forEach { (_, value) ->
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(((value / max).toFloat()).coerceIn(0.02f, 1f))
+                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        .background(barColor),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                items.first().first,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                items.last().first,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

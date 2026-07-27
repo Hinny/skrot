@@ -279,6 +279,25 @@ interface SessionDao {
     @Query("SELECT MAX(startedAt) FROM sessions WHERE endedAt IS NOT NULL")
     suspend fun lastFinishedSessionDate(): Long?
 
+    /** Ids of exercises that have at least one completed set, for stats pickers. */
+    @Query(
+        "SELECT DISTINCT se.exerciseId FROM session_exercises se " +
+            "JOIN logged_sets ls ON ls.sessionExerciseId = se.id WHERE ls.completed = 1"
+    )
+    fun observeExerciseIdsWithData(): Flow<List<Long>>
+
+    /** Every completed set of every finished session in a range, for range-wide stats. */
+    @Query(
+        "SELECT ls.*, s.id AS sessionId, s.startedAt AS sessionDate, s.gymId AS sessionGymId, " +
+            "se.exerciseId AS exerciseId " +
+            "FROM logged_sets ls " +
+            "JOIN session_exercises se ON ls.sessionExerciseId = se.id " +
+            "JOIN sessions s ON se.sessionId = s.id " +
+            "WHERE ls.completed = 1 AND s.endedAt IS NOT NULL AND s.startedAt >= :from " +
+            "ORDER BY s.startedAt"
+    )
+    fun observeCompletedSetsFrom(from: Long): Flow<List<SetWithContext>>
+
     /** Exercise and completed-set counts per session, for the history list. */
     @Query(
         "SELECT se.sessionId AS sessionId, COUNT(DISTINCT se.id) AS exerciseCount, " +
