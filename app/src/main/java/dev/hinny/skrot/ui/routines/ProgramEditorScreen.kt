@@ -467,7 +467,9 @@ fun IconPickerDialog(onPick: (ProgramIcon) -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.icon)) },
         text = {
-            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(200.dp)) {
+            // The set now includes every equipment and muscle-group drawing,
+            // so the grid needs room and has to scroll.
+            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(320.dp)) {
                 items(ProgramIcon.entries.size) { i ->
                     val icon = ProgramIcon.entries[i]
                     IconButton(onClick = { onPick(icon) }) {

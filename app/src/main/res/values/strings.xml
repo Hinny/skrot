@@ -322,6 +322,12 @@
     <string name="exercise_name_language">Exercise name language</string>
     <string name="follow_app_language">Follow app language</string>
     <string name="display_unit">Display unit</string>
+    <string name="muscle_display">Show muscle groups as</string>
+    <string name="equipment_display">Show equipment as</string>
+    <string name="meta_display_icon">Icon only</string>
+    <string name="meta_display_text">Text only</string>
+    <string name="meta_display_icon_and_text">Icon + text</string>
+    <string name="meta_display_hidden">Hidden</string>
     <string name="theme">Theme</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>

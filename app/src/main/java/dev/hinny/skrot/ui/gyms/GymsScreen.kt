@@ -52,6 +52,7 @@ import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -410,10 +411,7 @@ fun GymsScreen(container: AppContainer) {
                     Spacer(Modifier.width(4.dp))
                     Column {
                         Text(e.displayName())
-                        Text(
-                            e.equipment.map { equipmentLabel(it) }.joinToString(" + "),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        ExerciseMeta(e)
                     }
                 }
             }

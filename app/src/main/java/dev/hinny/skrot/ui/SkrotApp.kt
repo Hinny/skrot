@@ -56,7 +56,9 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.body.BodyScreen
+import dev.hinny.skrot.ui.common.LocalEquipmentDisplay
 import dev.hinny.skrot.ui.common.LocalExerciseNameLanguage
+import dev.hinny.skrot.ui.common.LocalMuscleDisplay
 import dev.hinny.skrot.ui.exercises.ExerciseDetailScreen
 import dev.hinny.skrot.ui.exercises.ExercisesScreen
 import dev.hinny.skrot.ui.gyms.GymsScreen
@@ -145,7 +147,11 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     val hideBars = currentRoute?.startsWith("workout/") == true ||
         currentRoute?.startsWith("summary/") == true
 
-    CompositionLocalProvider(LocalExerciseNameLanguage provides settings.exerciseNameLanguage) {
+    CompositionLocalProvider(
+        LocalExerciseNameLanguage provides settings.exerciseNameLanguage,
+        LocalMuscleDisplay provides settings.muscleDisplay,
+        LocalEquipmentDisplay provides settings.equipmentDisplay,
+    ) {
     Scaffold(
         bottomBar = {
             Column {

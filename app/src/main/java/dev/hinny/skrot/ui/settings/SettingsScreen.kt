@@ -41,6 +41,7 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
 import dev.hinny.skrot.data.model.WeightUnit
@@ -98,6 +99,20 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 ),
                 selected = settings.exerciseNameLanguage,
             ) { language -> scope.launch { repo.setExerciseNameLanguage(language) } }
+        }
+
+        // How muscle groups and equipment are shown throughout the app
+        SettingSection(stringResource(R.string.muscle_display)) {
+            ChipRow(
+                options = metaDisplayOptions(),
+                selected = settings.muscleDisplay,
+            ) { scope.launch { repo.setMuscleDisplay(it) } }
+        }
+        SettingSection(stringResource(R.string.equipment_display)) {
+            ChipRow(
+                options = metaDisplayOptions(),
+                selected = settings.equipmentDisplay,
+            ) { scope.launch { repo.setEquipmentDisplay(it) } }
         }
 
         // Display unit
@@ -337,6 +352,14 @@ private fun DeleteDataDialog(
         },
     )
 }
+
+@Composable
+private fun metaDisplayOptions(): List<Pair<MetaDisplay, String>> = listOf(
+    MetaDisplay.ICON to stringResource(R.string.meta_display_icon),
+    MetaDisplay.TEXT to stringResource(R.string.meta_display_text),
+    MetaDisplay.ICON_AND_TEXT to stringResource(R.string.meta_display_icon_and_text),
+    MetaDisplay.HIDDEN to stringResource(R.string.meta_display_hidden),
+)
 
 @Composable
 private fun SettingSection(title: String, content: @Composable () -> Unit) {

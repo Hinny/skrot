@@ -91,7 +91,11 @@ enum class Equipment {
     OTHER,
 }
 
-/** Curated icon set for programs and workout days (mapped to Material Symbols in the UI). */
+/**
+ * Curated icon set for programs and workout days. Most entries are the app's own
+ * equipment and muscle-group drawings; the rest map to Material Symbols. Entries
+ * are stored by name, so new ones may only be appended.
+ */
 enum class ProgramIcon {
     BARBELL,
     DUMBBELL,
@@ -105,6 +109,45 @@ enum class ProgramIcon {
     FIRE,
     MOUNTAIN,
     YOGA,
+    EZ_BAR,
+    KETTLEBELL,
+    WEIGHT_PLATE,
+    MACHINE,
+    SMITH_MACHINE,
+    CABLE,
+    BENCH,
+    PULLUP_BAR,
+    DIP_STATION,
+    RACK,
+    BAND,
+    MUSCLE_CHEST,
+    MUSCLE_BACK,
+    MUSCLE_SHOULDERS,
+    MUSCLE_BICEPS,
+    MUSCLE_TRICEPS,
+    MUSCLE_FOREARMS,
+    MUSCLE_ABS,
+    MUSCLE_QUADS,
+    MUSCLE_HAMSTRINGS,
+    MUSCLE_GLUTES,
+    MUSCLE_CALVES,
+    MUSCLE_FULL_BODY,
+    TRENDING_UP,
+    CALENDAR,
+    SCALE,
+    REPEAT,
+    SPEED,
+}
+
+/**
+ * How an exercise's muscle groups and equipment are rendered in lists and
+ * detail views. Chosen separately for the two, in Settings.
+ */
+enum class MetaDisplay {
+    ICON,
+    TEXT,
+    ICON_AND_TEXT,
+    HIDDEN,
 }
 
 enum class CoachPersonality {

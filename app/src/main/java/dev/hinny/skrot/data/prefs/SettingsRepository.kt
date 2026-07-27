@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.Sex
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
@@ -61,6 +62,10 @@ data class Settings(
     val sessionsLockedByDefault: Boolean = false,
     /** Which language exercise names are shown in, independent of the app's UI language. */
     val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
+    /** How an exercise's muscle groups are rendered in lists and detail views. */
+    val muscleDisplay: MetaDisplay = MetaDisplay.ICON,
+    /** How an exercise's equipment is rendered in lists and detail views. */
+    val equipmentDisplay: MetaDisplay = MetaDisplay.ICON,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -93,6 +98,8 @@ class SettingsRepository(private val context: Context) {
         val confirmLibraryEdits = booleanPreferencesKey("confirm_library_edits")
         val sessionsLockedByDefault = booleanPreferencesKey("sessions_locked_by_default")
         val exerciseNameLanguage = stringPreferencesKey("exercise_name_language")
+        val muscleDisplay = stringPreferencesKey("muscle_display")
+        val equipmentDisplay = stringPreferencesKey("equipment_display")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -126,6 +133,8 @@ class SettingsRepository(private val context: Context) {
             confirmLibraryEdits = p[Keys.confirmLibraryEdits] ?: defaults.confirmLibraryEdits,
             sessionsLockedByDefault = p[Keys.sessionsLockedByDefault] ?: defaults.sessionsLockedByDefault,
             exerciseNameLanguage = p[Keys.exerciseNameLanguage].toEnum(defaults.exerciseNameLanguage),
+            muscleDisplay = p[Keys.muscleDisplay].toEnum(defaults.muscleDisplay),
+            equipmentDisplay = p[Keys.equipmentDisplay].toEnum(defaults.equipmentDisplay),
         )
     }
 
@@ -158,4 +167,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.sessionsLockedByDefault] = v }
     suspend fun setExerciseNameLanguage(v: AppLanguage) =
         context.dataStore.edit { it[Keys.exerciseNameLanguage] = v.name }
+    suspend fun setMuscleDisplay(v: MetaDisplay) =
+        context.dataStore.edit { it[Keys.muscleDisplay] = v.name }
+    suspend fun setEquipmentDisplay(v: MetaDisplay) =
+        context.dataStore.edit { it[Keys.equipmentDisplay] = v.name }
 }

@@ -91,10 +91,7 @@ fun ExercisePickerDialog(
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                         ) {
                             Text(e.displayName(), style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                exerciseSubtitle(e),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            ExerciseMeta(e)
                         }
                     }
                 }
@@ -160,7 +157,7 @@ fun CreateExerciseDialog(
                         FilterChip(
                             selected = muscle == m,
                             onClick = { muscle = m },
-                            label = { Text(muscleLabel(m)) },
+                            label = { MuscleChipLabel(m) },
                         )
                     }
                 }
@@ -177,7 +174,7 @@ fun CreateExerciseDialog(
                                 equipment =
                                     if (eq in equipment) equipment - eq else equipment + eq
                             },
-                            label = { Text(equipmentLabel(eq)) },
+                            label = { EquipmentChipLabel(eq) },
                         )
                     }
                 }
@@ -241,16 +238,6 @@ fun equipmentLabel(e: Equipment): String = stringResource(
         Equipment.OTHER -> R.string.equip_other
     }
 )
-
-/** "muscle · equipment1 + equipment2" subtitle used in exercise lists. */
-@Composable
-fun exerciseSubtitle(e: Exercise): String {
-    val muscles = (listOf(e.muscleGroup) + e.secondaryMuscles)
-        .map { muscleLabel(it) }
-        .joinToString(", ")
-    val equipment = e.equipment.map { equipmentLabel(it) }.joinToString(" + ")
-    return if (equipment.isBlank()) muscles else "$muscles · $equipment"
-}
 
 @Composable
 fun muscleLabel(m: MuscleGroup): String = stringResource(

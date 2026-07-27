@@ -61,8 +61,8 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
-import dev.hinny.skrot.ui.common.equipmentLabel
-import dev.hinny.skrot.ui.common.muscleLabel
+import dev.hinny.skrot.ui.common.EquipmentChipLabel
+import dev.hinny.skrot.ui.common.MuscleChipLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -348,7 +348,7 @@ fun ExerciseDetailScreen(
                                 ex.copy(muscleGroup = m, secondaryMuscles = ex.secondaryMuscles - m)
                             }
                         },
-                        label = { Text(muscleLabel(m)) },
+                        label = { MuscleChipLabel(m) },
                     )
                 }
             }
@@ -372,7 +372,7 @@ fun ExerciseDetailScreen(
                                 )
                             }
                         },
-                        label = { Text(muscleLabel(m)) },
+                        label = { MuscleChipLabel(m) },
                     )
                 }
             }
@@ -398,7 +398,7 @@ fun ExerciseDetailScreen(
                                 )
                             }
                         },
-                        label = { Text(equipmentLabel(eq)) },
+                        label = { EquipmentChipLabel(eq) },
                     )
                 }
             }
