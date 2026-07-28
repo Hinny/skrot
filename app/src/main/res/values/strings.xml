@@ -43,6 +43,11 @@
     <string name="seconds">Seconds</string>
     <string name="notes">Notes</string>
     <string name="history">History</string>
+    <string name="session_history">Workout history</string>
+    <string name="search_history">Search workouts</string>
+    <string name="history_counts">%1$d exercises · %2$d sets</string>
+    <string name="library_history_hint">Look back at and edit logged workouts</string>
+    <string name="library_body_hint">Body weight and measurements over time</string>
 
     <!-- Home -->
     <string name="workout_in_progress">Workout in progress</string>
@@ -69,7 +74,7 @@
     <string name="guide_library_t">Exercises, search and your own</string>
     <string name="guide_library_b">The Library tab gathers programs, exercises and gyms. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once — with name hits first. Create your own exercise, or clone an existing one and adjust it.</string>
     <string name="guide_stats_t">Statistics and history</string>
-    <string name="guide_stats_b">Statistics shows training frequency, how sets are spread over muscle groups, and per-exercise charts: heaviest set, estimated one-rep max and volume per session. In the history list you can open a logged session to fix mistakes, or delete it. Body weight and measurements can be logged here too.</string>
+    <string name="guide_stats_b">Statistics opens with a summary of the selected range — sessions, sets, volume, average length and your run of training weeks — then training frequency, muscle-group balance, volume per week, your most trained exercises and per-exercise charts with personal records. Body weight can be logged and followed here too. The list of logged workouts lives under Library → Workout history, where opening one lets you correct it with undo/redo, or delete it.</string>
     <string name="guide_backup_t">Backups</string>
     <string name="guide_backup_b">Everything is stored offline on your phone — no account, no cloud. Export a JSON backup from More → Backup and keep it somewhere safe; importing it restores everything, including on a new phone. Skrot reminds you when it is time; the interval is set in Settings.</string>
     <string name="guide_gyms_t">Gyms and equipment</string>
@@ -223,6 +228,7 @@
     <string name="exercise_name">Exercise name</string>
     <string name="search_exercises">Search exercises</string>
     <string name="clone_exercise">Clone exercise</string>
+    <string name="copy_program">Copy program</string>
     <string name="clone_suffix">(copy)</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>
@@ -289,6 +295,20 @@
     <string name="range_6m">6 m</string>
     <string name="range_1y">1 y</string>
     <string name="range_all">All</string>
+    <string name="stats_overview">Overview</string>
+    <string name="stat_sessions">Sessions</string>
+    <string name="stat_sets">Sets</string>
+    <string name="stat_volume">Volume</string>
+    <string name="stat_avg_duration">Avg. length</string>
+    <string name="stat_per_week">Per week</string>
+    <string name="stat_streak">Week streak</string>
+    <string name="weekly_volume">Volume per week</string>
+    <string name="top_exercises">Most trained exercises</string>
+    <string name="personal_records">Personal records</string>
+    <string name="record_heaviest">Heaviest set</string>
+    <string name="record_best_e1rm">Best estimated 1RM</string>
+    <string name="record_most_reps">Most reps in a set</string>
+    <string name="record_best_session_volume">Best session volume</string>
     <string name="training_frequency">Training frequency</string>
     <string name="muscle_distribution">Sets per muscle group</string>
     <string name="all_gyms">All gyms</string>
@@ -321,6 +341,10 @@
     <string name="exercise_name_language">Exercise name language</string>
     <string name="follow_app_language">Follow app language</string>
     <string name="display_unit">Display unit</string>
+    <string name="muscle_display">Muscle groups in lists</string>
+    <string name="equipment_display">Equipment in lists</string>
+    <string name="meta_display_text">Shown</string>
+    <string name="meta_display_hidden">Hidden</string>
     <string name="theme">Theme</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
@@ -392,6 +416,7 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">Skrot is a free, open-source strength training log. No ads, no accounts, no cloud — your data stays on your device.</string>
     <string name="about_license">Licensed under the MIT license.</string>
+    <string name="about_icons">Gym icons from Tabler Icons (MIT), body icons from OpenMoji (CC BY-SA 4.0), the rest from Material Symbols (Apache 2.0).</string>
     <string name="about_offline">Skrot has no network permission — it is provably offline.</string>
 
     <!-- Coach: Cheerleader -->

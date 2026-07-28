@@ -53,7 +53,9 @@ import dev.hinny.skrot.ui.common.CreateExerciseDialog
 import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
-import dev.hinny.skrot.ui.common.exerciseSubtitle
+import dev.hinny.skrot.ui.common.ExerciseMeta
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.common.searchEquipmentNames
 import dev.hinny.skrot.ui.common.searchMuscleNames
@@ -310,10 +312,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                                         )
                                     }
                                 }
-                                Text(
-                                    exerciseSubtitle(e),
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                ExerciseMeta(e, Modifier.padding(top = 2.dp))
                             }
                         }
                     }

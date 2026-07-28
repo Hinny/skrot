@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Undo
@@ -199,6 +200,16 @@ class ProgramEditorViewModel(
         }
     }
 
+    /** Deep-copies this program (days, exercises, sets) into a new one. */
+    fun copy(nameSuffix: String, onDone: (Long) -> Unit) {
+        viewModelScope.launch {
+            val current = routine.value ?: return@launch
+            val copyId = container.db.routineDao()
+                .copyRoutine(current.routine.id, "${current.routine.name} $nameSuffix")
+            if (copyId != null) onDone(copyId)
+        }
+    }
+
     fun delete(onDone: () -> Unit) {
         viewModelScope.launch {
             routine.value?.let { container.db.routineDao().delete(it.routine) }
@@ -231,11 +242,36 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Actions sit on their own row so the name field gets the full width.
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                    Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                }
+                IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                    Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                }
+                val copySuffix = stringResource(R.string.clone_suffix)
+                IconButton(onClick = {
+                    vm.copy(copySuffix) { id -> nav.navigate(Routes.program(id)) }
+                }) {
+                    Icon(Icons.Filled.ContentCopy, stringResource(R.string.copy_program))
+                }
+                IconButton(onClick = { showDelete = true }) {
+                    Icon(Icons.Filled.Delete, stringResource(R.string.delete))
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { nav.popBackStack() }) {
+                    Text(stringResource(R.string.done))
+                }
+            }
+        }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showIconPicker = true }) {
                     Icon(r.routine.icon.vector(), stringResource(R.string.icon))
                 }
+                Spacer(Modifier.width(4.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
@@ -246,18 +282,6 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { vm.undo() }, enabled = canUndo) {
-                    Icon(Icons.Filled.Undo, stringResource(R.string.undo))
-                }
-                IconButton(onClick = { vm.redo() }, enabled = canRedo) {
-                    Icon(Icons.Filled.Redo, stringResource(R.string.redo))
-                }
-                TextButton(onClick = { nav.popBackStack() }) {
-                    Text(stringResource(R.string.done))
-                }
-                IconButton(onClick = { showDelete = true }) {
-                    Icon(Icons.Filled.Delete, stringResource(R.string.delete))
-                }
             }
         }
         item {
@@ -443,9 +467,10 @@ fun IconPickerDialog(onPick: (ProgramIcon) -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.icon)) },
         text = {
-            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(200.dp)) {
-                items(ProgramIcon.entries.size) { i ->
-                    val icon = ProgramIcon.entries[i]
+            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(360.dp)) {
+                val icons = ProgramIcon.pickable
+                items(icons.size) { i ->
+                    val icon = icons[i]
                     IconButton(onClick = { onPick(icon) }) {
                         Icon(icon.vector(), icon.name)
                     }

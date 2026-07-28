@@ -1,5 +1,6 @@
 package dev.hinny.skrot.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,24 +9,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,9 +52,12 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.body.BodyMetricDialog
-import dev.hinny.skrot.ui.charts.CalendarHeatmap
 import dev.hinny.skrot.ui.charts.HorizontalBarChart
 import dev.hinny.skrot.ui.charts.LineChart
+import dev.hinny.skrot.ui.charts.MonthCalendarHeatmap
+import dev.hinny.skrot.ui.charts.VerticalBarChart
+import dev.hinny.skrot.ui.charts.WeekCalendarHeatmap
+import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
@@ -64,10 +65,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 enum class StatsRange(val labelRes: Int, val days: Long?) {
     M1(R.string.range_1m, 30),
@@ -87,9 +91,12 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
     val exerciseSets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val sessionDates = MutableStateFlow<List<Long>>(emptyList())
     val muscleSets = MutableStateFlow<List<MuscleGroupSets>>(emptyList())
+    /** Every completed set in the selected range, for the range-wide summaries. */
+    val rangeSets = MutableStateFlow<List<SetWithContext>>(emptyList())
+    /** Only exercises that have actually been logged are worth charting. */
+    val exerciseIdsWithData = MutableStateFlow<Set<Long>>(emptySet())
+    val bodyMetrics = MutableStateFlow<List<BodyMetric>>(emptyList())
     val finishedSessions = MutableStateFlow<List<WorkoutSession>>(emptyList())
-    /** Routine-day id -> day name, for labeling sessions in the history list. */
-    val dayNames = MutableStateFlow<Map<Long, String>>(emptyMap())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
     /** Gym filter for machine-level charts; null = all gyms. */
     val gymFilter = MutableStateFlow<Long?>(null)
@@ -121,6 +128,17 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
                 .collect { muscleSets.value = it }
         }
         viewModelScope.launch {
+            range.flatMapLatest { db.sessionDao().observeCompletedSetsFrom(fromMs(it)) }
+                .collect { rangeSets.value = it }
+        }
+        viewModelScope.launch {
+            db.sessionDao().observeExerciseIdsWithData()
+                .collect { exerciseIdsWithData.value = it.toSet() }
+        }
+        viewModelScope.launch {
+            db.bodyMetricDao().observeAll().collect { bodyMetrics.value = it }
+        }
+        viewModelScope.launch {
             selectedExercise.flatMapLatest { e ->
                 if (e == null) MutableStateFlow(emptyList())
                 else db.sessionDao().observeSetsForExercise(e.id)
@@ -138,21 +156,10 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
             db.sessionDao().observeFinishedSessions()
                 .collect { finishedSessions.value = it.sortedByDescending { s -> s.startedAt } }
         }
-        viewModelScope.launch {
-            db.routineDao().observeAllWithDays().collect { routines ->
-                dayNames.value = routines
-                    .flatMap { r -> r.days.map { it.id to it.name } }
-                    .toMap()
-            }
-        }
     }
 
     fun selectExercise(e: Exercise) {
         selectedExercise.value = e
-    }
-
-    fun deleteSession(id: Long) {
-        viewModelScope.launch { db.sessionDao().deleteSession(id) }
     }
 
     fun addBodyMetric(metric: BodyMetric) {
@@ -172,9 +179,10 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
     val gyms by vm.gyms.collectAsState()
     val gymFilter by vm.gymFilter.collectAsState()
     val finished by vm.finishedSessions.collectAsState()
-    val dayNames by vm.dayNames.collectAsState()
-    var exerciseMenu by remember { mutableStateOf(false) }
-    var sessionToDelete by remember { mutableStateOf<WorkoutSession?>(null) }
+    val rangeSets by vm.rangeSets.collectAsState()
+    val idsWithData by vm.exerciseIdsWithData.collectAsState()
+    val bodyMetrics by vm.bodyMetrics.collectAsState()
+    var showExercisePicker by remember { mutableStateOf(false) }
     var showBodyDialog by remember { mutableStateOf(false) }
 
     val zone = ZoneId.systemDefault()
@@ -207,18 +215,92 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             }
         }
 
+        // Range summary: the numbers you want before any chart
+        val exercisesById = exercises.associateBy { it.id }
+        val rangeSessions = finished.filter { it.startedAt >= fromMs }
+        val workingSets = rangeSets.filter { it.set.setType != SetType.WARMUP }
+        val rangeVolumeKg = workingSets.sumOf { setVolumeKg(it, exercisesById) }
+        val avgDurationMs = rangeSessions
+            .mapNotNull { s -> s.endedAt?.let { it - s.startedAt } }
+            .takeIf { it.isNotEmpty() }
+            ?.average()
+        val rangeWeeks = (range.days ?: run {
+            val first = finished.minOfOrNull { it.startedAt } ?: System.currentTimeMillis()
+            ((System.currentTimeMillis() - first) / 86_400_000L).coerceAtLeast(1)
+        }) / 7.0
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    stringResource(R.string.stats_overview),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    StatTile(
+                        stringResource(R.string.stat_sessions),
+                        rangeSessions.size.toString(),
+                        Modifier.weight(1f),
+                    )
+                    StatTile(
+                        stringResource(R.string.stat_sets),
+                        workingSets.size.toString(),
+                        Modifier.weight(1f),
+                    )
+                    StatTile(
+                        stringResource(R.string.stat_volume),
+                        Units.formatValue(
+                            Units.toDisplay(rangeVolumeKg, settings.unit, MeasurementType.WEIGHT_KG)
+                        ),
+                        Modifier.weight(1f),
+                    )
+                }
+                Row(Modifier.fillMaxWidth()) {
+                    StatTile(
+                        stringResource(R.string.stat_avg_duration),
+                        avgDurationMs?.let { formatDuration(it.toLong()) } ?: "-",
+                        Modifier.weight(1f),
+                    )
+                    StatTile(
+                        stringResource(R.string.stat_per_week),
+                        Units.formatValue(
+                            if (rangeWeeks > 0) rangeSessions.size / rangeWeeks else 0.0
+                        ),
+                        Modifier.weight(1f),
+                    )
+                    StatTile(
+                        stringResource(R.string.stat_streak),
+                        weekStreak(finished.map { it.startedAt }, zone).toString(),
+                        Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
         // Training frequency heatmap
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Text(stringResource(R.string.training_frequency), style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
-                CalendarHeatmap(
-                    countsByDay = dates.groupingBy {
-                        Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-                    }.eachCount(),
-                    // The grid covers exactly the selected range ("all" shows a year).
-                    weeks = range.days?.let { ((it + 6) / 7).toInt() } ?: 52,
-                )
+                val countsByDay = dates
+                    .groupingBy { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+                    .eachCount()
+                // Short ranges get one row per week; a year or more would be an
+                // unreadably tall grid that way, so those get one row per month.
+                if (range == StatsRange.Y1 || range == StatsRange.ALL) {
+                    val today = LocalDate.now()
+                    val earliest = countsByDay.keys.minOrNull()
+                    val months = when {
+                        range == StatsRange.Y1 || earliest == null -> 12
+                        else -> ChronoUnit.MONTHS
+                            .between(YearMonth.from(earliest), YearMonth.from(today))
+                            .toInt() + 1
+                    }
+                    MonthCalendarHeatmap(countsByDay, months = months.coerceIn(1, 60))
+                } else {
+                    WeekCalendarHeatmap(
+                        countsByDay,
+                        weeks = ((range.days!! + 6) / 7).toInt(),
+                    )
+                }
             }
         }
 
@@ -236,19 +318,64 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             }
         }
 
+        // Volume per week
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    stringResource(R.string.weekly_volume),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                val weekFormat = remember { DateTimeFormatter.ofPattern("d MMM") }
+                val byWeek = workingSets
+                    .groupBy {
+                        Instant.ofEpochMilli(it.sessionDate).atZone(zone).toLocalDate()
+                            .with(DayOfWeek.MONDAY)
+                    }
+                    .toSortedMap()
+                    .map { (monday, sets) ->
+                        monday.format(weekFormat) to sets.sumOf { setVolumeKg(it, exercisesById) }
+                    }
+                VerticalBarChart(
+                    items = byWeek,
+                    valueFormatter = {
+                        Units.formatValue(
+                            Units.toDisplay(it, settings.unit, MeasurementType.WEIGHT_KG)
+                        )
+                    },
+                )
+            }
+        }
+
+        // Most trained exercises in the range
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    stringResource(R.string.top_exercises),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                val top = workingSets
+                    .groupingBy { it.exerciseId }
+                    .eachCount()
+                    .entries
+                    .sortedByDescending { it.value }
+                    .take(8)
+                    .mapNotNull { (id, count) ->
+                        exercisesById[id]?.let { it.displayName() to count }
+                    }
+                HorizontalBarChart(items = top)
+            }
+        }
+
         // Per-exercise charts
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { exerciseMenu = true }) {
+                // Same search as everywhere else, rather than a long flat menu.
+                OutlinedButton(onClick = { showExercisePicker = true }) {
+                    Icon(Icons.Filled.Search, null)
+                    Spacer(Modifier.width(8.dp))
                     Text(selected?.displayName() ?: stringResource(R.string.pick_exercise))
-                }
-                DropdownMenu(expanded = exerciseMenu, onDismissRequest = { exerciseMenu = false }) {
-                    exercises.forEach { e ->
-                        DropdownMenuItem(
-                            text = { Text(e.displayName()) },
-                            onClick = { vm.selectExercise(e); exerciseMenu = false },
-                        )
-                    }
                 }
 
                 if (isMachine && gyms.isNotEmpty()) {
@@ -349,6 +476,58 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
                         )
                     }
 
+                    HorizontalDivider()
+                    Text(
+                        stringResource(R.string.personal_records),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    val prSets = sets.filter { it.set.setType != SetType.WARMUP }
+                    if (prSets.isEmpty()) {
+                        Text(
+                            stringResource(R.string.no_data_yet),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        val loadLabel: (Double) -> String = { value ->
+                            when (exercise.measurementType) {
+                                MeasurementType.MACHINE_LEVEL -> value.toInt().toString()
+                                else -> Units.formatValue(
+                                    Units.toDisplay(
+                                        value,
+                                        settings.unit,
+                                        exercise.measurementType,
+                                    )
+                                )
+                            }
+                        }
+                        RecordRow(
+                            stringResource(R.string.record_heaviest),
+                            loadLabel(prSets.maxOf { it.set.load }),
+                        )
+                        RecordRow(
+                            stringResource(R.string.record_most_reps),
+                            prSets.maxOf { it.set.reps }.toString(),
+                        )
+                        prSets.mapNotNull { OneRepMax.epley(it.set.load, it.set.reps) }
+                            .maxOrNull()
+                            ?.let { RecordRow(stringResource(R.string.record_best_e1rm), loadLabel(it)) }
+                        if (exercise.measurementType != MeasurementType.MACHINE_LEVEL) {
+                            val bestSession = prSets
+                                .groupBy { it.sessionId }
+                                .values
+                                .maxOfOrNull { session ->
+                                    session.sumOf { it.set.load * it.set.reps }
+                                }
+                            bestSession?.let {
+                                RecordRow(
+                                    stringResource(R.string.record_best_session_volume),
+                                    loadLabel(it),
+                                )
+                            }
+                        }
+                    }
+
                     if (exercise.measurementType == MeasurementType.BODYWEIGHT) {
                         Text(
                             stringResource(R.string.reps_per_session),
@@ -377,79 +556,60 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
                     stringResource(R.string.body_metrics),
                     style = MaterialTheme.typography.titleSmall,
                 )
+                val weights = bodyMetrics
+                    .filter { it.weightKg != null && it.date >= fromMs }
+                    .map { it.date to it.weightKg!! }
+                LineChart(
+                    points = weights,
+                    valueFormatter = {
+                        Units.formatValue(
+                            Units.toDisplay(it, settings.unit, MeasurementType.WEIGHT_KG)
+                        )
+                    },
+                )
                 OutlinedButton(onClick = { showBodyDialog = true }) {
                     Icon(Icons.Filled.Add, null)
+                    Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.log_body_weight))
                 }
             }
         }
 
-        // Logged sessions: open to edit, or delete
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    stringResource(R.string.history),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
-                val inRange = finished.filter { it.startedAt >= fromMs }
-                if (inRange.isEmpty()) {
+        // The session list itself lives under Library -> Workout history.
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { nav.navigate(Routes.HISTORY) },
+        ) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.History, null)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.no_data_yet),
+                        stringResource(R.string.session_history),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        stringResource(R.string.library_history_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-                inRange.forEach { session ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                session.routineDayId?.let { dayNames[it] }
-                                    ?: stringResource(R.string.freestyle_session),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                Instant.ofEpochMilli(session.startedAt).atZone(zone)
-                                    .toLocalDate().format(dateFormat) +
-                                    (session.gymId?.let { g ->
-                                        gyms[g]?.let { " · $it" }
-                                    } ?: ""),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        IconButton(onClick = { nav.navigate(Routes.workout(session.id)) }) {
-                            Icon(Icons.Filled.Edit, stringResource(R.string.edit_session))
-                        }
-                        IconButton(onClick = { sessionToDelete = session }) {
-                            Icon(Icons.Filled.Delete, stringResource(R.string.delete))
-                        }
-                    }
                 }
             }
         }
         Spacer(Modifier.height(40.dp))
     }
 
-    sessionToDelete?.let { session ->
-        AlertDialog(
-            onDismissRequest = { sessionToDelete = null },
-            title = { Text(stringResource(R.string.delete_session)) },
-            text = { Text(stringResource(R.string.delete_session_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.deleteSession(session.id)
-                    sessionToDelete = null
-                }) { Text(stringResource(R.string.delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { sessionToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+    if (showExercisePicker) {
+        ExercisePickerDialog(
+            exercises = exercises.filter { it.id in idsWithData },
+            onPick = { vm.selectExercise(it); showExercisePicker = false },
+            onDismiss = { showExercisePicker = false },
         )
     }
 
@@ -460,4 +620,64 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             onDismiss = { showBodyDialog = false },
         )
     }
+}
+
+/** One number with its caption, as used by the overview grid. */
+@Composable
+private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier.padding(end = 8.dp)) {
+        Text(value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RecordRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/**
+ * Kilogram volume of one logged set. Machine levels aren't kilograms and
+ * bodyweight needs a body weight to be meaningful, so only weight exercises
+ * contribute — the same rule the per-exercise volume chart already follows.
+ */
+private fun setVolumeKg(set: SetWithContext, exercises: Map<Long, Exercise>): Double =
+    if (exercises[set.exerciseId]?.measurementType == MeasurementType.WEIGHT_KG) {
+        set.set.load * set.set.reps
+    } else {
+        0.0
+    }
+
+/** Consecutive weeks up to and including this one that contain a session. */
+private fun weekStreak(sessionDates: List<Long>, zone: ZoneId): Int {
+    if (sessionDates.isEmpty()) return 0
+    val weeks = sessionDates
+        .map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().with(DayOfWeek.MONDAY) }
+        .toSet()
+    var monday = LocalDate.now(zone).with(DayOfWeek.MONDAY)
+    // A week that isn't over yet shouldn't break the streak.
+    if (monday !in weeks) monday = monday.minusWeeks(1)
+    var streak = 0
+    while (monday in weeks) {
+        streak++
+        monday = monday.minusWeeks(1)
+    }
+    return streak
+}
+
+private fun formatDuration(ms: Long): String {
+    val minutes = ms / 60_000
+    return if (minutes >= 60) "%dh %02dm".format(minutes / 60, minutes % 60) else "%dm".format(minutes)
 }

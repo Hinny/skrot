@@ -192,11 +192,11 @@ fun WorkoutScreen(
                             )
                         }
                     }
-                    TextButton(onClick = { showDiscard = true }) {
-                        Text(stringResource(R.string.discard))
+                    IconButton(onClick = { showDiscard = true }) {
+                        Icon(Icons.Filled.Delete, stringResource(R.string.discard))
                     }
                     Button(onClick = { showFinish = true }) {
-                        Text(stringResource(R.string.finish))
+                        Text(stringResource(R.string.done))
                     }
                 },
             )
@@ -369,7 +369,7 @@ fun WorkoutScreen(
             title = { Text(stringResource(R.string.finish_workout)) },
             confirmButton = {
                 TextButton(onClick = { showFinish = false; vm.finish() }) {
-                    Text(stringResource(R.string.finish))
+                    Text(stringResource(R.string.done))
                 }
             },
             dismissButton = {

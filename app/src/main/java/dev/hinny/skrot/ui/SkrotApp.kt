@@ -56,10 +56,14 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.body.BodyScreen
+import dev.hinny.skrot.ui.common.LocalEquipmentDisplay
 import dev.hinny.skrot.ui.common.LocalExerciseNameLanguage
+import dev.hinny.skrot.ui.common.LocalMuscleDisplay
 import dev.hinny.skrot.ui.exercises.ExerciseDetailScreen
 import dev.hinny.skrot.ui.exercises.ExercisesScreen
 import dev.hinny.skrot.ui.gyms.GymsScreen
+import dev.hinny.skrot.ui.history.HistorySessionScreen
+import dev.hinny.skrot.ui.history.SessionHistoryScreen
 import dev.hinny.skrot.ui.home.HomeScreen
 import dev.hinny.skrot.ui.importexport.BackupScreen
 import dev.hinny.skrot.ui.library.LibraryScreen
@@ -104,11 +108,13 @@ object Routes {
     const val ABOUT = "about"
     const val PROFILE = "profile"
     const val GUIDE = "guide"
+    const val HISTORY = "history"
     fun program(id: Long) = "program/$id"
     fun day(id: Long) = "day/$id"
     fun workout(id: Long) = "workout/$id"
     fun summary(id: Long) = "summary/$id"
     fun exercise(id: Long) = "exercise/$id"
+    fun historySession(id: Long) = "history/$id"
 
     /** Maps any route to the bottom-bar tab it belongs under (for highlighting). */
     fun tabFor(route: String?): String? = when {
@@ -116,8 +122,9 @@ object Routes {
         route == HOME -> HOME
         route == SESSION || route.startsWith("workout/") || route.startsWith("summary/") -> SESSION
         route == LIBRARY || route == PROGRAMS || route == EXERCISES || route == GYMS ||
+            route == HISTORY || route == BODY ||
             route.startsWith("program/") || route.startsWith("day/") ||
-            route.startsWith("exercise/") -> LIBRARY
+            route.startsWith("exercise/") || route.startsWith("history/") -> LIBRARY
 
         route == STATS -> STATS
         else -> MORE
@@ -145,7 +152,11 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     val hideBars = currentRoute?.startsWith("workout/") == true ||
         currentRoute?.startsWith("summary/") == true
 
-    CompositionLocalProvider(LocalExerciseNameLanguage provides settings.exerciseNameLanguage) {
+    CompositionLocalProvider(
+        LocalExerciseNameLanguage provides settings.exerciseNameLanguage,
+        LocalMuscleDisplay provides settings.muscleDisplay,
+        LocalEquipmentDisplay provides settings.equipmentDisplay,
+    ) {
     Scaffold(
         bottomBar = {
             Column {
@@ -205,6 +216,11 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { SessionSummaryScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(Routes.EXERCISES) { ExercisesScreen(container, navController) }
+            composable(Routes.HISTORY) { SessionHistoryScreen(container, navController) }
+            composable(
+                "history/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { HistorySessionScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(
                 "exercise/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),

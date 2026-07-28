@@ -41,6 +41,11 @@
     <string name="seconds">Sekunder</string>
     <string name="notes">Anteckningar</string>
     <string name="history">Historik</string>
+    <string name="session_history">Passhistorik</string>
+    <string name="search_history">Sök pass</string>
+    <string name="history_counts">%1$d övningar · %2$d set</string>
+    <string name="library_history_hint">Bläddra i och redigera loggade pass</string>
+    <string name="library_body_hint">Kroppsvikt och mått över tid</string>
 
     <!-- Home -->
     <string name="workout_in_progress">Pågående pass</string>
@@ -67,7 +72,7 @@
     <string name="guide_library_t">Övningar, sök och egna övningar</string>
     <string name="guide_library_b">Fliken Bibliotek samlar program, övningar och gym. Skrot levereras med en stor övningskatalog, och sökningen matchar engelska namn, svenska namn, muskelgrupper och utrustning samtidigt — med namnträffar först. Skapa en egen övning, eller klona en befintlig och justera den.</string>
     <string name="guide_stats_t">Statistik och historik</string>
-    <string name="guide_stats_b">Statistiken visar träningsfrekvens, hur seten fördelas över muskelgrupper och grafer per övning: tyngsta set, uppskattat enrepsmax och volym per pass. I historiklistan kan du öppna ett loggat pass för att rätta misstag, eller ta bort det. Kroppsvikt och mått kan också loggas här.</string>
+    <string name="guide_stats_b">Statistiken inleds med en översikt för vald period — pass, set, volym, snittlängd och antal veckor i rad — och fortsätter med träningsfrekvens, muskelgruppsbalans, volym per vecka, dina mest tränade övningar och grafer per övning med personliga rekord. Kroppsvikt kan loggas och följas här också. Listan över loggade pass finns under Bibliotek → Passhistorik, där du kan öppna ett pass och rätta det med ångra/gör om, eller ta bort det.</string>
     <string name="guide_backup_t">Säkerhetskopior</string>
     <string name="guide_backup_b">Allt lagras offline på din telefon — inget konto, inget moln. Exportera en JSON-säkerhetskopia från Mer → Säkerhetskopiering och förvara den säkert; importerar du den återställs allt, även på en ny telefon. Skrot påminner dig när det är dags; intervallet ställs in i Inställningar.</string>
     <string name="guide_gyms_t">Gym och utrustning</string>
@@ -221,6 +226,7 @@
     <string name="exercise_name">Övningsnamn</string>
     <string name="search_exercises">Sök övningar</string>
     <string name="clone_exercise">Klona övning</string>
+    <string name="copy_program">Kopiera program</string>
     <string name="clone_suffix">(kopia)</string>
     <string name="custom_badge">Egen</string>
     <string name="measurement_type">Mätningstyp</string>
@@ -287,6 +293,20 @@
     <string name="range_6m">6 mån</string>
     <string name="range_1y">1 år</string>
     <string name="range_all">Allt</string>
+    <string name="stats_overview">Översikt</string>
+    <string name="stat_sessions">Pass</string>
+    <string name="stat_sets">Set</string>
+    <string name="stat_volume">Volym</string>
+    <string name="stat_avg_duration">Snittlängd</string>
+    <string name="stat_per_week">Per vecka</string>
+    <string name="stat_streak">Veckor i rad</string>
+    <string name="weekly_volume">Volym per vecka</string>
+    <string name="top_exercises">Mest tränade övningar</string>
+    <string name="personal_records">Personliga rekord</string>
+    <string name="record_heaviest">Tyngsta set</string>
+    <string name="record_best_e1rm">Bästa uppskattade 1RM</string>
+    <string name="record_most_reps">Flest reps i ett set</string>
+    <string name="record_best_session_volume">Bästa passvolym</string>
     <string name="training_frequency">Träningsfrekvens</string>
     <string name="muscle_distribution">Set per muskelgrupp</string>
     <string name="all_gyms">Alla gym</string>
@@ -319,6 +339,10 @@
     <string name="exercise_name_language">Övningsnamnens språk</string>
     <string name="follow_app_language">Följ appens språk</string>
     <string name="display_unit">Visningsenhet</string>
+    <string name="muscle_display">Muskelgrupper i listor</string>
+    <string name="equipment_display">Träningsredskap i listor</string>
+    <string name="meta_display_text">Visas</string>
+    <string name="meta_display_hidden">Dolt</string>
     <string name="theme">Tema</string>
     <string name="theme_dark">Mörkt</string>
     <string name="theme_light">Ljust</string>
@@ -390,6 +414,7 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">Skrot är en gratis träningslogg med öppen källkod. Inga annonser, inga konton, inget moln — din data stannar på din enhet.</string>
     <string name="about_license">Licensierad under MIT-licensen.</string>
+    <string name="about_icons">Gymikoner från Tabler Icons (MIT), kroppsikoner från OpenMoji (CC BY-SA 4.0), övriga från Material Symbols (Apache 2.0).</string>
     <string name="about_offline">Skrot har ingen nätverksbehörighet — appen är bevisligen offline.</string>
 
     <!-- Coach: Hejaklack -->

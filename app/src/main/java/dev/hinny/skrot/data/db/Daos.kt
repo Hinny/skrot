@@ -127,6 +127,41 @@ interface RoutineDao {
     @Query("UPDATE routines SET nextDayIndex = :index WHERE id = :id")
     suspend fun setNextDayIndex(id: Long, index: Int)
 
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM routines")
+    suspend fun nextPosition(): Int
+
+    /**
+     * Deep-copies a program: days, their planned exercises and every planned set.
+     * The copy is never the active program and starts its rotation from the top.
+     * Gym overrides are not copied — they point at the original planned exercises.
+     * Returns the new program's id, or null if [id] no longer exists.
+     */
+    @Transaction
+    suspend fun copyRoutine(id: Long, newName: String): Long? {
+        val source = withDays(id) ?: return null
+        val position = nextPosition()
+        val copyId = insert(
+            source.routine.copy(
+                id = 0,
+                name = newName,
+                isActive = false,
+                nextDayIndex = 0,
+                position = position,
+            )
+        )
+        for (day in source.sortedDays) {
+            val content = dayWithContent(day.id) ?: continue
+            val newDayId = insertDay(day.copy(id = 0, routineId = copyId))
+            for (pe in content.exercises) {
+                val newPeId = insertPlannedExercise(pe.planned.copy(id = 0, dayId = newDayId))
+                for (set in pe.sortedSets) {
+                    insertPlannedSet(set.copy(id = 0, plannedExerciseId = newPeId))
+                }
+            }
+        }
+        return copyId
+    }
+
     @Query("SELECT * FROM routine_days WHERE id = :id")
     suspend fun dayById(id: Long): RoutineDay?
 
@@ -199,6 +234,7 @@ interface RoutineDao {
 data class RoutineLastPerformed(val routineId: Long, val last: Long)
 data class DayLastPerformed(val dayId: Long, val last: Long)
 data class MuscleGroupSets(val muscleGroup: MuscleGroup, val setCount: Int)
+data class SessionCounts(val sessionId: Long, val exerciseCount: Int, val setCount: Int)
 
 @Dao
 interface SessionDao {
@@ -242,6 +278,35 @@ interface SessionDao {
 
     @Query("SELECT MAX(startedAt) FROM sessions WHERE endedAt IS NOT NULL")
     suspend fun lastFinishedSessionDate(): Long?
+
+    /** Ids of exercises that have at least one completed set, for stats pickers. */
+    @Query(
+        "SELECT DISTINCT se.exerciseId FROM session_exercises se " +
+            "JOIN logged_sets ls ON ls.sessionExerciseId = se.id WHERE ls.completed = 1"
+    )
+    fun observeExerciseIdsWithData(): Flow<List<Long>>
+
+    /** Every completed set of every finished session in a range, for range-wide stats. */
+    @Query(
+        "SELECT ls.*, s.id AS sessionId, s.startedAt AS sessionDate, s.gymId AS sessionGymId, " +
+            "se.exerciseId AS exerciseId " +
+            "FROM logged_sets ls " +
+            "JOIN session_exercises se ON ls.sessionExerciseId = se.id " +
+            "JOIN sessions s ON se.sessionId = s.id " +
+            "WHERE ls.completed = 1 AND s.endedAt IS NOT NULL AND s.startedAt >= :from " +
+            "ORDER BY s.startedAt"
+    )
+    fun observeCompletedSetsFrom(from: Long): Flow<List<SetWithContext>>
+
+    /** Exercise and completed-set counts per session, for the history list. */
+    @Query(
+        "SELECT se.sessionId AS sessionId, COUNT(DISTINCT se.id) AS exerciseCount, " +
+            "COALESCE(SUM(CASE WHEN ls.completed = 1 THEN 1 ELSE 0 END), 0) AS setCount " +
+            "FROM session_exercises se " +
+            "LEFT JOIN logged_sets ls ON ls.sessionExerciseId = se.id " +
+            "GROUP BY se.sessionId"
+    )
+    fun observeSessionCounts(): Flow<List<SessionCounts>>
 
     @Insert
     suspend fun insertSessionExercise(se: SessionExercise): Long

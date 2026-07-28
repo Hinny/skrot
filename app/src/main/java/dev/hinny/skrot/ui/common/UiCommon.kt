@@ -8,19 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.SportsGymnastics
-import androidx.compose.material.icons.filled.SportsMartialArts
-import androidx.compose.material.icons.filled.Terrain
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -34,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.Exercise
-import dev.hinny.skrot.data.model.ProgramIcon
 import java.util.Locale
 
 /**
@@ -58,21 +44,6 @@ fun Exercise.displayName(): String = when (LocalExerciseNameLanguage.current) {
     AppLanguage.ENGLISH -> nameEn
     AppLanguage.SWEDISH -> nameSv
     AppLanguage.SYSTEM -> if (Locale.getDefault().language == "sv") nameSv else nameEn
-}
-
-fun ProgramIcon.vector(): ImageVector = when (this) {
-    ProgramIcon.BARBELL -> Icons.Filled.FitnessCenter
-    ProgramIcon.DUMBBELL -> Icons.Filled.SportsGymnastics
-    ProgramIcon.RUN -> Icons.Filled.DirectionsRun
-    ProgramIcon.HEART -> Icons.Filled.Favorite
-    ProgramIcon.FLEX -> Icons.Filled.SportsMartialArts
-    ProgramIcon.BOLT -> Icons.Filled.Bolt
-    ProgramIcon.TIMER -> Icons.Filled.Timer
-    ProgramIcon.TROPHY -> Icons.Filled.EmojiEvents
-    ProgramIcon.SHIELD -> Icons.Filled.Shield
-    ProgramIcon.FIRE -> Icons.Filled.LocalFireDepartment
-    ProgramIcon.MOUNTAIN -> Icons.Filled.Terrain
-    ProgramIcon.YOGA -> Icons.Filled.SelfImprovement
 }
 
 /** "Today" / "yesterday" / "N days ago" / "never". */

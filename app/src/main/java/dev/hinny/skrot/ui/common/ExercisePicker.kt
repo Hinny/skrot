@@ -49,13 +49,14 @@ data class NewExercise(
 fun ExercisePickerDialog(
     exercises: List<Exercise>,
     onPick: (Exercise) -> Unit,
-    onCreate: (NewExercise) -> Unit,
     onDismiss: () -> Unit,
+    onCreate: ((NewExercise) -> Unit)? = null,
+    title: String = stringResource(R.string.pick_exercise),
 ) {
     var query by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
 
-    if (creating) {
+    if (creating && onCreate != null) {
         CreateExerciseDialog(
             onSave = { onCreate(it) },
             onDismiss = { creating = false },
@@ -65,7 +66,7 @@ fun ExercisePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.pick_exercise)) },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(
@@ -91,18 +92,17 @@ fun ExercisePickerDialog(
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                         ) {
                             Text(e.displayName(), style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                exerciseSubtitle(e),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            ExerciseMeta(e)
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { creating = true }) {
-                Text(stringResource(R.string.new_exercise))
+            if (onCreate != null) {
+                TextButton(onClick = { creating = true }) {
+                    Text(stringResource(R.string.new_exercise))
+                }
             }
         },
         dismissButton = {
@@ -146,7 +146,7 @@ fun CreateExerciseDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.exercise_name)) },
+                    label = { Text(stringResource(R.string.name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -241,16 +241,6 @@ fun equipmentLabel(e: Equipment): String = stringResource(
         Equipment.OTHER -> R.string.equip_other
     }
 )
-
-/** "muscle · equipment1 + equipment2" subtitle used in exercise lists. */
-@Composable
-fun exerciseSubtitle(e: Exercise): String {
-    val muscles = (listOf(e.muscleGroup) + e.secondaryMuscles)
-        .map { muscleLabel(it) }
-        .joinToString(", ")
-    val equipment = e.equipment.map { equipmentLabel(it) }.joinToString(" + ")
-    return if (equipment.isBlank()) muscles else "$muscles · $equipment"
-}
 
 @Composable
 fun muscleLabel(m: MuscleGroup): String = stringResource(

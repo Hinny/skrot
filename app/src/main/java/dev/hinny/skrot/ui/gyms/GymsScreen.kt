@@ -52,6 +52,7 @@ import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -344,23 +345,26 @@ fun GymsScreen(container: AppContainer) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 12.dp),
                 ) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it; vm.rename(gym, it) },
-                        label = { Text(stringResource(R.string.name)) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                    )
                     IconButton(onClick = { vm.undo() }, enabled = canUndo) {
                         Icon(Icons.Filled.Undo, stringResource(R.string.undo))
                     }
                     IconButton(onClick = { vm.redo() }, enabled = canRedo) {
                         Icon(Icons.Filled.Redo, stringResource(R.string.redo))
                     }
+                    Spacer(Modifier.weight(1f))
                     TextButton(onClick = { vm.exitEditing() }) {
                         Text(stringResource(R.string.done))
                     }
                 }
+            }
+            item {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it; vm.rename(gym, it) },
+                    label = { Text(stringResource(R.string.name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             item {
                 Text(
@@ -410,10 +414,7 @@ fun GymsScreen(container: AppContainer) {
                     Spacer(Modifier.width(4.dp))
                     Column {
                         Text(e.displayName())
-                        Text(
-                            e.equipment.map { equipmentLabel(it) }.joinToString(" + "),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        ExerciseMeta(e)
                     }
                 }
             }
