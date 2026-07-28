@@ -163,20 +163,41 @@ enum class ProgramIcon {
     NIGHT,
     FROST,
     ANCHOR,
+    BODY_ACTIVE,
+    BAR_CHART,
+    INSIGHTS,
+    LEADERBOARD,
+    HOURGLASS,
+    SCHEDULE,
+    EVENT_REPEAT,
+    LOOP,
+    VERIFIED,
     ;
 
     companion object {
-        /** Retired entries, kept only so already-stored values still resolve. */
-        private val retired = setOf(
-            EZ_BAR, KETTLEBELL, WEIGHT_PLATE, MACHINE, SMITH_MACHINE, CABLE, BENCH,
-            PULLUP_BAR, DIP_STATION, RACK, BAND,
-            MUSCLE_CHEST, MUSCLE_BACK, MUSCLE_SHOULDERS, MUSCLE_BICEPS, MUSCLE_TRICEPS,
-            MUSCLE_FOREARMS, MUSCLE_ABS, MUSCLE_QUADS, MUSCLE_HAMSTRINGS, MUSCLE_GLUTES,
-            MUSCLE_CALVES, MUSCLE_FULL_BODY,
+        /**
+         * The icons offered in the picker, grouped by what they say about a
+         * program: what you do, how it's loaded and measured, how it's paced,
+         * how it progresses, how hard it is, what it's aiming at, and recovery.
+         * Everything here has to mean something to someone lifting weights.
+         */
+        val pickable: List<ProgramIcon> = listOf(
+            BARBELL, DUMBBELL, FLEX, BODY, BODY_ACTIVE, YOGA, RUN,
+            SCALE, MEASURE, SPEED,
+            TIMER, ALARM, HOURGLASS, SCHEDULE, CALENDAR, EVENT_REPEAT, REPEAT, LOOP,
+            TRENDING_UP, CHART, BAR_CHART, INSIGHTS, LEADERBOARD,
+            BOLT, FIRE, WHATSHOT, MOUNTAIN,
+            TROPHY, MEDAL, PREMIUM, STAR, FLAG, VERIFIED,
+            HEART, HEARTBEAT, SHIELD,
         )
 
-        /** The icons actually offered in the picker. */
-        val pickable: List<ProgramIcon> = entries.filterNot { it in retired }
+        /**
+         * Everything else is retired — the hand-drawn equipment and muscle
+         * glyphs, plus a batch of other-sport and weather icons that had
+         * nothing to do with strength training. They stay in the enum because
+         * the value is persisted by name, but are never offered again.
+         */
+        val retired: List<ProgramIcon> = entries.filterNot { it in pickable }
     }
 }
 

@@ -4,46 +4,40 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Anchor
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Hiking
+import androidx.compose.material.icons.filled.HourglassBottom
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Pool
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.Rowing
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.SportsBasketball
 import androidx.compose.material.icons.filled.SportsGymnastics
-import androidx.compose.material.icons.filled.SportsHandball
-import androidx.compose.material.icons.filled.SportsKabaddi
 import androidx.compose.material.icons.filled.SportsMartialArts
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.data.model.Exercise
@@ -58,7 +53,8 @@ import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.ProgramIcon
 
 /**
- * Icons for programs and workout days, drawn from Material Symbols.
+ * Icons for programs and workout days, drawn from Material Symbols and limited
+ * to things that mean something to someone lifting weights.
  *
  * An earlier attempt shipped hand-drawn muscle-group and equipment glyphs; they
  * were unreadable at list size and are gone. No permissively licensed set with
@@ -68,52 +64,59 @@ import dev.hinny.skrot.data.model.ProgramIcon
 
 @Composable
 fun ProgramIcon.vector(): ImageVector = when (this) {
+    // What you do
     ProgramIcon.BARBELL -> Icons.Filled.FitnessCenter
     ProgramIcon.DUMBBELL -> Icons.Filled.SportsGymnastics
-    ProgramIcon.RUN -> Icons.Filled.DirectionsRun
-    ProgramIcon.HEART -> Icons.Filled.Favorite
     ProgramIcon.FLEX -> Icons.Filled.SportsMartialArts
-    ProgramIcon.BOLT -> Icons.Filled.Bolt
-    ProgramIcon.TIMER -> Icons.Filled.Timer
-    ProgramIcon.TROPHY -> Icons.Filled.EmojiEvents
-    ProgramIcon.SHIELD -> Icons.Filled.Shield
-    ProgramIcon.FIRE -> Icons.Filled.LocalFireDepartment
-    ProgramIcon.MOUNTAIN -> Icons.Filled.Terrain
+    ProgramIcon.BODY -> Icons.Filled.Accessibility
+    ProgramIcon.BODY_ACTIVE -> Icons.Filled.AccessibilityNew
     ProgramIcon.YOGA -> Icons.Filled.SelfImprovement
-    ProgramIcon.TRENDING_UP -> Icons.Filled.TrendingUp
-    ProgramIcon.CALENDAR -> Icons.Filled.CalendarMonth
+    ProgramIcon.RUN -> Icons.Filled.DirectionsRun
+
+    // Load and measurement
     ProgramIcon.SCALE -> Icons.Filled.MonitorWeight
-    ProgramIcon.REPEAT -> Icons.Filled.Repeat
+    ProgramIcon.MEASURE -> Icons.Filled.Straighten
     ProgramIcon.SPEED -> Icons.Filled.Speed
-    ProgramIcon.WALK -> Icons.Filled.DirectionsWalk
-    ProgramIcon.BIKE -> Icons.Filled.DirectionsBike
-    ProgramIcon.SWIM -> Icons.Filled.Pool
-    ProgramIcon.HIKE -> Icons.Filled.Hiking
-    ProgramIcon.ROW -> Icons.Filled.Rowing
-    ProgramIcon.COMBAT -> Icons.Filled.SportsKabaddi
-    ProgramIcon.HANDBALL -> Icons.Filled.SportsHandball
-    ProgramIcon.SOCCER -> Icons.Filled.SportsSoccer
-    ProgramIcon.BASKETBALL -> Icons.Filled.SportsBasketball
-    ProgramIcon.HEARTBEAT -> Icons.Filled.MonitorHeart
-    ProgramIcon.WHATSHOT -> Icons.Filled.Whatshot
+
+    // Pacing and scheduling
+    ProgramIcon.TIMER -> Icons.Filled.Timer
     ProgramIcon.ALARM -> Icons.Filled.Alarm
+    ProgramIcon.HOURGLASS -> Icons.Filled.HourglassBottom
+    ProgramIcon.SCHEDULE -> Icons.Filled.Schedule
+    ProgramIcon.CALENDAR -> Icons.Filled.CalendarMonth
+    ProgramIcon.EVENT_REPEAT -> Icons.Filled.EventRepeat
+    ProgramIcon.REPEAT -> Icons.Filled.Repeat
+    ProgramIcon.LOOP -> Icons.Filled.Loop
+
+    // Progression
+    ProgramIcon.TRENDING_UP -> Icons.Filled.TrendingUp
     ProgramIcon.CHART -> Icons.Filled.ShowChart
+    ProgramIcon.BAR_CHART -> Icons.Filled.BarChart
+    ProgramIcon.INSIGHTS -> Icons.Filled.Insights
+    ProgramIcon.LEADERBOARD -> Icons.Filled.Leaderboard
+
+    // Intensity
+    ProgramIcon.BOLT -> Icons.Filled.Bolt
+    ProgramIcon.FIRE -> Icons.Filled.LocalFireDepartment
+    ProgramIcon.WHATSHOT -> Icons.Filled.Whatshot
+    ProgramIcon.MOUNTAIN -> Icons.Filled.Terrain
+
+    // Goals
+    ProgramIcon.TROPHY -> Icons.Filled.EmojiEvents
     ProgramIcon.MEDAL -> Icons.Filled.MilitaryTech
     ProgramIcon.PREMIUM -> Icons.Filled.WorkspacePremium
     ProgramIcon.STAR -> Icons.Filled.Star
     ProgramIcon.FLAG -> Icons.Filled.Flag
-    ProgramIcon.ROCKET -> Icons.Filled.RocketLaunch
-    ProgramIcon.MIND -> Icons.Filled.Psychology
-    ProgramIcon.MEASURE -> Icons.Filled.Straighten
-    ProgramIcon.BODY -> Icons.Filled.Accessibility
-    ProgramIcon.SUN -> Icons.Filled.WbSunny
-    ProgramIcon.NIGHT -> Icons.Filled.NightsStay
-    ProgramIcon.FROST -> Icons.Filled.AcUnit
-    ProgramIcon.ANCHOR -> Icons.Filled.Anchor
+    ProgramIcon.VERIFIED -> Icons.Filled.Verified
 
-    // Retired: these were backed by the hand-drawn equipment and muscle glyphs.
-    // They stay in the enum so programs that already chose one still load, but
-    // they are no longer offered in the picker.
+    // Conditioning and recovery
+    ProgramIcon.HEART -> Icons.Filled.Favorite
+    ProgramIcon.HEARTBEAT -> Icons.Filled.MonitorHeart
+    ProgramIcon.SHIELD -> Icons.Filled.Shield
+
+    // Retired: the hand-drawn equipment and muscle glyphs, and a batch of
+    // other-sport and weather icons. Never offered, but a program that already
+    // stored one still has to render.
     ProgramIcon.EZ_BAR,
     ProgramIcon.KETTLEBELL,
     ProgramIcon.WEIGHT_PLATE,
@@ -125,6 +128,21 @@ fun ProgramIcon.vector(): ImageVector = when (this) {
     ProgramIcon.DIP_STATION,
     ProgramIcon.RACK,
     ProgramIcon.BAND,
+    ProgramIcon.WALK,
+    ProgramIcon.BIKE,
+    ProgramIcon.SWIM,
+    ProgramIcon.HIKE,
+    ProgramIcon.ROW,
+    ProgramIcon.COMBAT,
+    ProgramIcon.HANDBALL,
+    ProgramIcon.SOCCER,
+    ProgramIcon.BASKETBALL,
+    ProgramIcon.ROCKET,
+    ProgramIcon.MIND,
+    ProgramIcon.SUN,
+    ProgramIcon.NIGHT,
+    ProgramIcon.FROST,
+    ProgramIcon.ANCHOR,
     -> Icons.Filled.FitnessCenter
 
     ProgramIcon.MUSCLE_CHEST,
@@ -179,6 +197,6 @@ fun ExerciseMeta(e: Exercise, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MetaText(text: String, color: androidx.compose.ui.graphics.Color) {
+private fun MetaText(text: String, color: Color) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = color)
 }
