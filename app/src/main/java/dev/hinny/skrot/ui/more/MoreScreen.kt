@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Save
@@ -47,9 +46,6 @@ fun MoreScreen(nav: NavHostController) {
         )
         MoreItem(Icons.Filled.Person, stringResource(R.string.profile)) {
             nav.navigate(Routes.PROFILE)
-        }
-        MoreItem(Icons.Filled.MonitorWeight, stringResource(R.string.body_metrics)) {
-            nav.navigate(Routes.BODY)
         }
         MoreItem(Icons.Filled.Save, stringResource(R.string.backup_and_import)) {
             nav.navigate(Routes.BACKUP)
@@ -113,6 +109,11 @@ fun AboutScreen() {
             "https://github.com/Hinny/skrot",
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            stringResource(R.string.about_icons),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 16.dp),
         )
         Text(
             stringResource(R.string.about_offline),

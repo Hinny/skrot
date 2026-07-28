@@ -122,7 +122,8 @@ object Routes {
         route == HOME -> HOME
         route == SESSION || route.startsWith("workout/") || route.startsWith("summary/") -> SESSION
         route == LIBRARY || route == PROGRAMS || route == EXERCISES || route == GYMS ||
-            route == HISTORY || route.startsWith("program/") || route.startsWith("day/") ||
+            route == HISTORY || route == BODY ||
+            route.startsWith("program/") || route.startsWith("day/") ||
             route.startsWith("exercise/") || route.startsWith("history/") -> LIBRARY
 
         route == STATS -> STATS

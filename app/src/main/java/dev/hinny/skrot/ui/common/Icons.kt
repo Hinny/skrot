@@ -4,60 +4,60 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
-import androidx.compose.material.icons.filled.AccessibilityNew
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.AvTimer
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.BatteryChargingFull
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Celebration
-import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.EventRepeat
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Healing
-import androidx.compose.material.icons.filled.Hotel
-import androidx.compose.material.icons.filled.HourglassBottom
-import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Loop
-import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Percent
-import androidx.compose.material.icons.filled.PlusOne
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Segment
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.SignalCellularAlt
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.SportsGymnastics
-import androidx.compose.material.icons.filled.SportsMartialArts
-import androidx.compose.material.icons.filled.SportsScore
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.Terrain
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.Accessibility
+import androidx.compose.material.icons.outlined.AccessibilityNew
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.AvTimer
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.outlined.DirectionsRun
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Equalizer
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Healing
+import androidx.compose.material.icons.outlined.Hotel
+import androidx.compose.material.icons.outlined.HourglassBottom
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Leaderboard
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Loop
+import androidx.compose.material.icons.outlined.MilitaryTech
+import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material.icons.outlined.Percent
+import androidx.compose.material.icons.outlined.PlusOne
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Segment
+import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material.icons.outlined.SignalCellularAlt
+import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SportsGymnastics
+import androidx.compose.material.icons.outlined.SportsMartialArts
+import androidx.compose.material.icons.outlined.SportsScore
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Straighten
+import androidx.compose.material.icons.outlined.Terrain
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Verified
+import androidx.compose.material.icons.outlined.Whatshot
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,14 +65,19 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.annotation.DrawableRes
+import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.ProgramIcon
 
 /**
- * Icons for programs and workout days, drawn from Material Symbols and limited
- * to things that mean something to someone lifting weights.
+ * Icons for programs and workout days, limited to things that mean something to
+ * someone lifting weights. The concrete gym objects come from Tabler Icons
+ * (MIT); the rest are Material Symbols, in their Outlined variant so the whole
+ * set reads as one line-drawn family rather than half solid, half line.
  *
  * An earlier attempt shipped hand-drawn muscle-group and equipment glyphs; they
  * were unreadable at list size and are gone. No permissively licensed set with
@@ -82,73 +87,86 @@ import dev.hinny.skrot.data.model.ProgramIcon
 
 @Composable
 fun ProgramIcon.vector(): ImageVector = when (this) {
+    // The gym itself — Tabler Icons (MIT), converted to vector drawables
+    ProgramIcon.GYM_BARBELL -> vectorRes(R.drawable.ic_gym_barbell)
+    ProgramIcon.GYM_DUMBBELL -> vectorRes(R.drawable.ic_gym_dumbbell)
+    ProgramIcon.GYM_KETTLEBELL -> vectorRes(R.drawable.ic_gym_kettlebell)
+    ProgramIcon.GYM_TREADMILL -> vectorRes(R.drawable.ic_gym_treadmill)
+    ProgramIcon.GYM_JUMP_ROPE -> vectorRes(R.drawable.ic_gym_jump_rope)
+    ProgramIcon.GYM_STRETCHING -> vectorRes(R.drawable.ic_gym_stretching)
+    ProgramIcon.GYM_STRETCHING_2 -> vectorRes(R.drawable.ic_gym_stretching_2)
+    ProgramIcon.GYM_YOGA -> vectorRes(R.drawable.ic_gym_yoga)
+    ProgramIcon.GYM_BODY_SCAN -> vectorRes(R.drawable.ic_gym_body_scan)
+    ProgramIcon.GYM_SHOE -> vectorRes(R.drawable.ic_gym_shoe)
+    ProgramIcon.GYM_BOTTLE -> vectorRes(R.drawable.ic_gym_bottle)
+
     // What you do
-    ProgramIcon.BARBELL -> Icons.Filled.FitnessCenter
-    ProgramIcon.DUMBBELL -> Icons.Filled.SportsGymnastics
-    ProgramIcon.FLEX -> Icons.Filled.SportsMartialArts
-    ProgramIcon.BODY -> Icons.Filled.Accessibility
-    ProgramIcon.BODY_ACTIVE -> Icons.Filled.AccessibilityNew
-    ProgramIcon.YOGA -> Icons.Filled.SelfImprovement
-    ProgramIcon.RUN -> Icons.Filled.DirectionsRun
-    ProgramIcon.SUPERSET -> Icons.Filled.Link
-    ProgramIcon.SPLIT -> Icons.Filled.Segment
-    ProgramIcon.BLOCKS -> Icons.Filled.Layers
-    ProgramIcon.TUNE -> Icons.Filled.Tune
+    ProgramIcon.BARBELL -> Icons.Outlined.FitnessCenter
+    ProgramIcon.DUMBBELL -> Icons.Outlined.SportsGymnastics
+    ProgramIcon.FLEX -> Icons.Outlined.SportsMartialArts
+    ProgramIcon.BODY -> Icons.Outlined.Accessibility
+    ProgramIcon.BODY_ACTIVE -> Icons.Outlined.AccessibilityNew
+    ProgramIcon.YOGA -> Icons.Outlined.SelfImprovement
+    ProgramIcon.RUN -> Icons.Outlined.DirectionsRun
+    ProgramIcon.SUPERSET -> Icons.Outlined.Link
+    ProgramIcon.SPLIT -> Icons.Outlined.Segment
+    ProgramIcon.BLOCKS -> Icons.Outlined.Layers
+    ProgramIcon.TUNE -> Icons.Outlined.Tune
 
     // Load, reps and measurement
-    ProgramIcon.SCALE -> Icons.Filled.MonitorWeight
-    ProgramIcon.MEASURE -> Icons.Filled.Straighten
-    ProgramIcon.PERCENT -> Icons.Filled.Percent
-    ProgramIcon.PLUS_ONE -> Icons.Filled.PlusOne
-    ProgramIcon.NUMBERS -> Icons.Filled.Numbers
-    ProgramIcon.CALCULATE -> Icons.Filled.Calculate
-    ProgramIcon.LEVELS -> Icons.Filled.SignalCellularAlt
-    ProgramIcon.SPEED -> Icons.Filled.Speed
+    ProgramIcon.SCALE -> Icons.Outlined.MonitorWeight
+    ProgramIcon.MEASURE -> Icons.Outlined.Straighten
+    ProgramIcon.PERCENT -> Icons.Outlined.Percent
+    ProgramIcon.PLUS_ONE -> Icons.Outlined.PlusOne
+    ProgramIcon.NUMBERS -> Icons.Outlined.Numbers
+    ProgramIcon.CALCULATE -> Icons.Outlined.Calculate
+    ProgramIcon.LEVELS -> Icons.Outlined.SignalCellularAlt
+    ProgramIcon.SPEED -> Icons.Outlined.Speed
 
     // Pacing and scheduling
-    ProgramIcon.TIMER -> Icons.Filled.Timer
-    ProgramIcon.ALARM -> Icons.Filled.Alarm
-    ProgramIcon.HOURGLASS -> Icons.Filled.HourglassBottom
-    ProgramIcon.INTERVAL -> Icons.Filled.AvTimer
-    ProgramIcon.SCHEDULE -> Icons.Filled.Schedule
-    ProgramIcon.CALENDAR -> Icons.Filled.CalendarMonth
-    ProgramIcon.EVENT_REPEAT -> Icons.Filled.EventRepeat
-    ProgramIcon.REPEAT -> Icons.Filled.Repeat
-    ProgramIcon.LOOP -> Icons.Filled.Loop
-    ProgramIcon.RESTART -> Icons.Filled.RestartAlt
+    ProgramIcon.TIMER -> Icons.Outlined.Timer
+    ProgramIcon.ALARM -> Icons.Outlined.Alarm
+    ProgramIcon.HOURGLASS -> Icons.Outlined.HourglassBottom
+    ProgramIcon.INTERVAL -> Icons.Outlined.AvTimer
+    ProgramIcon.SCHEDULE -> Icons.Outlined.Schedule
+    ProgramIcon.CALENDAR -> Icons.Outlined.CalendarMonth
+    ProgramIcon.EVENT_REPEAT -> Icons.Outlined.EventRepeat
+    ProgramIcon.REPEAT -> Icons.Outlined.Repeat
+    ProgramIcon.LOOP -> Icons.Outlined.Loop
+    ProgramIcon.RESTART -> Icons.Outlined.RestartAlt
 
     // Progression
-    ProgramIcon.TRENDING_UP -> Icons.Filled.TrendingUp
-    ProgramIcon.CHART -> Icons.Filled.ShowChart
-    ProgramIcon.BAR_CHART -> Icons.Filled.BarChart
-    ProgramIcon.EQUALIZER -> Icons.Filled.Equalizer
-    ProgramIcon.INSIGHTS -> Icons.Filled.Insights
-    ProgramIcon.LEADERBOARD -> Icons.Filled.Leaderboard
+    ProgramIcon.TRENDING_UP -> Icons.Outlined.TrendingUp
+    ProgramIcon.CHART -> Icons.Outlined.ShowChart
+    ProgramIcon.BAR_CHART -> Icons.Outlined.BarChart
+    ProgramIcon.EQUALIZER -> Icons.Outlined.Equalizer
+    ProgramIcon.INSIGHTS -> Icons.Outlined.Insights
+    ProgramIcon.LEADERBOARD -> Icons.Outlined.Leaderboard
 
     // Intensity
-    ProgramIcon.BOLT -> Icons.Filled.Bolt
-    ProgramIcon.FIRE -> Icons.Filled.LocalFireDepartment
-    ProgramIcon.WHATSHOT -> Icons.Filled.Whatshot
-    ProgramIcon.ENERGY -> Icons.Filled.BatteryChargingFull
-    ProgramIcon.MOUNTAIN -> Icons.Filled.Terrain
+    ProgramIcon.BOLT -> Icons.Outlined.Bolt
+    ProgramIcon.FIRE -> Icons.Outlined.LocalFireDepartment
+    ProgramIcon.WHATSHOT -> Icons.Outlined.Whatshot
+    ProgramIcon.ENERGY -> Icons.Outlined.BatteryChargingFull
+    ProgramIcon.MOUNTAIN -> Icons.Outlined.Terrain
 
     // Goals
-    ProgramIcon.TROPHY -> Icons.Filled.EmojiEvents
-    ProgramIcon.MEDAL -> Icons.Filled.MilitaryTech
-    ProgramIcon.PREMIUM -> Icons.Filled.WorkspacePremium
-    ProgramIcon.STAR -> Icons.Filled.Star
-    ProgramIcon.FLAG -> Icons.Filled.Flag
-    ProgramIcon.VERIFIED -> Icons.Filled.Verified
-    ProgramIcon.FINISH -> Icons.Filled.SportsScore
-    ProgramIcon.CELEBRATION -> Icons.Filled.Celebration
+    ProgramIcon.TROPHY -> Icons.Outlined.EmojiEvents
+    ProgramIcon.MEDAL -> Icons.Outlined.MilitaryTech
+    ProgramIcon.PREMIUM -> Icons.Outlined.WorkspacePremium
+    ProgramIcon.STAR -> Icons.Outlined.Star
+    ProgramIcon.FLAG -> Icons.Outlined.Flag
+    ProgramIcon.VERIFIED -> Icons.Outlined.Verified
+    ProgramIcon.FINISH -> Icons.Outlined.SportsScore
+    ProgramIcon.CELEBRATION -> Icons.Outlined.Celebration
 
     // Conditioning and recovery
-    ProgramIcon.HEART -> Icons.Filled.Favorite
-    ProgramIcon.HEARTBEAT -> Icons.Filled.MonitorHeart
-    ProgramIcon.SHIELD -> Icons.Filled.Shield
-    ProgramIcon.REHAB -> Icons.Filled.Healing
-    ProgramIcon.REST -> Icons.Filled.Hotel
-    ProgramIcon.MOBILITY -> Icons.Filled.Spa
+    ProgramIcon.HEART -> Icons.Outlined.Favorite
+    ProgramIcon.HEARTBEAT -> Icons.Outlined.MonitorHeart
+    ProgramIcon.SHIELD -> Icons.Outlined.Shield
+    ProgramIcon.REHAB -> Icons.Outlined.Healing
+    ProgramIcon.REST -> Icons.Outlined.Hotel
+    ProgramIcon.MOBILITY -> Icons.Outlined.Spa
 
     // Retired: the hand-drawn equipment and muscle glyphs, and a batch of
     // other-sport and weather icons. Never offered, but a program that already
@@ -179,7 +197,7 @@ fun ProgramIcon.vector(): ImageVector = when (this) {
     ProgramIcon.NIGHT,
     ProgramIcon.FROST,
     ProgramIcon.ANCHOR,
-    -> Icons.Filled.FitnessCenter
+    -> Icons.Outlined.FitnessCenter
 
     ProgramIcon.MUSCLE_CHEST,
     ProgramIcon.MUSCLE_BACK,
@@ -193,7 +211,7 @@ fun ProgramIcon.vector(): ImageVector = when (this) {
     ProgramIcon.MUSCLE_GLUTES,
     ProgramIcon.MUSCLE_CALVES,
     ProgramIcon.MUSCLE_FULL_BODY,
-    -> Icons.Filled.Accessibility
+    -> Icons.Outlined.Accessibility
 }
 
 /**
@@ -236,3 +254,6 @@ fun ExerciseMeta(e: Exercise, modifier: Modifier = Modifier) {
 private fun MetaText(text: String, color: Color) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = color)
 }
+
+@Composable
+private fun vectorRes(@DrawableRes id: Int): ImageVector = ImageVector.vectorResource(id)

@@ -190,6 +190,17 @@ enum class ProgramIcon {
     REHAB,
     REST,
     MOBILITY,
+    GYM_BARBELL,
+    GYM_DUMBBELL,
+    GYM_KETTLEBELL,
+    GYM_TREADMILL,
+    GYM_JUMP_ROPE,
+    GYM_STRETCHING,
+    GYM_STRETCHING_2,
+    GYM_YOGA,
+    GYM_BODY_SCAN,
+    GYM_SHOE,
+    GYM_BOTTLE,
     ;
 
     companion object {
@@ -200,6 +211,9 @@ enum class ProgramIcon {
          * Everything here has to mean something to someone lifting weights.
          */
         val pickable: List<ProgramIcon> = listOf(
+            // The gym itself
+            GYM_BARBELL, GYM_DUMBBELL, GYM_KETTLEBELL, GYM_TREADMILL, GYM_JUMP_ROPE,
+            GYM_STRETCHING, GYM_STRETCHING_2, GYM_YOGA, GYM_BODY_SCAN, GYM_SHOE, GYM_BOTTLE,
             // What you do, and how the program is put together
             BARBELL, DUMBBELL, FLEX, BODY, BODY_ACTIVE, YOGA, RUN,
             SUPERSET, SPLIT, BLOCKS, TUNE,

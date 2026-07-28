@@ -1,6 +1,6 @@
 # Skrot
 
-**Skrot** (Swedish for "scrap metal" and is used in gym slang for weigh lifting) is a free, open-source Android strength
+**Skrot** (Swedish for "scrap metal" and is used in gym slang for weight lifting) is a free, open-source Android strength
 training log. Built to replace payed workout apps for people who want a fast, private,
 no-nonsense logger — no ads, no accounts, no cloud, no tracking. 
 The app has **no network permission**,
@@ -118,4 +118,6 @@ the issue templates.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Bundled third-party assets are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — gym icons from Tabler Icons
+(MIT), the rest from Material Symbols (Apache 2.0).
