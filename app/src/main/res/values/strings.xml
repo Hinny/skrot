@@ -416,7 +416,7 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">Skrot is a free, open-source strength training log. No ads, no accounts, no cloud — your data stays on your device.</string>
     <string name="about_license">Licensed under the MIT license.</string>
-    <string name="about_icons">Gym icons from Tabler Icons (MIT), the rest from Material Symbols (Apache 2.0).</string>
+    <string name="about_icons">Gym icons from Tabler Icons (MIT), body icons from OpenMoji (CC BY-SA 4.0), the rest from Material Symbols (Apache 2.0).</string>
     <string name="about_offline">Skrot has no network permission — it is provably offline.</string>
 
     <!-- Coach: Cheerleader -->

@@ -100,6 +100,14 @@ fun ProgramIcon.vector(): ImageVector = when (this) {
     ProgramIcon.GYM_SHOE -> vectorRes(R.drawable.ic_gym_shoe)
     ProgramIcon.GYM_BOTTLE -> vectorRes(R.drawable.ic_gym_bottle)
 
+    // The body doing the work — OpenMoji black (CC BY-SA 4.0)
+    ProgramIcon.GYM_BICEPS -> vectorRes(R.drawable.ic_gym_biceps)
+    ProgramIcon.GYM_LEG -> vectorRes(R.drawable.ic_gym_leg)
+    ProgramIcon.GYM_FIST -> vectorRes(R.drawable.ic_gym_fist)
+    ProgramIcon.GYM_FIST_BUMP -> vectorRes(R.drawable.ic_gym_fist_bump)
+    ProgramIcon.GYM_SWORDS -> vectorRes(R.drawable.ic_gym_swords)
+    ProgramIcon.GYM_LIFTER -> vectorRes(R.drawable.ic_gym_lifter)
+
     // What you do
     ProgramIcon.BARBELL -> Icons.Outlined.FitnessCenter
     ProgramIcon.DUMBBELL -> Icons.Outlined.SportsGymnastics

@@ -414,7 +414,7 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">Skrot är en gratis träningslogg med öppen källkod. Inga annonser, inga konton, inget moln — din data stannar på din enhet.</string>
     <string name="about_license">Licensierad under MIT-licensen.</string>
-    <string name="about_icons">Gymikoner från Tabler Icons (MIT), övriga från Material Symbols (Apache 2.0).</string>
+    <string name="about_icons">Gymikoner från Tabler Icons (MIT), kroppsikoner från OpenMoji (CC BY-SA 4.0), övriga från Material Symbols (Apache 2.0).</string>
     <string name="about_offline">Skrot har ingen nätverksbehörighet — appen är bevisligen offline.</string>
 
     <!-- Coach: Hejaklack -->

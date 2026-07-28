@@ -33,6 +33,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## OpenMoji
+
+The body icons in `app/src/main/res/drawable/ic_gym_biceps.xml`, `ic_gym_leg.xml`,
+`ic_gym_fist.xml`, `ic_gym_fist_bump.xml`, `ic_gym_swords.xml` and
+`ic_gym_lifter.xml` are derived from the black (monochrome) set of
+[OpenMoji](https://openmoji.org), converted from SVG to Android vector drawables
+with the stroke width rescaled for the 72-unit viewport. Modified only in that
+sense.
+
+All emojis designed by OpenMoji — the open-source emoji and icon project.
+License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+Note that this license is share-alike: these six icon files, and any adaptation
+of them, stay under CC BY-SA 4.0. The rest of Skrot remains MIT.
+
 ## Material Symbols
 
 The remaining icons come from
