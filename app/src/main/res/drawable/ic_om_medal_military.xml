@@ -1,0 +1,48 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M36,27.7371 L41.2478,43.888 L58.2299,43.888 L44.4911,53.8699 L49.7388,70.0208 L36,60.039 L22.2612,70.0208 L27.5089,53.8699 L13.7701,43.888 L30.7522,43.888 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M36,19.0643 L36,2.0208" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M56,8.9792 L56,2.0208 L16,2.0208 L16,8.9792 L36,23.737 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M36,27.7371 L41.2478,43.888 L58.2299,43.888 L44.4911,53.8699 L49.7388,70.0208 L36,60.039 L22.2612,70.0208 L27.5089,53.8699 L13.7701,43.888 L30.7522,43.888 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M36,19.0643 L36,2.0208" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M56,8.9792 L56,2.0208 L16,2.0208 L16,8.9792 L36,23.737 Z" />
+</vector>

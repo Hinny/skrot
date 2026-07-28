@@ -207,6 +207,47 @@ enum class ProgramIcon {
     GYM_FIST_BUMP,
     GYM_SWORDS,
     GYM_LIFTER,
+    EM_DYNAMITE,
+    EM_BEER,
+    EM_BEERS,
+    EM_MEDAL_1ST,
+    EM_MEDAL_2ND,
+    EM_MEDAL_3RD,
+    EM_MEDAL_SPORTS,
+    EM_MEDAL_MILITARY,
+    EM_CHAINS,
+    EM_MAGNET,
+    EM_BALANCE_SCALE,
+    EM_CIGARETTE,
+    EM_PILL,
+    EM_PLASTER,
+    EM_SHIELD,
+    EM_BOMB,
+    EM_KEY,
+    EM_KEY_OLD,
+    EM_GEAR,
+    EM_SKULL,
+    EM_SKULL_BONES,
+    EM_FLAG_CHEQUERED,
+    EM_STOPWATCH,
+    EM_HOURGLASS,
+    EM_BATTERY,
+    EM_ICE,
+    EM_MILK,
+    EM_MEAT,
+    EM_EGG,
+    EM_BONE,
+    EM_HAMMER,
+    EM_HAMMER_WRENCH,
+    EM_CROWN,
+    EM_GEM,
+    EM_DNA,
+    EM_STETHOSCOPE,
+    EM_TEST_TUBE,
+    EM_MOAI,
+    EM_BRICK,
+    EM_AXE,
+    EM_LOTION,
     ;
 
     companion object {
@@ -239,6 +280,20 @@ enum class ProgramIcon {
             TROPHY, MEDAL, PREMIUM, STAR, FLAG, VERIFIED, FINISH, CELEBRATION,
             // Conditioning, recovery and rehab
             HEART, HEARTBEAT, SHIELD, REHAB, REST, MOBILITY,
+            // Goals and spoils
+            EM_MEDAL_1ST, EM_MEDAL_2ND, EM_MEDAL_3RD, EM_MEDAL_SPORTS,
+            EM_MEDAL_MILITARY, EM_CROWN, EM_GEM, EM_FLAG_CHEQUERED,
+            // Grit
+            EM_DYNAMITE, EM_BOMB, EM_SKULL, EM_SKULL_BONES, EM_MOAI, EM_AXE, EM_HAMMER,
+            EM_HAMMER_WRENCH, EM_BRICK, EM_CHAINS, EM_MAGNET, EM_GEAR, EM_KEY,
+            EM_KEY_OLD, EM_SHIELD,
+            // Weighing and timing
+            EM_BALANCE_SCALE, EM_STOPWATCH, EM_HOURGLASS, EM_BATTERY,
+            // Fuel and vice
+            EM_BEER, EM_BEERS, EM_MILK, EM_MEAT, EM_EGG, EM_CIGARETTE,
+            // Patching yourself up
+            EM_PILL, EM_PLASTER, EM_STETHOSCOPE, EM_ICE, EM_BONE, EM_DNA, EM_TEST_TUBE,
+            EM_LOTION,
         )
 
         /**

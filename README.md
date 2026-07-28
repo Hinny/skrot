@@ -120,5 +120,5 @@ the issue templates.
 
 [MIT](LICENSE). Bundled third-party assets are listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — gym icons from Tabler Icons
-(MIT), six body icons from OpenMoji (CC BY-SA 4.0), the rest from Material
+(MIT), body and object icons from OpenMoji (CC BY-SA 4.0), the rest from Material
 Symbols (Apache 2.0).
