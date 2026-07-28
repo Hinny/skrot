@@ -296,14 +296,15 @@ fun MonthCalendarHeatmap(
     val monthFormat = remember(locale) { DateTimeFormatter.ofPattern("MMM yy", locale) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        // A cell is far too narrow for a two-digit day, so the day axis is just
+        // three markers spread across the whole grid.
+        Row {
             Spacer(Modifier.width(labelWidth))
-            for (dayOfMonth in 1..31) {
-                // Only every fifth day is numbered; the rest would not fit.
-                HeatAxisLabel(
-                    text = if (dayOfMonth % 5 == 0) dayOfMonth.toString() else "",
-                    modifier = Modifier.weight(1f),
-                )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                listOf("1", "15", "31").forEach { HeatAxisLabel(it) }
             }
         }
         for (row in 0 until rows) {
