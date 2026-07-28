@@ -160,7 +160,7 @@ fun CreateExerciseDialog(
                         FilterChip(
                             selected = muscle == m,
                             onClick = { muscle = m },
-                            label = { MuscleChipLabel(m) },
+                            label = { Text(muscleLabel(m)) },
                         )
                     }
                 }
@@ -177,7 +177,7 @@ fun CreateExerciseDialog(
                                 equipment =
                                     if (eq in equipment) equipment - eq else equipment + eq
                             },
-                            label = { EquipmentChipLabel(eq) },
+                            label = { Text(equipmentLabel(eq)) },
                         )
                     }
                 }

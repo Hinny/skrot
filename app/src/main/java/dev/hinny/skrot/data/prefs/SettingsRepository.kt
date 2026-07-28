@@ -63,9 +63,9 @@ data class Settings(
     /** Which language exercise names are shown in, independent of the app's UI language. */
     val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
     /** How an exercise's muscle groups are rendered in lists and detail views. */
-    val muscleDisplay: MetaDisplay = MetaDisplay.ICON,
+    val muscleDisplay: MetaDisplay = MetaDisplay.TEXT,
     /** How an exercise's equipment is rendered in lists and detail views. */
-    val equipmentDisplay: MetaDisplay = MetaDisplay.ICON,
+    val equipmentDisplay: MetaDisplay = MetaDisplay.TEXT,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")

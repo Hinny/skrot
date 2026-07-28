@@ -32,16 +32,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.domain.Units
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
 /**
  * Chart style follows one system: a single hue per chart (identity comes from
- * the title, not a palette), thin marks, recessive axes, direct min/max labels.
+ * the title, not a palette), thin marks, recessive axes. Values are labelled
+ * down the left edge and time along the bottom, so an axis label is never
+ * mistaken for the other axis.
  */
+
+private val CHART_HEIGHT = 160.dp
+private val CHART_AXIS_WIDTH = 54.dp
+
+@Composable
+private fun AxisLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        modifier = modifier,
+    )
+}
 
 @Composable
 fun LineChart(
@@ -58,27 +76,36 @@ fun LineChart(
     val sorted = points.sortedBy { it.first }
     val minValue = sorted.minOf { it.second }
     val maxValue = sorted.maxOf { it.second }
-    val dateFormat = DateTimeFormatter.ofPattern("d MMM")
+    val zone = ZoneId.systemDefault()
+    val firstDate = Instant.ofEpochMilli(sorted.first().first).atZone(zone).toLocalDate()
+    val lastDate = Instant.ofEpochMilli(sorted.last().first).atZone(zone).toLocalDate()
+    // A series that doesn't sit inside one year is ambiguous without it.
+    val dateFormat = remember(firstDate.year, lastDate.year) {
+        DateTimeFormatter.ofPattern(if (firstDate.year == lastDate.year) "d MMM" else "d MMM yyyy")
+    }
 
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
-            Text(
-                valueFormatter(maxValue),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                valueFormatter(minValue),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(vertical = 4.dp),
-        ) {
+        Row(Modifier.fillMaxWidth()) {
+            // Value axis: rows down the left edge, top = max, bottom = min.
+            Column(
+                modifier = Modifier
+                    .width(CHART_AXIS_WIDTH)
+                    .height(CHART_HEIGHT),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End,
+            ) {
+                AxisLabel(valueFormatter(maxValue))
+                if (maxValue != minValue) {
+                    AxisLabel(valueFormatter((maxValue + minValue) / 2))
+                }
+                AxisLabel(valueFormatter(minValue))
+            }
+            Spacer(Modifier.width(6.dp))
+            Canvas(
+                Modifier
+                    .weight(1f)
+                    .height(CHART_HEIGHT),
+            ) {
             val minX = sorted.first().first.toDouble()
             val maxX = sorted.last().first.toDouble()
             val spanX = (maxX - minX).coerceAtLeast(1.0)
@@ -105,20 +132,17 @@ fun LineChart(
             sorted.forEach { p ->
                 drawCircle(lineColor, radius = 4.dp.toPx() / 2, center = toOffset(p))
             }
+            }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
-            Text(
-                java.time.Instant.ofEpochMilli(sorted.first().first)
-                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(dateFormat),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                java.time.Instant.ofEpochMilli(sorted.last().first)
-                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(dateFormat),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // Time axis, aligned with the plot area rather than the value axis.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = CHART_AXIS_WIDTH + 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            AxisLabel(firstDate.format(dateFormat))
+            AxisLabel(lastDate.format(dateFormat))
         }
     }
 }
@@ -177,42 +201,45 @@ fun VerticalBarChart(
     val barColor = MaterialTheme.colorScheme.primary
     val max = items.maxOf { it.second }.coerceAtLeast(0.001)
     Column(modifier.fillMaxWidth()) {
-        Text(
-            valueFormatter(max),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            items.forEach { (_, value) ->
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight(((value / max).toFloat()).coerceIn(0.02f, 1f))
-                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                        .background(barColor),
-                )
+        Row(Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .width(CHART_AXIS_WIDTH)
+                    .height(CHART_HEIGHT),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End,
+            ) {
+                AxisLabel(valueFormatter(max))
+                AxisLabel(valueFormatter(max / 2))
+                AxisLabel("0")
+            }
+            Spacer(Modifier.width(6.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(CHART_HEIGHT),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                items.forEach { (_, value) ->
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight(((value / max).toFloat()).coerceIn(0.02f, 1f))
+                            .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                            .background(barColor),
+                    )
+                }
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = CHART_AXIS_WIDTH + 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                items.first().first,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                items.last().first,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            AxisLabel(items.first().first)
+            AxisLabel(items.last().first)
         }
     }
 }
@@ -296,15 +323,24 @@ fun MonthCalendarHeatmap(
     val monthFormat = remember(locale) { DateTimeFormatter.ofPattern("MMM yy", locale) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        // A cell is far too narrow for a two-digit day, so the day axis is just
-        // three markers spread across the whole grid.
-        Row {
-            Spacer(Modifier.width(labelWidth))
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                listOf("1", "15", "31").forEach { HeatAxisLabel(it) }
+        // A cell is far too narrow for two digits side by side, so the day
+        // numbers are stacked: tens on the upper line, ones on the lower, each
+        // sitting over its own column.
+        //          1    1    2    2    3
+        //     5    0    5    0    5    0
+        for (line in 0..1) {
+            Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                Spacer(Modifier.width(labelWidth))
+                for (dayOfMonth in 1..31) {
+                    val digits = if (dayOfMonth % 5 == 0) dayOfMonth.toString() else ""
+                    val text = when {
+                        digits.isEmpty() -> ""
+                        // Right-align into the two lines: "5" is ones only.
+                        digits.length == 1 -> if (line == 1) digits else ""
+                        else -> digits[line].toString()
+                    }
+                    HeatAxisLabel(text, Modifier.weight(1f))
+                }
             }
         }
         for (row in 0 until rows) {

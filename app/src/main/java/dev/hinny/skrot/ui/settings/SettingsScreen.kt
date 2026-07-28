@@ -355,9 +355,7 @@ private fun DeleteDataDialog(
 
 @Composable
 private fun metaDisplayOptions(): List<Pair<MetaDisplay, String>> = listOf(
-    MetaDisplay.ICON to stringResource(R.string.meta_display_icon),
     MetaDisplay.TEXT to stringResource(R.string.meta_display_text),
-    MetaDisplay.ICON_AND_TEXT to stringResource(R.string.meta_display_icon_and_text),
     MetaDisplay.HIDDEN to stringResource(R.string.meta_display_hidden),
 )
 

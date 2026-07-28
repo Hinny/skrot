@@ -92,9 +92,10 @@ enum class Equipment {
 }
 
 /**
- * Curated icon set for programs and workout days. Most entries are the app's own
- * equipment and muscle-group drawings; the rest map to Material Symbols. Entries
- * are stored by name, so new ones may only be appended.
+ * Curated icon set for programs and workout days, drawn from Material Symbols.
+ * Entries are stored by name, so they may only be appended — the retired block
+ * at the end is kept so programs that chose one still load, and is filtered out
+ * of the picker by [pickable].
  */
 enum class ProgramIcon {
     BARBELL,
@@ -137,16 +138,55 @@ enum class ProgramIcon {
     SCALE,
     REPEAT,
     SPEED,
+    WALK,
+    BIKE,
+    SWIM,
+    HIKE,
+    ROW,
+    COMBAT,
+    HANDBALL,
+    SOCCER,
+    BASKETBALL,
+    HEARTBEAT,
+    WHATSHOT,
+    ALARM,
+    CHART,
+    MEDAL,
+    PREMIUM,
+    STAR,
+    FLAG,
+    ROCKET,
+    MIND,
+    MEASURE,
+    BODY,
+    SUN,
+    NIGHT,
+    FROST,
+    ANCHOR,
+    ;
+
+    companion object {
+        /** Retired entries, kept only so already-stored values still resolve. */
+        private val retired = setOf(
+            EZ_BAR, KETTLEBELL, WEIGHT_PLATE, MACHINE, SMITH_MACHINE, CABLE, BENCH,
+            PULLUP_BAR, DIP_STATION, RACK, BAND,
+            MUSCLE_CHEST, MUSCLE_BACK, MUSCLE_SHOULDERS, MUSCLE_BICEPS, MUSCLE_TRICEPS,
+            MUSCLE_FOREARMS, MUSCLE_ABS, MUSCLE_QUADS, MUSCLE_HAMSTRINGS, MUSCLE_GLUTES,
+            MUSCLE_CALVES, MUSCLE_FULL_BODY,
+        )
+
+        /** The icons actually offered in the picker. */
+        val pickable: List<ProgramIcon> = entries.filterNot { it in retired }
+    }
 }
 
 /**
- * How an exercise's muscle groups and equipment are rendered in lists and
- * detail views. Chosen separately for the two, in Settings.
+ * Whether an exercise's muscle groups and equipment are listed at all. Chosen
+ * separately for the two, in Settings. (An icon mode existed briefly; the
+ * hand-drawn glyphs behind it were unreadable and were removed.)
  */
 enum class MetaDisplay {
-    ICON,
     TEXT,
-    ICON_AND_TEXT,
     HIDDEN,
 }
 

@@ -54,8 +54,8 @@ import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.ExerciseMeta
-import dev.hinny.skrot.ui.common.EquipmentChipLabel
-import dev.hinny.skrot.ui.common.MuscleChipLabel
+import dev.hinny.skrot.ui.common.equipmentLabel
+import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.common.searchEquipmentNames
 import dev.hinny.skrot.ui.common.searchMuscleNames
@@ -224,7 +224,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                             muscleFilters =
                                 if (m in muscleFilters) muscleFilters - m else muscleFilters + m
                         },
-                        label = { MuscleChipLabel(m) },
+                        label = { Text(muscleLabel(m)) },
                     )
                 }
             }
@@ -242,7 +242,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                                 if (eq in equipmentFilters) equipmentFilters - eq
                                 else equipmentFilters + eq
                         },
-                        label = { EquipmentChipLabel(eq) },
+                        label = { Text(equipmentLabel(eq)) },
                     )
                 }
             }
@@ -382,7 +382,7 @@ private fun BulkEditExerciseDialog(
                             FilterChip(
                                 selected = muscle == m,
                                 onClick = { muscle = m },
-                                label = { MuscleChipLabel(m) },
+                                label = { Text(muscleLabel(m)) },
                             )
                         }
                     }
@@ -429,7 +429,7 @@ private fun BulkEditExerciseDialog(
                                     addEquipment =
                                         if (eq in addEquipment) addEquipment - eq else addEquipment + eq
                                 },
-                                label = { EquipmentChipLabel(eq) },
+                                label = { Text(equipmentLabel(eq)) },
                             )
                         }
                     }
@@ -450,7 +450,7 @@ private fun BulkEditExerciseDialog(
                                     removeEquipment =
                                         if (eq in removeEquipment) removeEquipment - eq else removeEquipment + eq
                                 },
-                                label = { EquipmentChipLabel(eq) },
+                                label = { Text(equipmentLabel(eq)) },
                             )
                         }
                     }

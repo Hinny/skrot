@@ -338,11 +338,9 @@
     <string name="exercise_name_language">Övningsnamnens språk</string>
     <string name="follow_app_language">Följ appens språk</string>
     <string name="display_unit">Visningsenhet</string>
-    <string name="muscle_display">Visa muskelgrupper som</string>
-    <string name="equipment_display">Visa träningsredskap som</string>
-    <string name="meta_display_icon">Bara ikon</string>
-    <string name="meta_display_text">Bara text</string>
-    <string name="meta_display_icon_and_text">Ikon + text</string>
+    <string name="muscle_display">Muskelgrupper i listor</string>
+    <string name="equipment_display">Träningsredskap i listor</string>
+    <string name="meta_display_text">Visas</string>
     <string name="meta_display_hidden">Dolt</string>
     <string name="theme">Tema</string>
     <string name="theme_dark">Mörkt</string>
