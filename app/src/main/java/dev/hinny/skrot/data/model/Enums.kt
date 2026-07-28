@@ -172,6 +172,24 @@ enum class ProgramIcon {
     EVENT_REPEAT,
     LOOP,
     VERIFIED,
+    SUPERSET,
+    SPLIT,
+    BLOCKS,
+    TUNE,
+    PERCENT,
+    PLUS_ONE,
+    NUMBERS,
+    CALCULATE,
+    LEVELS,
+    EQUALIZER,
+    INTERVAL,
+    RESTART,
+    ENERGY,
+    FINISH,
+    CELEBRATION,
+    REHAB,
+    REST,
+    MOBILITY,
     ;
 
     companion object {
@@ -182,13 +200,22 @@ enum class ProgramIcon {
          * Everything here has to mean something to someone lifting weights.
          */
         val pickable: List<ProgramIcon> = listOf(
+            // What you do, and how the program is put together
             BARBELL, DUMBBELL, FLEX, BODY, BODY_ACTIVE, YOGA, RUN,
-            SCALE, MEASURE, SPEED,
-            TIMER, ALARM, HOURGLASS, SCHEDULE, CALENDAR, EVENT_REPEAT, REPEAT, LOOP,
-            TRENDING_UP, CHART, BAR_CHART, INSIGHTS, LEADERBOARD,
-            BOLT, FIRE, WHATSHOT, MOUNTAIN,
-            TROPHY, MEDAL, PREMIUM, STAR, FLAG, VERIFIED,
-            HEART, HEARTBEAT, SHIELD,
+            SUPERSET, SPLIT, BLOCKS, TUNE,
+            // Load, reps and measurement
+            SCALE, MEASURE, PERCENT, PLUS_ONE, NUMBERS, CALCULATE, LEVELS, SPEED,
+            // Pacing and scheduling
+            TIMER, ALARM, HOURGLASS, INTERVAL, SCHEDULE, CALENDAR, EVENT_REPEAT,
+            REPEAT, LOOP, RESTART,
+            // Progression
+            TRENDING_UP, CHART, BAR_CHART, EQUALIZER, INSIGHTS, LEADERBOARD,
+            // Intensity
+            BOLT, FIRE, WHATSHOT, ENERGY, MOUNTAIN,
+            // What it's aiming at
+            TROPHY, MEDAL, PREMIUM, STAR, FLAG, VERIFIED, FINISH, CELEBRATION,
+            // Conditioning, recovery and rehab
+            HEART, HEARTBEAT, SHIELD, REHAB, REST, MOBILITY,
         )
 
         /**

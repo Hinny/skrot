@@ -467,7 +467,7 @@ fun IconPickerDialog(onPick: (ProgramIcon) -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.icon)) },
         text = {
-            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(320.dp)) {
+            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(360.dp)) {
                 val icons = ProgramIcon.pickable
                 items(icons.size) { i ->
                     val icon = icons[i]
