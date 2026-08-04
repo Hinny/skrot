@@ -37,15 +37,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.home.HomeViewModel
 import dev.hinny.skrot.ui.home.PendingStart
+import dev.hinny.skrot.ui.home.StartItem
 import kotlinx.coroutines.launch
 
 /**
@@ -102,6 +105,7 @@ fun StartFlowHost(
         ResolveExercisesDialog(
             pending = prepared,
             showAll = settings.planExercisesBeforeStart,
+            onLinkEquivalent = { original, picked -> vm.linkAsEquivalent(original, picked) },
             onDismiss = { pending = null },
             onConfirm = { picks, alwaysUse ->
                 pending = null
@@ -291,11 +295,60 @@ private fun StartWorkoutDialog(
 private fun ResolveExercisesDialog(
     pending: PendingStart,
     showAll: Boolean,
+    onLinkEquivalent: (original: Exercise, picked: Exercise) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (picks: Map<Long, Long?>, alwaysUse: Set<Long>) -> Unit,
 ) {
     val picks = remember { mutableStateOf(mapOf<Long, Long?>()) }
     val always = remember { mutableStateOf(setOf<Long>()) }
+    // The item whose replacement is being searched for, then the pair awaiting
+    // an answer to "remember this as an equivalent?".
+    var searchingFor by remember { mutableStateOf<StartItem?>(null) }
+    var confirmEquivalent by remember { mutableStateOf<Pair<Exercise, Exercise>?>(null) }
+
+    searchingFor?.let { item ->
+        ExercisePickerDialog(
+            exercises = pending.allExercises,
+            title = stringResource(R.string.swap_exercise),
+            availableIds = pending.availableExerciseIds.takeIf { it.isNotEmpty() },
+            onPick = { picked ->
+                searchingFor = null
+                picks.value = picks.value + (item.planned.planned.id to picked.id)
+                val original = item.planned.exercise
+                val alreadyEquivalent = picked.id == original.id ||
+                    (original.groupId != null && picked.groupId == original.groupId)
+                if (!alreadyEquivalent) confirmEquivalent = original to picked
+            },
+            onDismiss = { searchingFor = null },
+        )
+    }
+
+    confirmEquivalent?.let { (original, picked) ->
+        AlertDialog(
+            onDismissRequest = { confirmEquivalent = null },
+            title = { Text(stringResource(R.string.flag_equivalent_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.flag_equivalent_body,
+                        picked.displayName(),
+                        original.displayName(),
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onLinkEquivalent(original, picked)
+                    confirmEquivalent = null
+                }) { Text(stringResource(R.string.flag_equivalent_yes)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEquivalent = null }) {
+                    Text(stringResource(R.string.flag_equivalent_no))
+                }
+            },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -350,8 +403,8 @@ private fun ResolveExercisesDialog(
                                     item.planned.exercise.id ->
                                         stringResource(R.string.keep_original)
 
-                                    else -> item.options.find { it.id == chosen }?.displayName()
-                                        ?: ""
+                                    else -> pending.allExercises.find { it.id == chosen }
+                                        ?.displayName().orEmpty()
                                 }
                             )
                         }
@@ -363,15 +416,34 @@ private fun ResolveExercisesDialog(
                                     expanded = false
                                 },
                             )
-                            item.options.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option.displayName()) },
-                                    onClick = {
-                                        picks.value = picks.value + (plannedId to option.id)
-                                        expanded = false
-                                    },
+                            // Known equivalents come first, set apart from the
+                            // open-ended options below them.
+                            if (item.options.isNotEmpty()) {
+                                HorizontalDivider()
+                                Text(
+                                    stringResource(R.string.equivalents_header),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 )
+                                item.options.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option.displayName()) },
+                                        onClick = {
+                                            picks.value = picks.value + (plannedId to option.id)
+                                            expanded = false
+                                        },
+                                    )
+                                }
                             }
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.pick_another_exercise)) },
+                                onClick = {
+                                    expanded = false
+                                    searchingFor = item
+                                },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.skip_exercise)) },
                                 onClick = {

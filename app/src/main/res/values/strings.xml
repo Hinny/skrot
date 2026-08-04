@@ -184,6 +184,12 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="filter_at_this_gym">At this gym</string>
+    <string name="equivalents_header">Equivalents</string>
+    <string name="flag_equivalent_title">Remember as an equivalent?</string>
+    <string name="flag_equivalent_body">Skrot will offer %1$s automatically whenever %2$s isn\'t available.</string>
+    <string name="flag_equivalent_yes">Remember</string>
+    <string name="flag_equivalent_no">Just this time</string>
     <string name="workout_completed">Workout completed!</string>
     <string name="workout_completed_body">%1$d sets · %2$s · %3$s</string>
     <string name="celebrate_finish">Celebrate finishing a workout</string>

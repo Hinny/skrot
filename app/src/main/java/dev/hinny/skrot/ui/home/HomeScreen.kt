@@ -44,6 +44,7 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.HomeSection
@@ -152,6 +153,10 @@ data class PendingStart(
     val temporaryVisit: Boolean,
     val prefillMode: PrefillMode,
     val items: List<StartItem>,
+    /** The whole library, so any exercise can be swapped in from the dialog. */
+    val allExercises: List<Exercise> = emptyList(),
+    /** Marked as available at the chosen gym; empty for a temporary visit. */
+    val availableExerciseIds: Set<Long> = emptySet(),
 )
 
 class HomeViewModel(private val container: AppContainer) : ViewModel() {
@@ -359,7 +364,14 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val prefillMode = routine?.prefillMode ?: PrefillMode.LAST_SESSION
         val content = dayId?.let { db.routineDao().dayWithContent(it) }
         val plannedList = content?.blocks?.flatten() ?: emptyList()
-        val allExercises = db.exerciseDao().getAll().associateBy { it.id }
+        val library = db.exerciseDao().getAll()
+        val allExercises = library.associateBy { it.id }
+        // Hoisted out of the loop: these were being re-queried per exercise.
+        val availableIds =
+            if (gymId == null || temporaryVisit) emptySet()
+            else db.gymDao().exerciseIdsAt(gymId).toSet()
+        val overrides =
+            if (gymId == null || temporaryVisit) emptyList() else db.gymDao().overridesAt(gymId)
 
         val items = plannedList.map { planned ->
             val exercise = planned.exercise
@@ -379,8 +391,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             } else if (gymId == null) {
                 StartItem(planned, GymResolution.Available, emptyList())
             } else {
-                val availableIds = db.gymDao().exerciseIdsAt(gymId).toSet()
-                val override = db.gymDao().overridesAt(gymId)
+                val override = overrides
                     .find { it.plannedExerciseId == planned.planned.id }
                     ?.let { allExercises[it.exerciseId] }
                 val resolution =
@@ -393,7 +404,40 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 StartItem(planned, resolution, options)
             }
         }
-        return PendingStart(routineId, dayId, gymId, temporaryVisit, prefillMode, items)
+        return PendingStart(
+            routineId = routineId,
+            dayId = dayId,
+            gymId = gymId,
+            temporaryVisit = temporaryVisit,
+            prefillMode = prefillMode,
+            items = items,
+            allExercises = library,
+            availableExerciseIds = availableIds,
+        )
+    }
+
+    /**
+     * Records [picked] as interchangeable with [original], so a gym without the
+     * original offers it automatically next time. Joins the original's group, or
+     * starts one named after it.
+     *
+     * Grouping is a statement about your own training, not an edit to the
+     * library's definition of an exercise, so this is allowed for built-in
+     * exercises too — unlike renaming one.
+     */
+    fun linkAsEquivalent(original: Exercise, picked: Exercise) {
+        viewModelScope.launch {
+            val groupId = original.groupId ?: db.exerciseDao().insertGroup(
+                ExerciseGroup(
+                    nameEn = original.nameEn,
+                    nameSv = original.nameSv,
+                    isCustom = true,
+                )
+            ).also { newGroup ->
+                db.exerciseDao().update(original.copy(groupId = newGroup))
+            }
+            db.exerciseDao().update(picked.copy(groupId = groupId))
+        }
     }
 
     /**

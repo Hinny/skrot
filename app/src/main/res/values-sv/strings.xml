@@ -182,6 +182,12 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Välj en annan övning…</string>
+    <string name="filter_at_this_gym">På det här gymmet</string>
+    <string name="equivalents_header">Likvärdiga</string>
+    <string name="flag_equivalent_title">Kom ihåg som likvärdig?</string>
+    <string name="flag_equivalent_body">Skrot föreslår %1$s automatiskt när %2$s inte finns.</string>
+    <string name="flag_equivalent_yes">Kom ihåg</string>
+    <string name="flag_equivalent_no">Bara den här gången</string>
     <string name="workout_completed">Passet är klart!</string>
     <string name="workout_completed_body">%1$d set · %2$s · %3$s</string>
     <string name="celebrate_finish">Fira avslutat pass</string>

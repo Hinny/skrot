@@ -52,12 +52,19 @@ fun ExercisePickerDialog(
     onDismiss: () -> Unit,
     onCreate: ((NewExercise) -> Unit)? = null,
     title: String = stringResource(R.string.pick_exercise),
+    /**
+     * Exercises marked as available at the gym being trained at. When given, the
+     * list can be narrowed to them — the usual reason for opening this picker
+     * mid-start is that something isn't there.
+     */
+    availableIds: Set<Long>? = null,
 ) {
     var query by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
     // null = both, false = built-in only, true = custom only. Same three-way
     // filter the Exercises tab uses.
     var categoryFilter by remember { mutableStateOf<Boolean?>(null) }
+    var atThisGym by remember { mutableStateOf(availableIds != null) }
 
     if (creating && onCreate != null) {
         CreateExerciseDialog(
@@ -83,7 +90,9 @@ fun ExercisePickerDialog(
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(vertical = 6.dp),
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 6.dp),
                 ) {
                     FilterChip(
                         selected = categoryFilter == null,
@@ -100,9 +109,22 @@ fun ExercisePickerDialog(
                         onClick = { categoryFilter = true },
                         label = { Text(stringResource(R.string.category_custom)) },
                     )
+                    if (availableIds != null) {
+                        FilterChip(
+                            selected = atThisGym,
+                            onClick = { atThisGym = !atThisGym },
+                            label = { Text(stringResource(R.string.filter_at_this_gym)) },
+                        )
+                    }
                 }
+                val pool =
+                    if (availableIds != null && atThisGym) {
+                        exercises.filter { it.id in availableIds }
+                    } else {
+                        exercises
+                    }
                 val filtered = ExerciseSearch.search(
-                    exercises = exercises,
+                    exercises = pool,
                     query = query,
                     customFilter = categoryFilter,
                     muscleNames = searchMuscleNames(),
