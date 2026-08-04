@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -80,9 +80,26 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v4 -> v5: recovery programs became an explicit flag instead of a magic
+         * "rebuild" tag. Tags are joined with the ASCII unit separator, so a LIKE
+         * on the bare word matches whether it stands alone or sits among others.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE routines ADD COLUMN isRecovery INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "UPDATE routines SET isRecovery = 1 WHERE tags = 'rebuild' " +
+                        "OR tags LIKE 'rebuild' || char(31) || '%' " +
+                        "OR tags LIKE '%' || char(31) || 'rebuild' " +
+                        "OR tags LIKE '%' || char(31) || 'rebuild' || char(31) || '%'"
+                )
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
         val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

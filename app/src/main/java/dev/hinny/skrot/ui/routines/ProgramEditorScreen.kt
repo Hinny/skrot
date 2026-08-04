@@ -325,6 +325,20 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
         }
         item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = r.routine.isRecovery,
+                    onCheckedChange = { on -> vm.update { it.copy(isRecovery = on) } },
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.recovery_program))
+            }
+            Text(
+                stringResource(R.string.recovery_program_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        item {
             Text(stringResource(R.string.schedule), style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(

@@ -89,8 +89,14 @@ data class Routine(
     val scheduleMode: ScheduleMode = ScheduleMode.ROTATING,
     /** Exactly zero or one routine is active at a time (enforced in the DAO). */
     val isActive: Boolean = false,
-    /** Free-form tags, e.g. "rebuild" (used by the comeback suggestion). */
+    /** Free-form tags. */
     val tags: List<String> = emptyList(),
+    /**
+     * Marks a gentler program to come back on. Drives the comeback suggestion and
+     * the "carry on recovering?" prompt after a recovery session. Replaces the
+     * magic "rebuild" tag, which migration 4 -> 5 converts.
+     */
+    val isRecovery: Boolean = false,
     /** Index into the ordered day list of the next day to perform (rotating mode). */
     val nextDayIndex: Int = 0,
     val position: Int = 0,

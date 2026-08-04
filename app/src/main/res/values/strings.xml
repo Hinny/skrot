@@ -180,6 +180,10 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="continue_recovery_title">Carry on recovering?</string>
+    <string name="continue_recovery_body">Your last workout came from a recovery program. Next in order:</string>
+    <string name="recovery_program">Recovery program</string>
+    <string name="recovery_program_hint">Suggested after a long break, and offered again after each recovery workout until you train normally.</string>
     <string name="plan_exercises">Plan the workout</string>
     <string name="plan_sets">%1$d sets</string>
     <string name="plan_sets_reps">%1$d sets × %2$d reps</string>

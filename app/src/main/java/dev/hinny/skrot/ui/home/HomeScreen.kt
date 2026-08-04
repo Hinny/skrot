@@ -59,6 +59,7 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
+import dev.hinny.skrot.ui.session.RecoveryStartCard
 import dev.hinny.skrot.ui.session.StartFlowHost
 import dev.hinny.skrot.ui.session.WorkoutPickerDialog
 import dev.hinny.skrot.data.prefs.Settings
@@ -79,6 +80,12 @@ data class HomeUiState(
     val daysSinceLastSession: Int? = null,
     val comebackRoutines: List<RoutineWithDays> = emptyList(),
     val backupOverdue: Boolean = false,
+    /**
+     * Set while the most recent finished workout was a recovery one: the same
+     * program, and the day that follows the one just done. Clears itself as soon
+     * as an ordinary session is finished.
+     */
+    val continueRecovery: Pair<RoutineWithDays, RoutineDay>? = null,
 )
 
 /** One planned exercise checked against the selected gym. */
@@ -139,10 +146,23 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 }
                 val comeback =
                     if (!dismissed && (daysSince == null || daysSince >= settings.comebackDays)) {
-                        state.allRoutines.filter { r ->
-                            r.routine.tags.any { it.equals("rebuild", ignoreCase = true) }
-                        }
+                        state.allRoutines.filter { it.routine.isRecovery }
                     } else emptyList()
+
+                // Carry on recovering: look at the workout most recently finished
+                // and, if it was a recovery one, propose the next day of the same
+                // program. Finishing a normal session makes this fall away.
+                val lastFinished = finished.maxByOrNull { it.startedAt }
+                val recoveryProgram = lastFinished?.routineId
+                    ?.let { id -> state.allRoutines.find { it.routine.id == id } }
+                    ?.takeIf { it.routine.isRecovery }
+                val continueRecovery = recoveryProgram?.let { program ->
+                    val days = program.sortedDays
+                    if (days.isEmpty()) return@let null
+                    val lastIndex = days.indexOfFirst { it.id == lastFinished.routineDayId }
+                    val next = days[(lastIndex + 1).mod(days.size)]
+                    program to next
+                }
                 // Backup reminder: counts from the last backup, or from the oldest
                 // logged session if no backup was ever made.
                 val backupBasis = settings.lastBackupAt.takeIf { it > 0 }
@@ -158,6 +178,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     daysSinceLastSession = daysSince,
                     comebackRoutines = if (daysSince == null) emptyList() else comeback,
                     backupOverdue = backupOverdue,
+                    continueRecovery = continueRecovery,
                 )
             }.collect { uiState.value = it }
         }
@@ -319,6 +340,38 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     }
 }
 
+/**
+ * The recovery offers: carrying on with a recovery program just used, and the
+ * comeback nudge after a long gap. Shared by Home and the Session tab so both
+ * can start a recovery workout on a chosen day.
+ */
+@Composable
+fun RecoverySection(
+    state: HomeUiState,
+    onDismissComeback: () -> Unit,
+    onStart: (RoutineWithDays, RoutineDay) -> Unit,
+) {
+    state.continueRecovery?.let { (program, nextDay) ->
+        RecoveryStartCard(
+            title = stringResource(R.string.continue_recovery_title),
+            body = stringResource(R.string.continue_recovery_body),
+            routines = listOf(program),
+            suggestedDay = { nextDay },
+            onStart = onStart,
+        )
+    }
+    if (state.comebackRoutines.isNotEmpty()) {
+        RecoveryStartCard(
+            title = stringResource(R.string.comeback_title, state.daysSinceLastSession ?: 0),
+            body = stringResource(R.string.comeback_body),
+            routines = state.comebackRoutines,
+            suggestedDay = { it.sortedDays.firstOrNull() },
+            onStart = onStart,
+            onDismiss = onDismissComeback,
+        )
+    }
+}
+
 @Composable
 fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
@@ -382,34 +435,12 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             }
         }
 
-        if (state.comebackRoutines.isNotEmpty() && state.openSession == null) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.comeback_title,
-                                state.daysSinceLastSession ?: 0,
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { vm.comebackDismissed.value = true }) {
-                            Icon(Icons.Filled.Close, stringResource(R.string.dismiss))
-                        }
-                    }
-                    Text(stringResource(R.string.comeback_body))
-                    state.comebackRoutines.forEach { r ->
-                        TextButton(onClick = { startTarget = r to r.sortedDays.firstOrNull() }) {
-                            Text(r.routine.name)
-                        }
-                    }
-                }
-            }
+        if (state.openSession == null) {
+            RecoverySection(
+                state = state,
+                onDismissComeback = { vm.comebackDismissed.value = true },
+                onStart = { r, day -> startTarget = r to day },
+            )
         }
 
         val active = state.activeRoutine

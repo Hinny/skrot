@@ -42,6 +42,7 @@ import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.ui.home.HomeViewModel
+import dev.hinny.skrot.ui.home.RecoverySection
 
 /**
  * The Session tab: resume the workout in progress, or start one (scheduled day,
@@ -136,6 +137,12 @@ fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostContr
                     }
                 }
             }
+
+            RecoverySection(
+                state = state,
+                onDismissComeback = { vm.comebackDismissed.value = true },
+                onStart = { r, day -> startTarget = r to day },
+            )
 
             OutlinedButton(onClick = { startTarget = null to null }) {
                 Text(stringResource(R.string.start_empty_workout))
