@@ -179,6 +179,8 @@
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
+    <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="save_to_program_day">Save to the program day</string>
     <string name="remove_set_pick">Pick the set to remove</string>
     <string name="set_completed_note">completed</string>
     <string name="set_marker_warmup">W</string>

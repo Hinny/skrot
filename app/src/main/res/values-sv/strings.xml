@@ -177,6 +177,8 @@
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
+    <string name="pick_another_exercise">Välj en annan övning…</string>
+    <string name="save_to_program_day">Spara i programdagen</string>
     <string name="remove_set_pick">Välj setet som ska tas bort</string>
     <string name="set_completed_note">klart</string>
     <string name="set_marker_warmup">U</string>

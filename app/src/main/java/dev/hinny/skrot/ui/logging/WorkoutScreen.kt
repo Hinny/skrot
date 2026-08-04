@@ -336,6 +336,9 @@ fun WorkoutScreen(
                                     ?.let { plannedSets[it] } ?: emptyList(),
                                 suggestion = suggestions[se.sessionExercise.id],
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
+                                allExercises = allExercises,
+                                canSaveForGym = session.session.gymId != null &&
+                                    !session.session.temporaryVisit,
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
@@ -481,6 +484,8 @@ private fun ExerciseSection(
     plannedSets: List<PlannedSet>,
     suggestion: ProgressionSuggestion?,
     swapOptions: List<Exercise>,
+    allExercises: List<Exercise>,
+    canSaveForGym: Boolean,
     currentSetId: Long?,
     hasRoutineDay: Boolean,
     locked: Boolean,
@@ -495,6 +500,9 @@ private fun ExerciseSection(
     var noteOpen by remember { mutableStateOf(false) }
     var nextTimeOpen by remember { mutableStateOf(false) }
     var removeSetOpen by remember { mutableStateOf(false) }
+    // Non-null while the full picker is open for a swap; carries the
+    // "save permanently" choices made in the swap dialog.
+    var swapPickerFlags by remember { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
 
     val setReorder = rememberReorderState { from, to ->
         vm.moveSet(se.sessionExercise.id, from, to)
@@ -525,13 +533,11 @@ private fun ExerciseSection(
                 Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                if (swapOptions.isNotEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.swap_exercise)) },
-                        enabled = !locked,
-                        onClick = { menuOpen = false; swapOpen = true },
-                    )
-                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.swap_exercise)) },
+                    enabled = !locked,
+                    onClick = { menuOpen = false; swapOpen = true },
+                )
                 if (blockSize > 1) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.unlink)) },
@@ -667,24 +673,30 @@ private fun ExerciseSection(
     }
 
     if (swapOpen) {
-        AlertDialog(
-            onDismissRequest = { swapOpen = false },
-            title = { Text(stringResource(R.string.swap_exercise)) },
-            text = {
-                Column {
-                    swapOptions.forEach { option ->
-                        TextButton(onClick = { vm.swapExercise(se, option); swapOpen = false }) {
-                            Text(option.displayName())
-                        }
-                    }
-                }
+        SwapExerciseDialog(
+            options = swapOptions,
+            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
+            canSaveForGym = canSaveForGym && se.sessionExercise.plannedExerciseId != null,
+            onSwap = { option, applyToPlan, alwaysAtGym ->
+                vm.swapExercise(se, option, applyToPlan, alwaysAtGym)
+                swapOpen = false
             },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { swapOpen = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
+            onPickOther = { applyToPlan, alwaysAtGym ->
+                swapOpen = false
+                swapPickerFlags = applyToPlan to alwaysAtGym
             },
+            onDismiss = { swapOpen = false },
+        )
+    }
+    swapPickerFlags?.let { (applyToPlan, alwaysAtGym) ->
+        ExercisePickerDialog(
+            exercises = allExercises,
+            title = stringResource(R.string.swap_exercise),
+            onPick = {
+                vm.swapExercise(se, it, applyToPlan, alwaysAtGym)
+                swapPickerFlags = null
+            },
+            onDismiss = { swapPickerFlags = null },
         )
     }
     if (removeSetOpen) {
@@ -711,6 +723,67 @@ private fun ExerciseSection(
             onDismiss = { nextTimeOpen = false },
         )
     }
+}
+
+/**
+ * Swap dialog: group equivalents up front, the whole library one tap further.
+ * The two checkboxes decide whether the swap outlives this session — rewriting
+ * the program day, or only what happens at this gym.
+ */
+@Composable
+private fun SwapExerciseDialog(
+    options: List<Exercise>,
+    canApplyToPlan: Boolean,
+    canSaveForGym: Boolean,
+    onSwap: (Exercise, applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
+    onPickOther: (applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var applyToPlan by remember { mutableStateOf(false) }
+    var alwaysAtGym by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.swap_exercise)) },
+        text = {
+            Column {
+                options.forEach { option ->
+                    TextButton(
+                        onClick = { onSwap(option, applyToPlan, alwaysAtGym) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(option.displayName(), modifier = Modifier.weight(1f))
+                    }
+                }
+                OutlinedButton(
+                    onClick = { onPickOther(applyToPlan, alwaysAtGym) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.pick_another_exercise)) }
+
+                if (canApplyToPlan) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = applyToPlan, onCheckedChange = { applyToPlan = it })
+                        Text(
+                            stringResource(R.string.save_to_program_day),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                if (canSaveForGym) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = alwaysAtGym, onCheckedChange = { alwaysAtGym = it })
+                        Text(
+                            stringResource(R.string.always_use_at_gym),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
 }
 
 /**

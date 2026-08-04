@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.PlannedExercise
@@ -456,10 +457,34 @@ class WorkoutViewModel(
         suggestions.value -= seId
     }
 
-    fun swapExercise(se: SessionExerciseWithDetails, to: Exercise) {
+    /**
+     * Swaps the exercise for this session. The swap is session-only unless asked
+     * to persist: [applyToPlan] rewrites the routine's planned exercise, and
+     * [alwaysAtGym] records it as a per-gym override instead, which keeps the
+     * routine intact and only changes what happens at this gym.
+     */
+    fun swapExercise(
+        se: SessionExerciseWithDetails,
+        to: Exercise,
+        applyToPlan: Boolean = false,
+        alwaysAtGym: Boolean = false,
+    ) {
         viewModelScope.launch {
             db.sessionDao().updateSessionExercise(se.sessionExercise.copy(exerciseId = to.id))
+            val peId = se.sessionExercise.plannedExerciseId
+            if (peId != null) {
+                if (applyToPlan) {
+                    db.routineDao().plannedExerciseById(peId)?.let {
+                        db.routineDao().updatePlannedExercise(it.copy(exerciseId = to.id))
+                    }
+                }
+                val current = session.value?.session
+                if (alwaysAtGym && current?.gymId != null && !current.temporaryVisit) {
+                    db.gymDao().setOverride(GymOverride(current.gymId, peId, to.id))
+                }
+            }
             touch()
+            session.value?.let { refreshAuxiliary(it) }
         }
     }
 
