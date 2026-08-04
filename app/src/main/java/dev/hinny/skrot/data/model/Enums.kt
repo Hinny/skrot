@@ -353,3 +353,40 @@ enum class Sex {
     MALE,
     OTHER,
 }
+
+/**
+ * A card the home screen can show. Which ones appear is configurable, since a
+ * home screen is only useful if it holds what its owner actually checks.
+ */
+enum class HomeSection {
+    COACH,
+    NEXT_WORKOUT,
+    RECOVERY,
+    BACKUP_REMINDER,
+    GYM_READINESS,
+    LAST_SESSION,
+    BODY_METRIC,
+    DAYS_SINCE_LAST,
+    WEEK_STREAK,
+    ONE_REP_MAX;
+
+    companion object {
+        /**
+         * Shown until the user says otherwise: the workout-facing cards plus the
+         * recap ones. The rest are opt-in so the screen doesn't start cluttered.
+         */
+        val DEFAULTS: Set<HomeSection> = setOf(
+            COACH, NEXT_WORKOUT, RECOVERY, BACKUP_REMINDER,
+            GYM_READINESS, LAST_SESSION, BODY_METRIC,
+        )
+    }
+}
+
+/** Window the home screen's estimated 1RM is taken from. */
+enum class OneRepMaxRange {
+    /** The most recent estimate, whenever that was. */
+    CURRENT,
+    PAST_YEAR,
+    PAST_3_YEARS,
+    ALL_TIME,
+}

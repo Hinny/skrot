@@ -260,6 +260,22 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 stringResource(R.string.plan_before_start_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
+            ToggleSetting(
+                stringResource(R.string.celebrate_finish),
+                settings.celebrateWorkoutFinish,
+            ) { scope.launch { repo.setCelebrateWorkoutFinish(it) } }
+            Text(
+                stringResource(R.string.celebrate_finish_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            ToggleSetting(
+                stringResource(R.string.always_offer_recovery),
+                settings.alwaysOfferRecovery,
+            ) { scope.launch { repo.setAlwaysOfferRecovery(it) } }
+            Text(
+                stringResource(R.string.always_offer_recovery_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()

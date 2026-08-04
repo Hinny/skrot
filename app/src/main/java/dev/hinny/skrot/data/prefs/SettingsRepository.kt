@@ -9,11 +9,14 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.MetaDisplay
+import dev.hinny.skrot.data.model.OneRepMaxRange
 import dev.hinny.skrot.data.model.Sex
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
@@ -72,6 +75,17 @@ data class Settings(
      * choice, but listing every exercise and its availability.
      */
     val planExercisesBeforeStart: Boolean = false,
+    /** Whether finishing a workout shows what you got done before closing it. */
+    val celebrateWorkoutFinish: Boolean = true,
+    /** Whether the Session tab offers a recovery workout regardless of time away. */
+    val alwaysOfferRecovery: Boolean = true,
+    /** Which cards the home screen shows. */
+    val homeSections: Set<HomeSection> = HomeSection.DEFAULTS,
+    /** Workouts a week must contain to keep the streak alive. */
+    val streakMinPerWeek: Int = 1,
+    /** Exercises tracked by the home screen's 1RM card, in display order. */
+    val oneRepMaxExerciseIds: List<Long> = emptyList(),
+    val oneRepMaxRange: OneRepMaxRange = OneRepMaxRange.CURRENT,
     /** Which language exercise names are shown in, independent of the app's UI language. */
     val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
     /** How an exercise's muscle groups are rendered in lists and detail views. */
@@ -111,6 +125,12 @@ class SettingsRepository(private val context: Context) {
         val confirmLibraryEdits = booleanPreferencesKey("confirm_library_edits")
         val sessionsLockedByDefault = booleanPreferencesKey("sessions_locked_by_default")
         val planExercisesBeforeStart = booleanPreferencesKey("plan_exercises_before_start")
+        val celebrateWorkoutFinish = booleanPreferencesKey("celebrate_workout_finish")
+        val alwaysOfferRecovery = booleanPreferencesKey("always_offer_recovery")
+        val homeSections = stringSetPreferencesKey("home_sections")
+        val streakMinPerWeek = intPreferencesKey("streak_min_per_week")
+        val oneRepMaxExerciseIds = stringPreferencesKey("one_rep_max_exercise_ids")
+        val oneRepMaxRange = stringPreferencesKey("one_rep_max_range")
         val exerciseNameLanguage = stringPreferencesKey("exercise_name_language")
         val muscleDisplay = stringPreferencesKey("muscle_display")
         val equipmentDisplay = stringPreferencesKey("equipment_display")
@@ -148,6 +168,19 @@ class SettingsRepository(private val context: Context) {
             confirmLibraryEdits = p[Keys.confirmLibraryEdits] ?: defaults.confirmLibraryEdits,
             sessionsLockedByDefault = p[Keys.sessionsLockedByDefault] ?: defaults.sessionsLockedByDefault,
             planExercisesBeforeStart = p[Keys.planExercisesBeforeStart] ?: defaults.planExercisesBeforeStart,
+            celebrateWorkoutFinish = p[Keys.celebrateWorkoutFinish] ?: defaults.celebrateWorkoutFinish,
+            alwaysOfferRecovery = p[Keys.alwaysOfferRecovery] ?: defaults.alwaysOfferRecovery,
+            homeSections = p[Keys.homeSections]
+                ?.mapNotNullTo(mutableSetOf()) { name ->
+                    HomeSection.entries.find { it.name == name }
+                }
+                ?: defaults.homeSections,
+            streakMinPerWeek = p[Keys.streakMinPerWeek] ?: defaults.streakMinPerWeek,
+            oneRepMaxExerciseIds = p[Keys.oneRepMaxExerciseIds]
+                ?.split(',')
+                ?.mapNotNull { it.toLongOrNull() }
+                ?: defaults.oneRepMaxExerciseIds,
+            oneRepMaxRange = p[Keys.oneRepMaxRange].toEnum(defaults.oneRepMaxRange),
             exerciseNameLanguage = p[Keys.exerciseNameLanguage].toEnum(defaults.exerciseNameLanguage),
             muscleDisplay = p[Keys.muscleDisplay].toEnum(defaults.muscleDisplay),
             equipmentDisplay = p[Keys.equipmentDisplay].toEnum(defaults.equipmentDisplay),
@@ -184,6 +217,18 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.sessionsLockedByDefault] = v }
     suspend fun setPlanExercisesBeforeStart(v: Boolean) =
         context.dataStore.edit { it[Keys.planExercisesBeforeStart] = v }
+    suspend fun setCelebrateWorkoutFinish(v: Boolean) =
+        context.dataStore.edit { it[Keys.celebrateWorkoutFinish] = v }
+    suspend fun setAlwaysOfferRecovery(v: Boolean) =
+        context.dataStore.edit { it[Keys.alwaysOfferRecovery] = v }
+    suspend fun setHomeSections(v: Set<HomeSection>) =
+        context.dataStore.edit { p -> p[Keys.homeSections] = v.mapTo(mutableSetOf()) { it.name } }
+    suspend fun setStreakMinPerWeek(v: Int) =
+        context.dataStore.edit { it[Keys.streakMinPerWeek] = v.coerceAtLeast(1) }
+    suspend fun setOneRepMaxExerciseIds(v: List<Long>) =
+        context.dataStore.edit { p -> p[Keys.oneRepMaxExerciseIds] = v.joinToString(",") }
+    suspend fun setOneRepMaxRange(v: OneRepMaxRange) =
+        context.dataStore.edit { it[Keys.oneRepMaxRange] = v.name }
     suspend fun setExerciseNameLanguage(v: AppLanguage) =
         context.dataStore.edit { it[Keys.exerciseNameLanguage] = v.name }
     suspend fun setMuscleDisplay(v: MetaDisplay) =

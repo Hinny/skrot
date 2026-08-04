@@ -75,7 +75,9 @@ fun ExercisePickerDialog(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    label = { Text(stringResource(R.string.search_exercises)) },
+                    // Placeholder rather than a label: the hint belongs inside the
+                    // empty box, not floating above a field you haven't used yet.
+                    placeholder = { Text(stringResource(R.string.search_exercises)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )

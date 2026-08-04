@@ -362,6 +362,12 @@ data class LoggedSet(
     val reps: Int = 0,
     val completed: Boolean = false,
     val note: String = "",
+    /**
+     * Target reps for sets with no plan behind them — an exercise added during
+     * the session. Planned sets keep their target on [PlannedSet] instead, so
+     * editing it there still writes back to the routine.
+     */
+    val targetReps: Int? = null,
     /** Rest duration attached to this set when it was logged. */
     val restSec: Int = 90,
     val completedAt: Long? = null,

@@ -46,6 +46,9 @@ import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymOverride
+import dev.hinny.skrot.data.model.HomeSection
+import dev.hinny.skrot.data.model.OneRepMaxRange
+import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.PlannedExerciseWithDetails
@@ -58,12 +61,15 @@ import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.domain.CoachTrigger
 import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.domain.GymResolver
+import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.PrefillEngine
 import dev.hinny.skrot.domain.ScheduleEngine
+import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
+import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -87,6 +93,8 @@ data class HomeUiState(
     val gyms: List<Gym> = emptyList(),
     val daysSinceLastSession: Int? = null,
     val comebackRoutines: List<RoutineWithDays> = emptyList(),
+    /** Every recovery program, regardless of how long it has been. */
+    val recoveryRoutines: List<RoutineWithDays> = emptyList(),
     val backupOverdue: Boolean = false,
     /**
      * Set while the most recent finished workout was a recovery one: the same
@@ -99,7 +107,12 @@ data class HomeUiState(
     /** The entry before [latestMetric], for the change shown next to it. */
     val previousMetric: BodyMetric? = null,
     val gymReadiness: GymReadiness? = null,
+    val weekStreak: Int = 0,
+    val oneRepMaxes: List<OneRepMaxEntry> = emptyList(),
 )
+
+/** One tracked lift's best estimated 1RM within the configured window. */
+data class OneRepMaxEntry(val exercise: Exercise, val estimateKg: Double?)
 
 /** What the last finished workout amounted to, for the Home recap card. */
 data class LastSessionSummary(
@@ -214,19 +227,64 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     System.currentTimeMillis() - backupBasis >
                     settings.backupReminderDays * 86_400_000L
                 val sortedMetrics = metrics.sortedByDescending { it.date }
+                val streak =
+                    if (HomeSection.WEEK_STREAK in settings.homeSections) {
+                        StreakCalculator.weeks(
+                            finished.map { it.startedAt },
+                            settings.streakMinPerWeek,
+                        )
+                    } else 0
+                val oneRepMaxes =
+                    if (HomeSection.ONE_REP_MAX in settings.homeSections) {
+                        oneRepMaxes(settings.oneRepMaxExerciseIds, settings.oneRepMaxRange)
+                    } else emptyList()
                 state.copy(
                     activeRoutine = active,
                     nextDay = nextDay,
                     daysSinceLastSession = daysSince,
                     comebackRoutines = if (daysSince == null) emptyList() else comeback,
+                    recoveryRoutines = state.allRoutines.filter { it.routine.isRecovery },
                     backupOverdue = backupOverdue,
                     continueRecovery = continueRecovery,
                     lastSession = lastFinished?.let { summarize(it, settings.bodyweightFallbackKg) },
                     latestMetric = sortedMetrics.firstOrNull(),
                     previousMetric = sortedMetrics.getOrNull(1),
                     gymReadiness = gymReadiness(lastFinished, state.gyms, nextDay),
+                    weekStreak = streak,
+                    oneRepMaxes = oneRepMaxes,
                 )
             }.collect { uiState.value = it }
+        }
+    }
+
+    /**
+     * Best estimated 1RM for each tracked lift within [range]. Warmups are
+     * excluded, as they are everywhere else 1RM is estimated.
+     */
+    private suspend fun oneRepMaxes(
+        exerciseIds: List<Long>,
+        range: OneRepMaxRange,
+    ): List<OneRepMaxEntry> {
+        val all = db.exerciseDao().getAll()
+        val tracked = resolveOneRepMaxExercises(exerciseIds, all)
+        val from = when (range) {
+            OneRepMaxRange.CURRENT, OneRepMaxRange.ALL_TIME -> 0L
+            OneRepMaxRange.PAST_YEAR -> System.currentTimeMillis() - 365L * 86_400_000L
+            OneRepMaxRange.PAST_3_YEARS -> System.currentTimeMillis() - 3 * 365L * 86_400_000L
+        }
+        return tracked.map { exercise ->
+            val sets = db.sessionDao().setsForExercise(exercise.id)
+                .filter { it.set.setType != SetType.WARMUP && it.set.completed }
+                .filter { it.sessionDate >= from }
+            val estimate = if (range == OneRepMaxRange.CURRENT) {
+                // "Latest" means the best set of the most recent session that
+                // included this lift, not the best ever.
+                val latestSession = sets.maxByOrNull { it.sessionDate }?.sessionId
+                sets.filter { it.sessionId == latestSession }
+            } else {
+                sets
+            }.mapNotNull { OneRepMax.epley(it.set.load, it.set.reps) }.maxOrNull()
+            OneRepMaxEntry(exercise, estimate)
         }
     }
 
@@ -310,12 +368,12 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 ?: listOf(exercise)
 
             if (temporaryVisit) {
-                // Temporary visit: no availability filtering; offer the full group.
+                // Somewhere unfamiliar: assume nothing is there. Every exercise
+                // gets confirmed, even when it has no group to swap within.
                 val options = groupMembers.filter { it.id != exercise.id }
                 StartItem(
                     planned = planned,
-                    resolution = if (options.isEmpty()) GymResolution.Available
-                    else GymResolution.Choice(options),
+                    resolution = GymResolution.Choice(options),
                     options = options,
                 )
             } else if (gymId == null) {
@@ -456,6 +514,7 @@ fun RecoverySection(
     state: HomeUiState,
     onDismissComeback: () -> Unit,
     onStart: (RoutineWithDays, RoutineDay) -> Unit,
+    alwaysOffer: Boolean = false,
 ) {
     state.continueRecovery?.let { (program, nextDay) ->
         RecoveryStartCard(
@@ -466,14 +525,25 @@ fun RecoverySection(
             onStart = onStart,
         )
     }
-    if (state.comebackRoutines.isNotEmpty()) {
-        RecoveryStartCard(
+    when {
+        state.comebackRoutines.isNotEmpty() -> RecoveryStartCard(
             title = stringResource(R.string.comeback_title, state.daysSinceLastSession ?: 0),
             body = stringResource(R.string.comeback_body),
             routines = state.comebackRoutines,
             suggestedDay = { it.sortedDays.firstOrNull() },
             onStart = onStart,
             onDismiss = onDismissComeback,
+        )
+
+        // Wanting an easier day isn't only a thing after a long break, so the
+        // Session tab can keep the option permanently on hand.
+        alwaysOffer && state.continueRecovery == null &&
+            state.recoveryRoutines.isNotEmpty() -> RecoveryStartCard(
+            title = stringResource(R.string.recovery_program),
+            body = stringResource(R.string.recovery_offer_body),
+            routines = state.recoveryRoutines,
+            suggestedDay = { it.sortedDays.firstOrNull() },
+            onStart = onStart,
         )
     }
 }
@@ -506,6 +576,70 @@ private fun CoachCard(settings: Settings, daysSince: Int?) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(16.dp),
         )
+    }
+}
+
+/** Days since the last workout and the run of training weeks behind it. */
+@Composable
+private fun StreakCard(daysSince: Int?, streak: Int?) {
+    val lines = buildList {
+        if (daysSince != null) {
+            add(
+                if (daysSince <= 0) stringResource(R.string.trained_today)
+                else stringResource(R.string.days_since_last_workout, daysSince)
+            )
+        }
+        if (streak != null) {
+            add(
+                if (streak <= 0) stringResource(R.string.week_streak_none)
+                else stringResource(R.string.week_streak, streak)
+            )
+        }
+    }
+    if (lines.isEmpty()) return
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            lines.forEachIndexed { index, line ->
+                Text(
+                    line,
+                    style = if (index == 0) MaterialTheme.typography.titleMedium
+                    else MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+/** Estimated 1RM for the tracked lifts. */
+@Composable
+private fun OneRepMaxCard(
+    entries: List<OneRepMaxEntry>,
+    range: OneRepMaxRange,
+    settings: Settings,
+) {
+    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "${stringResource(R.string.home_section_one_rep_max)} · ${rangeLabel(range)}",
+                style = MaterialTheme.typography.labelMedium,
+            )
+            entries.forEach { entry ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(entry.exercise.displayName(), modifier = Modifier.weight(1f))
+                    val estimate = entry.estimateKg
+                    Text(
+                        if (estimate == null) "—" else {
+                            val display =
+                                if (settings.unit == WeightUnit.KG) estimate
+                                else Units.kgToLbs(estimate)
+                            "${Units.formatValue(display)} $unitLabel"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -642,7 +776,9 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
     ) {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
 
-        if (settings.coachEnabled) {
+        val shows = { section: HomeSection -> section in settings.homeSections }
+
+        if (settings.coachEnabled && shows(HomeSection.COACH)) {
             CoachCard(settings = settings, daysSince = state.daysSinceLastSession)
         }
 
@@ -665,7 +801,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             }
         }
 
-        if (state.backupOverdue) {
+        if (state.backupOverdue && shows(HomeSection.BACKUP_REMINDER)) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Row(
@@ -693,7 +829,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             }
         }
 
-        if (state.openSession == null) {
+        if (state.openSession == null && shows(HomeSection.RECOVERY)) {
             RecoverySection(
                 state = state,
                 onDismissComeback = { vm.comebackDismissed.value = true },
@@ -702,7 +838,9 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         }
 
         val active = state.activeRoutine
-        if (active != null && state.openSession == null) {
+        if (!shows(HomeSection.NEXT_WORKOUT)) {
+            // nothing: the next-workout card is switched off
+        } else if (active != null && state.openSession == null) {
             val nextDay = state.nextDay
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -750,25 +888,40 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             }
         }
 
-        OutlinedButton(onClick = { startTarget = null to null }) {
-            Text(stringResource(R.string.start_empty_workout))
-        }
-
-        state.gymReadiness?.let { GymReadinessCard(it) }
-        state.lastSession?.let { last ->
-            LastSessionCard(
-                summary = last,
-                settings = settings,
-                onOpen = { nav.navigate(Routes.historySession(last.sessionId)) },
+        if (shows(HomeSection.DAYS_SINCE_LAST) || shows(HomeSection.WEEK_STREAK)) {
+            StreakCard(
+                daysSince = state.daysSinceLastSession.takeIf { shows(HomeSection.DAYS_SINCE_LAST) },
+                streak = state.weekStreak.takeIf { shows(HomeSection.WEEK_STREAK) },
             )
         }
-        state.latestMetric?.let { metric ->
-            LastMetricCard(
-                metric = metric,
-                previous = state.previousMetric,
+        if (shows(HomeSection.ONE_REP_MAX) && state.oneRepMaxes.isNotEmpty()) {
+            OneRepMaxCard(
+                entries = state.oneRepMaxes,
+                range = settings.oneRepMaxRange,
                 settings = settings,
-                onOpen = { nav.navigate(Routes.BODY) },
             )
+        }
+        if (shows(HomeSection.GYM_READINESS)) {
+            state.gymReadiness?.let { GymReadinessCard(it) }
+        }
+        if (shows(HomeSection.LAST_SESSION)) {
+            state.lastSession?.let { last ->
+                LastSessionCard(
+                    summary = last,
+                    settings = settings,
+                    onOpen = { nav.navigate(Routes.historySession(last.sessionId)) },
+                )
+            }
+        }
+        if (shows(HomeSection.BODY_METRIC)) {
+            state.latestMetric?.let { metric ->
+                LastMetricCard(
+                    metric = metric,
+                    previous = state.previousMetric,
+                    settings = settings,
+                    onOpen = { nav.navigate(Routes.BODY) },
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))

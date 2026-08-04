@@ -509,13 +509,19 @@ class WorkoutViewModel(
         }
     }
 
-    /** Target-reps edits persist back to the routine, like rest durations. */
+    /**
+     * Target-reps edits persist back to the routine, like rest durations. An
+     * exercise with no plan behind it keeps its target on the logged set, so it
+     * stays editable rather than showing a dead "—".
+     */
     fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, reps: Int?) {
         viewModelScope.launch {
-            se.sessionExercise.plannedExerciseId?.let { peId ->
+            val peId = se.sessionExercise.plannedExerciseId
+            if (peId != null) {
                 db.routineDao().writeBackTarget(peId, set.position, reps)
-                val content = session.value ?: return@let
-                refreshAuxiliary(content)
+                session.value?.let { refreshAuxiliary(it) }
+            } else {
+                db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             }
             touch()
         }

@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -96,9 +96,20 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v5 -> v6: sets can carry their own rep target, so an exercise added
+         * mid-session is editable instead of showing a dead "—".
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE logged_sets ADD COLUMN targetReps INTEGER")
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
-        val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        val MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+        )
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

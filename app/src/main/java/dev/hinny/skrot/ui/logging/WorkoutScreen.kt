@@ -84,6 +84,7 @@ import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.domain.ProgressionSuggestion
 import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.CompactNumberField
@@ -236,8 +237,10 @@ fun WorkoutScreen(
                     IconButton(onClick = { showDiscard = true }) {
                         Icon(Icons.Filled.Delete, stringResource(R.string.discard))
                     }
+                    // "Finish" for the session, "Done" for a set — using the same
+                    // word for both was a coin toss every time.
                     Button(onClick = { showFinish = true }) {
-                        Text(stringResource(R.string.done))
+                        Text(stringResource(R.string.finish))
                     }
                 },
             )
@@ -482,12 +485,47 @@ fun WorkoutScreen(
         )
     }
     if (showFinish) {
+        val session = content
         AlertDialog(
             onDismissRequest = { showFinish = false },
-            title = { Text(stringResource(R.string.finish_workout)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (settings.celebrateWorkoutFinish) R.string.workout_completed
+                        else R.string.finish_workout
+                    )
+                )
+            },
+            text = if (settings.celebrateWorkoutFinish && session != null) {
+                {
+                    val completed = session.exercises.sumOf { se -> se.sets.count { it.completed } }
+                    val volumeKg = session.exercises.sumOf { se ->
+                        se.sets.filter { it.completed }.sumOf { set ->
+                            VolumeCalculator.setVolumeKg(
+                                se.exercise.measurementType,
+                                set.load,
+                                set.reps,
+                                settings.bodyweightFallbackKg,
+                                se.exercise.bodyweightFactor,
+                            ) ?: 0.0
+                        }
+                    }
+                    val volume =
+                        if (settings.unit == WeightUnit.KG) volumeKg else Units.kgToLbs(volumeKg)
+                    Text(
+                        stringResource(
+                            R.string.workout_completed_body,
+                            completed,
+                            "${Units.formatValue(volume)} " +
+                                if (settings.unit == WeightUnit.KG) "kg" else "lbs",
+                            formatElapsed(elapsed),
+                        )
+                    )
+                }
+            } else null,
             confirmButton = {
                 TextButton(onClick = { showFinish = false; vm.finish() }) {
-                    Text(stringResource(R.string.done))
+                    Text(stringResource(R.string.finish))
                 }
             },
             dismissButton = {
@@ -990,9 +1028,9 @@ private fun SetRow(
         }
     }
 
-    if (targetOpen && planned != null) {
+    if (targetOpen) {
         TargetDialog(
-            planned = planned,
+            initial = planned?.targetRepsMin ?: set.targetReps,
             onSave = { reps -> vm.updateTarget(se, set, reps) },
             onDismiss = { targetOpen = false },
         )
@@ -1098,16 +1136,17 @@ private fun SetRowContent(
 
         // Target sits directly right of the actual reps: the number you are
         // aiming for next to the number you just entered.
+        val target = planned?.targetRepsMin ?: set.targetReps
         val targetText = when {
             set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
-            planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
+            target != null -> "$target"
             else -> "—"
         }
         CompactValueButton(
             value = targetText,
             label = stringResource(R.string.target_short),
-            onClick = { if (planned != null) onOpenTarget() },
-            enabled = !locked && planned != null,
+            onClick = onOpenTarget,
+            enabled = !locked && set.setType != SetType.FAILURE,
             modifier = Modifier.weight(0.9f),
         )
         CompactValueButton(
@@ -1219,11 +1258,11 @@ private fun SetTypeMarker(label: String, enabled: Boolean, onClick: () -> Unit) 
 
 @Composable
 private fun TargetDialog(
-    planned: PlannedSet,
+    initial: Int?,
     onSave: (Int?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var targetText by remember { mutableStateOf(planned.targetRepsMin?.toString() ?: "") }
+    var targetText by remember { mutableStateOf(initial?.toString() ?: "") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.target_reps)) },

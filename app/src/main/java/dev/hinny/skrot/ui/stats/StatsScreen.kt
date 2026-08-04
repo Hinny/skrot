@@ -106,18 +106,9 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            db.exerciseDao().observeAll().collect { all ->
-                exercises.value = all
-                if (selectedExercise.value == null) {
-                    // default to the first exercise that has data
-                    for (e in all) {
-                        if (db.sessionDao().setsForExercise(e.id).isNotEmpty()) {
-                            selectExercise(e)
-                            break
-                        }
-                    }
-                }
-            }
+            // No default selection: picking the first exercise with data looks
+            // like a real answer to a question nobody asked.
+            db.exerciseDao().observeAll().collect { all -> exercises.value = all }
         }
         viewModelScope.launch {
             range.flatMapLatest { db.sessionDao().observeSessionDates(fromMs(it)) }

@@ -142,8 +142,12 @@ fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostContr
                 state = state,
                 onDismissComeback = { vm.comebackDismissed.value = true },
                 onStart = { r, day -> startTarget = r to day },
+                alwaysOffer = settings.alwaysOfferRecovery,
             )
 
+            OutlinedButton(onClick = { showPicker = true }) {
+                Text(stringResource(R.string.start_another_workout))
+            }
             OutlinedButton(onClick = { startTarget = null to null }) {
                 Text(stringResource(R.string.start_empty_workout))
             }
