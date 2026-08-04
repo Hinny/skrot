@@ -463,15 +463,34 @@ class WorkoutViewModel(
         }
     }
 
-    fun addExercise(exercise: Exercise) {
+    /**
+     * Adds an exercise to the session, either as a new block or into an existing
+     * one ([intoBlockIndex]), which makes that block a superset.
+     */
+    fun addExercise(exercise: Exercise, intoBlockIndex: Int? = null) {
         viewModelScope.launch {
             val settings = container.settings.settings.first()
             val content = session.value
-            val blockPos = (content?.exercises?.maxOfOrNull { it.sessionExercise.blockPos } ?: -1) + 1
+            val blockPos: Int
+            val inBlockPos: Int
+            if (intoBlockIndex != null) {
+                val block = content?.blocks?.getOrNull(intoBlockIndex) ?: return@launch
+                blockPos = block.first().sessionExercise.blockPos
+                inBlockPos = (block.maxOfOrNull { it.sessionExercise.inBlockPos } ?: -1) + 1
+            } else {
+                blockPos =
+                    (content?.exercises?.maxOfOrNull { it.sessionExercise.blockPos } ?: -1) + 1
+                inBlockPos = 0
+            }
             val seId = db.sessionDao().insertSessionExercise(
-                SessionExercise(sessionId = sessionId, exerciseId = exercise.id, blockPos = blockPos)
+                SessionExercise(
+                    sessionId = sessionId,
+                    exerciseId = exercise.id,
+                    blockPos = blockPos,
+                    inBlockPos = inBlockPos,
+                )
             )
-            repeat(3) { i ->
+            repeat(NEW_EXERCISE_SETS) { i ->
                 db.sessionDao().insertLoggedSet(
                     LoggedSet(
                         sessionExerciseId = seId,
@@ -480,6 +499,35 @@ class WorkoutViewModel(
                     )
                 )
             }
+            touch()
+        }
+    }
+
+    /** Merges a block into the one before it, creating or extending a superset. */
+    fun linkWithPrevious(blockIndex: Int) {
+        viewModelScope.launch {
+            val blocks = session.value?.blocks ?: return@launch
+            if (blockIndex <= 0 || blockIndex >= blocks.size) return@launch
+            val previous = blocks[blockIndex - 1]
+            val targetBlockPos = previous.first().sessionExercise.blockPos
+            val start = (previous.maxOfOrNull { it.sessionExercise.inBlockPos } ?: -1) + 1
+            blocks[blockIndex].forEachIndexed { i, se ->
+                db.sessionDao().updateSessionExercise(
+                    se.sessionExercise.copy(blockPos = targetBlockPos, inBlockPos = start + i)
+                )
+            }
+            touch()
+        }
+    }
+
+    /** Splits an exercise out of its superset into a block of its own at the end. */
+    fun unlink(se: SessionExerciseWithDetails) {
+        viewModelScope.launch {
+            val content = session.value ?: return@launch
+            val maxBlock = content.exercises.maxOfOrNull { it.sessionExercise.blockPos } ?: 0
+            db.sessionDao().updateSessionExercise(
+                se.sessionExercise.copy(blockPos = maxBlock + 1, inBlockPos = 0)
+            )
             touch()
         }
     }
@@ -576,5 +624,8 @@ class WorkoutViewModel(
     companion object {
         const val IDLE_THRESHOLD_MS = 5 * 60_000L
         const val STREAK_WEEKS = 3
+
+        /** Sets created for an exercise added mid-session. */
+        const val NEW_EXERCISE_SETS = 3
     }
 }

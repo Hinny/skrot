@@ -123,6 +123,9 @@ fun WorkoutScreen(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     var showAddExercise by remember { mutableStateOf(false) }
+    // Index of the block a picked exercise joins as a superset partner; null
+    // means the picker (when open) adds a new block instead.
+    var addToBlockIndex by remember { mutableStateOf<Int?>(null) }
     var showDiscard by remember { mutableStateOf(false) }
     var showFinish by remember { mutableStateOf(false) }
     var allExercises by remember { mutableStateOf(listOf<Exercise>()) }
@@ -314,6 +317,15 @@ fun WorkoutScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             }
+                            Spacer(Modifier.weight(1f))
+                            if (!locked && blockIndex > 0) {
+                                TextButton(onClick = { vm.linkWithPrevious(blockIndex) }) {
+                                    Text(
+                                        stringResource(R.string.link_superset),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
+                            }
                         }
                         block.forEachIndexed { exerciseIndex, se ->
                             ExerciseSection(
@@ -353,6 +365,14 @@ fun WorkoutScreen(
                                 },
                             )
                         }
+                        if (!locked) {
+                            TextButton(onClick = { addToBlockIndex = blockIndex }) {
+                                Text(
+                                    stringResource(R.string.add_superset_exercise),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -378,12 +398,20 @@ fun WorkoutScreen(
         }
     }
 
-    if (showAddExercise) {
+    if (showAddExercise || addToBlockIndex != null) {
+        val intoBlock = addToBlockIndex
+        fun closePicker() {
+            showAddExercise = false
+            addToBlockIndex = null
+        }
         ExercisePickerDialog(
             exercises = allExercises,
-            onPick = { vm.addExercise(it); showAddExercise = false },
+            title = stringResource(
+                if (intoBlock != null) R.string.add_superset_exercise else R.string.pick_exercise
+            ),
+            onPick = { vm.addExercise(it, intoBlock); closePicker() },
             onCreate = { new ->
-                showAddExercise = false
+                closePicker()
                 scope.launch {
                     val id = container.db.exerciseDao().insert(
                         Exercise(
@@ -394,10 +422,10 @@ fun WorkoutScreen(
                             isCustom = true,
                         )
                     )
-                    container.db.exerciseDao().byId(id)?.let { vm.addExercise(it) }
+                    container.db.exerciseDao().byId(id)?.let { vm.addExercise(it, intoBlock) }
                 }
             },
-            onDismiss = { showAddExercise = false },
+            onDismiss = { closePicker() },
         )
     }
     if (showDiscard) {
@@ -502,6 +530,13 @@ private fun ExerciseSection(
                         text = { Text(stringResource(R.string.swap_exercise)) },
                         enabled = !locked,
                         onClick = { menuOpen = false; swapOpen = true },
+                    )
+                }
+                if (blockSize > 1) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.unlink)) },
+                        enabled = !locked,
+                        onClick = { menuOpen = false; vm.unlink(se) },
                     )
                 }
                 DropdownMenuItem(
