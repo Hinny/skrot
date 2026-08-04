@@ -17,6 +17,9 @@
     <!-- Generic -->
     <string name="ok">OK</string>
     <string name="time">Time</string>
+    <string name="change">Change</string>
+    <string name="timer_sound_choice">Timer sound</string>
+    <string name="timer_sound_default">Default notification sound</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="apply">Apply</string>

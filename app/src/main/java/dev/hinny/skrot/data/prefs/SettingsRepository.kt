@@ -33,6 +33,12 @@ data class Settings(
     val theme: ThemeMode = ThemeMode.DARK,
     val defaultRestSec: Int = 90,
     val timerSound: Boolean = true,
+    /**
+     * Sound played when the rest timer runs out, as a content URI string.
+     * Empty means the system's default notification sound — picking something
+     * else is how you tell a finished set apart from an incoming email.
+     */
+    val timerSoundUri: String = "",
     val timerVibrate: Boolean = true,
     val timerAdjustStepSec: Int = 15,
     /** In-progress sessions with no activity for this long auto-finish. */
@@ -84,6 +90,7 @@ class SettingsRepository(private val context: Context) {
         val theme = stringPreferencesKey("theme")
         val defaultRestSec = intPreferencesKey("default_rest_sec")
         val timerSound = booleanPreferencesKey("timer_sound")
+        val timerSoundUri = stringPreferencesKey("timer_sound_uri")
         val timerVibrate = booleanPreferencesKey("timer_vibrate")
         val timerAdjustStepSec = intPreferencesKey("timer_adjust_step_sec")
         val autoFinishMinutes = intPreferencesKey("auto_finish_minutes")
@@ -120,6 +127,7 @@ class SettingsRepository(private val context: Context) {
             theme = p[Keys.theme].toEnum(defaults.theme),
             defaultRestSec = p[Keys.defaultRestSec] ?: defaults.defaultRestSec,
             timerSound = p[Keys.timerSound] ?: defaults.timerSound,
+            timerSoundUri = p[Keys.timerSoundUri] ?: defaults.timerSoundUri,
             timerVibrate = p[Keys.timerVibrate] ?: defaults.timerVibrate,
             timerAdjustStepSec = p[Keys.timerAdjustStepSec] ?: defaults.timerAdjustStepSec,
             autoFinishMinutes = p[Keys.autoFinishMinutes] ?: defaults.autoFinishMinutes,
@@ -151,6 +159,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setTheme(v: ThemeMode) = context.dataStore.edit { it[Keys.theme] = v.name }
     suspend fun setDefaultRestSec(v: Int) = context.dataStore.edit { it[Keys.defaultRestSec] = v }
     suspend fun setTimerSound(v: Boolean) = context.dataStore.edit { it[Keys.timerSound] = v }
+    suspend fun setTimerSoundUri(v: String) = context.dataStore.edit { it[Keys.timerSoundUri] = v }
     suspend fun setTimerVibrate(v: Boolean) = context.dataStore.edit { it[Keys.timerVibrate] = v }
     suspend fun setTimerAdjustStepSec(v: Int) = context.dataStore.edit { it[Keys.timerAdjustStepSec] = v }
     suspend fun setAutoFinishMinutes(v: Int) = context.dataStore.edit { it[Keys.autoFinishMinutes] = v }

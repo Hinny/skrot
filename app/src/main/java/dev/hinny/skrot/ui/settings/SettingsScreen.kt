@@ -1,5 +1,11 @@
 package dev.hinny.skrot.ui.settings
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -50,6 +57,56 @@ import dev.hinny.skrot.data.prefs.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
+/**
+ * Picks the sound the rest timer ends on, through the system ringtone picker so
+ * anything already on the phone can be used and nothing has to be bundled.
+ * Empty [uri] means the default notification sound.
+ */
+@Composable
+private fun TimerSoundSetting(uri: String, onPicked: (String) -> Unit) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val picked: Uri? = result.data
+                ?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            onPicked(picked?.toString().orEmpty())
+        }
+    }
+    val defaultLabel = stringResource(R.string.timer_sound_default)
+    val title = remember(uri) {
+        uri.takeIf { it.isNotBlank() }
+            ?.let { runCatching { RingtoneManager.getRingtone(context, Uri.parse(it)) }.getOrNull() }
+            ?.let { runCatching { it.getTitle(context) }.getOrNull() }
+            ?: defaultLabel
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.timer_sound_choice))
+            Text(title, style = MaterialTheme.typography.bodySmall)
+        }
+        OutlinedButton(onClick = {
+            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, defaultLabel)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                putExtra(
+                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                    uri.takeIf { it.isNotBlank() }?.let(Uri::parse),
+                )
+            }
+            runCatching { launcher.launch(intent) }
+        }) { Text(stringResource(R.string.change)) }
+    }
+}
 
 @Composable
 fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
@@ -149,6 +206,12 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ) { scope.launch { repo.setTimerAdjustStepSec(it) } }
             ToggleSetting(stringResource(R.string.timer_sound), settings.timerSound) {
                 scope.launch { repo.setTimerSound(it) }
+            }
+            if (settings.timerSound) {
+                TimerSoundSetting(
+                    uri = settings.timerSoundUri,
+                    onPicked = { scope.launch { repo.setTimerSoundUri(it) } },
+                )
             }
             ToggleSetting(stringResource(R.string.timer_vibration), settings.timerVibrate) {
                 scope.launch { repo.setTimerVibrate(it) }

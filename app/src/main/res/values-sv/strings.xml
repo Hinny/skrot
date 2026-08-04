@@ -15,6 +15,9 @@
     <!-- Generic -->
     <string name="ok">OK</string>
     <string name="time">Tid</string>
+    <string name="change">Ändra</string>
+    <string name="timer_sound_choice">Timerljud</string>
+    <string name="timer_sound_default">Standardljud för aviseringar</string>
     <string name="cancel">Avbryt</string>
     <string name="save">Spara</string>
     <string name="apply">Tillämpa</string>
