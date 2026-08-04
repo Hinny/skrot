@@ -197,6 +197,7 @@
     <string name="remember_swap_title">Remember this swap?</string>
     <string name="flag_equivalent_body">Offer %1$s automatically whenever %2$s isn\'t available</string>
     <string name="add_to_gym_body">Mark %1$s as available at %2$s</string>
+    <string name="always_use_here_body">Use %1$s instead of %2$s at %3$s from now on</string>
     <string name="flag_equivalent_no">Just this time</string>
     <string name="workout_completed">Workout completed!</string>
     <string name="workout_completed_body">%1$d sets · %2$s · %3$s</string>

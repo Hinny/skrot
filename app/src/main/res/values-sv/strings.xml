@@ -195,6 +195,7 @@
     <string name="remember_swap_title">Kom ihåg det här bytet?</string>
     <string name="flag_equivalent_body">Föreslå %1$s automatiskt när %2$s inte finns</string>
     <string name="add_to_gym_body">Markera %1$s som tillgänglig på %2$s</string>
+    <string name="always_use_here_body">Använd %1$s i stället för %2$s på %3$s hädanefter</string>
     <string name="flag_equivalent_no">Bara den här gången</string>
     <string name="workout_completed">Passet är klart!</string>
     <string name="workout_completed_body">%1$d set · %2$s · %3$s</string>
