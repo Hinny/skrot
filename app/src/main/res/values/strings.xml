@@ -159,9 +159,6 @@
     <string name="link_superset">Link with previous</string>
     <string name="unlink">Unlink</string>
     <string name="target_min">Reps</string>
-    <string name="target_max">Max</string>
-    <string name="add_target_max">+ max</string>
-    <string name="target_max_optional">Max (optional)</string>
     <string name="finish_set">Done</string>
     <string name="undo_set">Undo set</string>
     <string name="remove_set">Remove set</string>

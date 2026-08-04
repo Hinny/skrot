@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -66,8 +66,23 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v3 -> v4: target-rep ranges were removed. Progression already keyed off
+         * the top of the range, so the max is what survives as the single target;
+         * the column stays (unused, always null) for backward-compatible backups.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE planned_sets SET targetRepsMin = COALESCE(targetRepsMax, targetRepsMin), " +
+                        "targetRepsMax = NULL"
+                )
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val MIGRATIONS: Array<Migration> =
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

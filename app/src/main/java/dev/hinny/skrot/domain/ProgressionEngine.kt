@@ -18,8 +18,8 @@ object ProgressionEngine {
     const val DEFAULT_INCREMENT_LEVEL = 1.0
 
     /**
-     * Suggests progression when the previous session hit the target reps (top of
-     * the range) on ALL standard sets at the same load. Standard sets only —
+     * Suggests progression when the previous session hit the target reps on ALL
+     * standard sets at the same load. Standard sets only —
      * warmups, drop sets, and failure sets never drive progression.
      */
     fun suggest(
@@ -43,7 +43,7 @@ object ProgressionEngine {
         if (loggedStandard.any { it.load != load }) return null
 
         val allHitTarget = plannedStandard.indices.all { i ->
-            val target = plannedStandard[i].targetRepsMax ?: plannedStandard[i].targetRepsMin
+            val target = plannedStandard[i].targetRepsMin
             target != null && loggedStandard[i].reps >= target
         }
         if (!allHitTarget) return null
@@ -61,7 +61,7 @@ object ProgressionEngine {
 
             MeasurementType.BODYWEIGHT ->
                 if (loggedStandard.all { it.load == 0.0 }) {
-                    val topTarget = plannedStandard.mapNotNull { it.targetRepsMax ?: it.targetRepsMin }.max()
+                    val topTarget = plannedStandard.mapNotNull { it.targetRepsMin }.max()
                     ProgressionSuggestion.AddRep(topTarget, topTarget + 1)
                 } else {
                     val inc = exerciseIncrementOverride ?: incrementKg

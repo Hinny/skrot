@@ -61,6 +61,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/**
+ * Target reps for a freshly planned set. Matches the old 8-12 default: progression
+ * keyed off the top of the range, so 12 is the target that behavior came from.
+ */
+private const val DEFAULT_TARGET_REPS = 12
+
 class DayEditorViewModel(
     private val container: AppContainer,
     private val dayId: Long,
@@ -191,8 +197,7 @@ class DayEditorViewModel(
                     PlannedSet(
                         plannedExerciseId = peId,
                         position = i,
-                        targetRepsMin = 8,
-                        targetRepsMax = 12,
+                        targetRepsMin = DEFAULT_TARGET_REPS,
                         restSec = settings.defaultRestSec,
                     )
                 )
@@ -264,8 +269,7 @@ class DayEditorViewModel(
                     ?: PlannedSet(
                         plannedExerciseId = pe.planned.id,
                         position = 0,
-                        targetRepsMin = 8,
-                        targetRepsMax = 12,
+                        targetRepsMin = DEFAULT_TARGET_REPS,
                         restSec = settings.defaultRestSec,
                     )
             )
@@ -480,10 +484,7 @@ private fun PlannedSetRow(
     settings: Settings,
     vm: DayEditorViewModel,
 ) {
-    var minText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
-    var maxText by remember(set.id) { mutableStateOf(set.targetRepsMax?.toString() ?: "") }
-    // A single target rep has no interval: the max field only appears on demand.
-    var showMax by remember(set.id) { mutableStateOf(set.targetRepsMax != null) }
+    var targetText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
     var loadText by remember(set.id) {
         mutableStateOf(
             set.targetLoad?.let { Units.formatValue(Units.toDisplay(it, settings.unit, measurement)) }
@@ -513,7 +514,7 @@ private fun PlannedSetRow(
                 }
                 // FAILURE sets are AMRAP: no rep target.
                 vm.updateSet(
-                    if (next == SetType.FAILURE) set.copy(setType = next, targetRepsMin = null, targetRepsMax = null)
+                    if (next == SetType.FAILURE) set.copy(setType = next, targetRepsMin = null)
                     else set.copy(setType = next)
                 )
             },
@@ -521,35 +522,18 @@ private fun PlannedSetRow(
         )
         if (set.setType != SetType.FAILURE) {
             OutlinedTextField(
-                value = minText,
+                value = targetText,
                 onValueChange = {
-                    minText = it.filter(Char::isDigit)
-                    vm.updateSet(set.copy(targetRepsMin = minText.toIntOrNull()))
+                    targetText = it.filter(Char::isDigit).take(3)
+                    vm.updateSet(set.copy(targetRepsMin = targetText.toIntOrNull()))
                 },
                 label = { Text(stringResource(R.string.target_min), style = MaterialTheme.typography.labelSmall) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.width(64.dp),
             )
-            if (showMax) {
-                OutlinedTextField(
-                    value = maxText,
-                    onValueChange = {
-                        maxText = it.filter(Char::isDigit)
-                        vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
-                    },
-                    label = { Text(stringResource(R.string.target_max), style = MaterialTheme.typography.labelSmall) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.width(64.dp),
-                )
-            } else {
-                TextButton(onClick = { showMax = true }) {
-                    Text(stringResource(R.string.add_target_max), style = MaterialTheme.typography.labelSmall)
-                }
-            }
         } else {
-            Text(stringResource(R.string.amrap), modifier = Modifier.width(132.dp))
+            Text(stringResource(R.string.amrap), modifier = Modifier.width(64.dp))
         }
         OutlinedTextField(
             value = loadText,

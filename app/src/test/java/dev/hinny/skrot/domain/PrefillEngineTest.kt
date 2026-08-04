@@ -12,7 +12,7 @@ class PrefillEngineTest {
 
     private val planned = PlannedSet(
         id = 1, plannedExerciseId = 1, position = 0,
-        targetRepsMin = 8, targetRepsMax = 12, targetLoad = 60.0, restSec = 90,
+        targetRepsMin = 8, targetLoad = 60.0, restSec = 90,
     )
     private val lastSets = listOf(
         LoggedSet(sessionExerciseId = 1, position = 0, load = 65.0, reps = 11, completed = true),

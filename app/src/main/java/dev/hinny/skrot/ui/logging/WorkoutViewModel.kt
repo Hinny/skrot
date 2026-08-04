@@ -190,7 +190,7 @@ class WorkoutViewModel(
             val target = se.sessionExercise.plannedExerciseId
                 ?.let { plannedSetsByPe.value[it] }
                 ?.find { it.position == nextSet.position }
-                ?.let { it.targetRepsMax ?: it.targetRepsMin }
+                ?.targetRepsMin
             val gymId = content.session.gymId
             val history = db.sessionDao().setsForExercise(se.exercise.id)
                 .filter { it.sessionId != sessionId }
@@ -335,7 +335,6 @@ class WorkoutViewModel(
                         position = i,
                         setType = s.setType,
                         targetRepsMin = template?.targetRepsMin,
-                        targetRepsMax = template?.targetRepsMax,
                         targetLoad = template?.targetLoad,
                         restSec = s.restSec,
                     )
@@ -386,10 +385,10 @@ class WorkoutViewModel(
     }
 
     /** Target-reps edits persist back to the routine, like rest durations. */
-    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, min: Int?, max: Int?) {
+    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, reps: Int?) {
         viewModelScope.launch {
             se.sessionExercise.plannedExerciseId?.let { peId ->
-                db.routineDao().writeBackTarget(peId, set.position, min, max)
+                db.routineDao().writeBackTarget(peId, set.position, reps)
                 val content = session.value ?: return@let
                 refreshAuxiliary(content)
             }

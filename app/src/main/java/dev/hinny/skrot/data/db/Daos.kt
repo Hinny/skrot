@@ -212,10 +212,10 @@ interface RoutineDao {
 
     /** Write-back from the logging screen: target reps persist to the routine. */
     @Query(
-        "UPDATE planned_sets SET targetRepsMin = :repsMin, targetRepsMax = :repsMax " +
+        "UPDATE planned_sets SET targetRepsMin = :reps " +
             "WHERE plannedExerciseId = :peId AND position = :position"
     )
-    suspend fun writeBackTarget(peId: Long, position: Int, repsMin: Int?, repsMax: Int?)
+    suspend fun writeBackTarget(peId: Long, position: Int, reps: Int?)
 
     /** Last time any day of each routine was performed. */
     @Query(

@@ -690,7 +690,7 @@ private fun SetRow(
     if (targetOpen && planned != null) {
         TargetDialog(
             planned = planned,
-            onSave = { min, max -> vm.updateTarget(se, set, min, max) },
+            onSave = { reps -> vm.updateTarget(se, set, reps) },
             onDismiss = { targetOpen = false },
         )
     }
@@ -829,9 +829,6 @@ private fun SetRowContent(
         // Target reps (reference next to the inputs; editable, persists to routine)
         val targetText = when {
             set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
-            planned?.targetRepsMin != null && planned.targetRepsMax != null ->
-                "${planned.targetRepsMin}–${planned.targetRepsMax}"
-
             planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
             else -> "—"
         }
@@ -917,35 +914,26 @@ private fun SetRowContent(
 @Composable
 private fun TargetDialog(
     planned: PlannedSet,
-    onSave: (Int?, Int?) -> Unit,
+    onSave: (Int?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var minText by remember { mutableStateOf(planned.targetRepsMin?.toString() ?: "") }
-    var maxText by remember { mutableStateOf(planned.targetRepsMax?.toString() ?: "") }
+    var targetText by remember { mutableStateOf(planned.targetRepsMin?.toString() ?: "") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.target_reps)) },
         text = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = minText,
-                    onValueChange = { minText = it.filter(Char::isDigit) },
-                    label = { Text(stringResource(R.string.target_min)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(110.dp),
-                )
-                OutlinedTextField(
-                    value = maxText,
-                    onValueChange = { maxText = it.filter(Char::isDigit) },
-                    label = { Text(stringResource(R.string.target_max_optional)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(110.dp),
-                )
-            }
+            OutlinedTextField(
+                value = targetText,
+                onValueChange = { targetText = it.filter(Char::isDigit).take(3) },
+                label = { Text(stringResource(R.string.target_min)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.width(110.dp),
+            )
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(minText.toIntOrNull(), maxText.toIntOrNull())
+                onSave(targetText.toIntOrNull())
                 onDismiss()
             }) { Text(stringResource(R.string.save)) }
         },

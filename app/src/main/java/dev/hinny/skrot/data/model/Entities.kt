@@ -169,8 +169,14 @@ data class PlannedSet(
     val plannedExerciseId: Long,
     val position: Int = 0,
     val setType: SetType = SetType.STANDARD,
-    /** Target reps: single value stored in [targetRepsMin]; a range also sets [targetRepsMax]. */
+    /** Target reps: the rep count to reach on every standard set before progressing. */
     val targetRepsMin: Int? = null,
+    /**
+     * Legacy upper bound of a target-reps range. Rep ranges were removed; the
+     * column is kept (always null going forward) so that backups written by
+     * older versions still deserialize. Migration 3 -> 4 folded any stored max
+     * into [targetRepsMin], which is what progression already keyed off.
+     */
     val targetRepsMax: Int? = null,
     /** Optional target load in kg (or machine level). */
     val targetLoad: Double? = null,
