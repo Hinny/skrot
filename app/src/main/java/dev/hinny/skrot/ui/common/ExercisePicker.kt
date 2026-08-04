@@ -55,6 +55,9 @@ fun ExercisePickerDialog(
 ) {
     var query by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
+    // null = both, false = built-in only, true = custom only. Same three-way
+    // filter the Exercises tab uses.
+    var categoryFilter by remember { mutableStateOf<Boolean?>(null) }
 
     if (creating && onCreate != null) {
         CreateExerciseDialog(
@@ -76,9 +79,30 @@ fun ExercisePickerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(vertical = 6.dp),
+                ) {
+                    FilterChip(
+                        selected = categoryFilter == null,
+                        onClick = { categoryFilter = null },
+                        label = { Text(stringResource(R.string.category_all)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == false,
+                        onClick = { categoryFilter = false },
+                        label = { Text(stringResource(R.string.category_builtin)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == true,
+                        onClick = { categoryFilter = true },
+                        label = { Text(stringResource(R.string.category_custom)) },
+                    )
+                }
                 val filtered = ExerciseSearch.search(
                     exercises = exercises,
                     query = query,
+                    customFilter = categoryFilter,
                     muscleNames = searchMuscleNames(),
                     equipmentNames = searchEquipmentNames(),
                 )
@@ -91,7 +115,27 @@ fun ExercisePickerDialog(
                                 .clickable { onPick(e) }
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                         ) {
-                            Text(e.displayName(), style = MaterialTheme.typography.bodyLarge)
+                            Row {
+                                Text(
+                                    e.displayName(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                // Whether an exercise is one of yours matters when
+                                // picking between two similarly named entries.
+                                Text(
+                                    stringResource(
+                                        if (e.isCustom) R.string.custom_badge
+                                        else R.string.category_builtin
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (e.isCustom) {
+                                        MaterialTheme.colorScheme.tertiary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
                             ExerciseMeta(e)
                         }
                     }
