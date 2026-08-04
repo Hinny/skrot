@@ -365,7 +365,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val prefillMode = routine?.prefillMode ?: PrefillMode.LAST_SESSION
         val content = dayId?.let { db.routineDao().dayWithContent(it) }
         val plannedList = content?.blocks?.flatten() ?: emptyList()
-        val library = db.exerciseDao().getAll()
+        val library = container.exercisesNow()
         val allExercises = library.associateBy { it.id }
         // Hoisted out of the loop: these were being re-queried per exercise.
         val availableIds =

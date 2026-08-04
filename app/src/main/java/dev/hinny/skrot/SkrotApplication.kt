@@ -50,6 +50,17 @@ class AppContainer(app: Application) {
             }
 
     /**
+     * One-shot counterpart of [observeExercises], for the lists built once when
+     * a dialog opens rather than observed. Same setting, same order — a picker
+     * that ignored it would be the odd one out.
+     */
+    suspend fun exercisesNow(): List<Exercise> =
+        when (settings.settings.first().exerciseSort) {
+            ExerciseSort.MOST_USED -> db.exerciseDao().getAllByUsage()
+            ExerciseSort.NAME -> db.exerciseDao().getAll()
+        }
+
+    /**
      * Auto-finish: an in-progress session with no activity for the configured
      * threshold is marked finished with its end time set to the last activity.
      */

@@ -88,7 +88,9 @@ class WorkoutViewModel(
     /** Loads planned targets, progression suggestions, and swap options. */
     private suspend fun refreshAuxiliary(content: SessionWithContent) {
         val settings = container.settings.settings.first()
-        val allExercises = db.exerciseDao().getAll()
+        // Ordered by the exercise-order setting, so the swap options a session
+        // offers match every other exercise list in the app.
+        val allExercises = container.exercisesNow()
 
         val planned = mutableMapOf<Long, List<PlannedSet>>()
         val suggestionMap = mutableMapOf<Long, ProgressionSuggestion>()

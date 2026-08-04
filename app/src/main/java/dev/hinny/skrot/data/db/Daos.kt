@@ -52,6 +52,19 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises ORDER BY nameEn")
     suspend fun getAll(): List<Exercise>
 
+    /** One-shot counterpart of [observeAllByUsage]. */
+    @Query(
+        "SELECT e.* FROM exercises e " +
+            "LEFT JOIN (" +
+            "SELECT se.exerciseId AS exerciseId, COUNT(ls.id) AS uses " +
+            "FROM session_exercises se " +
+            "JOIN logged_sets ls ON ls.sessionExerciseId = se.id " +
+            "WHERE ls.completed = 1 GROUP BY se.exerciseId" +
+            ") u ON u.exerciseId = e.id " +
+            "ORDER BY COALESCE(u.uses, 0) DESC, e.nameEn"
+    )
+    suspend fun getAllByUsage(): List<Exercise>
+
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun byId(id: Long): Exercise?
 
