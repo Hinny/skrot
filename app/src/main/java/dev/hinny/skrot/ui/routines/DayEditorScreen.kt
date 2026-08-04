@@ -50,8 +50,10 @@ import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
-import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
@@ -209,16 +211,13 @@ class DayEditorViewModel(
         viewModelScope.launch { db.routineDao().deletePlannedExercise(pe.planned) }
     }
 
-    fun moveBlock(blockPos: Int, delta: Int) {
+    fun moveBlock(from: Int, to: Int) {
         viewModelScope.launch {
             val content = day.value ?: return@launch
             val blocks = content.blocks
-            val index = blocks.indexOfFirst { it.first().planned.blockPos == blockPos }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= blocks.size) return@launch
+            if (from !in blocks.indices || to !in blocks.indices || from == to) return@launch
             val reordered = blocks.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { newPos, block ->
                 block.forEach { pe ->
                     if (pe.planned.blockPos != newPos) {
@@ -319,6 +318,7 @@ fun DayEditorScreen(
     var showIconPicker by remember { mutableStateOf(false) }
     var name by remember(d.day.id) { mutableStateOf(d.day.name) }
     var description by remember(d.day.id) { mutableStateOf(d.day.description) }
+    val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -366,10 +366,14 @@ fun DayEditorScreen(
         items(blocks.size) { blockIndex ->
             val block = blocks[blockIndex]
             val blockPos = block.first().planned.blockPos
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .reorderableRow(blockReorder, blockIndex, blocks.size)
+            ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        DragHandle(onMove = { delta -> vm.moveBlock(blockPos, delta) })
+                        ReorderHandle(blockReorder, blockIndex, blocks.size)
                         Spacer(Modifier.width(6.dp))
                         Text(
                             if (block.size > 1) stringResource(R.string.superset)

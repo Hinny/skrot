@@ -277,18 +277,56 @@ class WorkoutViewModel(
         }
     }
 
-    /** Reorders a set within its exercise by [delta] positions (+1 = later, -1 = earlier). */
-    fun moveSet(se: SessionExerciseWithDetails, set: LoggedSet, delta: Int) {
+    /** Reorders a set within its exercise. */
+    fun moveSet(seId: Long, from: Int, to: Int) {
         viewModelScope.launch {
-            val sets = se.sortedSets
-            val index = sets.indexOfFirst { it.id == set.id }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= sets.size) return@launch
+            val sets = session.value?.exercises
+                ?.find { it.sessionExercise.id == seId }
+                ?.sortedSets
+                ?: return@launch
+            if (from !in sets.indices || to !in sets.indices || from == to) return@launch
             val reordered = sets.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { newPos, s ->
                 if (s.position != newPos) db.sessionDao().updateLoggedSet(s.copy(position = newPos))
+            }
+            touch()
+        }
+    }
+
+    /** Reorders whole blocks (an exercise, or a superset) within the session. */
+    fun moveBlock(from: Int, to: Int) {
+        viewModelScope.launch {
+            val blocks = session.value?.blocks ?: return@launch
+            if (from !in blocks.indices || to !in blocks.indices || from == to) return@launch
+            val reordered = blocks.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { newPos, block ->
+                block.forEach { se ->
+                    if (se.sessionExercise.blockPos != newPos) {
+                        db.sessionDao().updateSessionExercise(
+                            se.sessionExercise.copy(blockPos = newPos)
+                        )
+                    }
+                }
+            }
+            touch()
+        }
+    }
+
+    /** Reorders the exercises inside one superset block. */
+    fun moveExerciseInBlock(blockIndex: Int, from: Int, to: Int) {
+        viewModelScope.launch {
+            val block = session.value?.blocks?.getOrNull(blockIndex) ?: return@launch
+            if (from !in block.indices || to !in block.indices || from == to) return@launch
+            val reordered = block.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { newPos, se ->
+                if (se.sessionExercise.inBlockPos != newPos) {
+                    db.sessionDao().updateSessionExercise(
+                        se.sessionExercise.copy(inBlockPos = newPos)
+                    )
+                }
             }
             touch()
         }

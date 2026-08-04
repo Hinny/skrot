@@ -52,7 +52,9 @@ import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ConfirmDialog
-import dev.hinny.skrot.ui.common.DragHandle
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -184,16 +186,13 @@ class ProgramEditorViewModel(
         viewModelScope.launch { container.db.routineDao().deleteDay(day) }
     }
 
-    fun moveDay(day: RoutineDay, delta: Int) {
+    fun moveDay(from: Int, to: Int) {
         val days = routine.value?.sortedDays ?: return
-        val index = days.indexOfFirst { it.id == day.id }
-        val target = index + delta
-        if (index < 0 || target < 0 || target >= days.size) return
+        if (from !in days.indices || to !in days.indices || from == to) return
         pushUndo()
         viewModelScope.launch {
             val reordered = days.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { i, d ->
                 if (d.position != i) container.db.routineDao().updateDay(d.copy(position = i))
             }
@@ -234,6 +233,7 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     var name by remember(r.routine.id) { mutableStateOf(r.routine.name) }
     var description by remember(r.routine.id) { mutableStateOf(r.routine.description) }
     var tags by remember(r.routine.id) { mutableStateOf(r.routine.tags.joinToString(", ")) }
+    val dayReorder = rememberReorderState { from, to -> vm.moveDay(from, to) }
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -367,10 +367,14 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         val days = r.sortedDays
         items(days.size) { i ->
             val day = days[i]
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .reorderableRow(dayReorder, i, days.size)
+            ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        DragHandle(onMove = { delta -> vm.moveDay(day, delta) })
+                        ReorderHandle(dayReorder, i, days.size)
                         Spacer(Modifier.width(8.dp))
                         Column(
                             Modifier

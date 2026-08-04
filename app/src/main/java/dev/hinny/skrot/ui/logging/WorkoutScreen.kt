@@ -88,8 +88,11 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.CompactNumberField
 import dev.hinny.skrot.ui.common.CompactValueButton
-import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderState
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.containerViewModel
@@ -130,6 +133,7 @@ fun WorkoutScreen(
     val listState = rememberLazyListState()
     val rowBounds = remember { mutableStateMapOf<Long, IntRange>() }
     var listBounds by remember { mutableStateOf<IntRange?>(null) }
+    val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
 
     // Keep the screen awake during an active workout (configurable).
     val view = LocalView.current
@@ -293,17 +297,25 @@ fun WorkoutScreen(
             }
             items(blocks.size) { blockIndex ->
                 val block = blocks[blockIndex]
-                Card {
+                val exerciseReorder = rememberReorderState { from, to ->
+                    vm.moveExerciseInBlock(blockIndex, from, to)
+                }
+                Card(Modifier.reorderableRow(blockReorder, blockIndex, blocks.size)) {
                     Column(Modifier.padding(10.dp)) {
-                        if (block.size > 1) {
-                            Text(
-                                stringResource(R.string.superset),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(bottom = 4.dp),
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (!locked) {
+                                ReorderHandle(blockReorder, blockIndex, blocks.size)
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            if (block.size > 1) {
+                                Text(
+                                    stringResource(R.string.superset),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
-                        block.forEach { se ->
+                        block.forEachIndexed { exerciseIndex, se ->
                             ExerciseSection(
                                 se = se,
                                 vm = vm,
@@ -316,6 +328,11 @@ fun WorkoutScreen(
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
                                 rowBounds = rowBounds,
+                                // Only supersets need per-exercise reordering; a
+                                // lone exercise moves with its block.
+                                blockReorder = exerciseReorder.takeIf { block.size > 1 },
+                                indexInBlock = exerciseIndex,
+                                blockSize = block.size,
                                 onRemove = { removed ->
                                     val peId = removed.sessionExercise.plannedExerciseId
                                     vm.removeExercise(removed)
@@ -440,6 +457,9 @@ private fun ExerciseSection(
     hasRoutineDay: Boolean,
     locked: Boolean,
     rowBounds: SnapshotStateMap<Long, IntRange>,
+    blockReorder: ReorderState?,
+    indexInBlock: Int,
+    blockSize: Int,
     onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -448,8 +468,26 @@ private fun ExerciseSection(
     var nextTimeOpen by remember { mutableStateOf(false) }
     var removeSetOpen by remember { mutableStateOf(false) }
 
-    Column(Modifier.padding(vertical = 4.dp)) {
+    val setReorder = rememberReorderState { from, to ->
+        vm.moveSet(se.sessionExercise.id, from, to)
+    }
+
+    Column(
+        Modifier
+            .padding(vertical = 4.dp)
+            .then(
+                if (blockReorder != null) {
+                    Modifier.reorderableRow(blockReorder, indexInBlock, blockSize)
+                } else {
+                    Modifier
+                }
+            ),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (blockReorder != null && !locked) {
+                ReorderHandle(blockReorder, indexInBlock, blockSize)
+                Spacer(Modifier.width(6.dp))
+            }
             Text(
                 se.exercise.displayName(),
                 style = MaterialTheme.typography.titleMedium,
@@ -537,7 +575,7 @@ private fun ExerciseSection(
 
         val sets = se.sortedSets
         var standardCounter = 0
-        sets.forEach { set ->
+        sets.forEachIndexed { setIndex, set ->
             val number = if (set.setType == SetType.STANDARD) ++standardCounter else null
             SetRow(
                 se = se,
@@ -549,6 +587,9 @@ private fun ExerciseSection(
                 isCurrent = set.id == currentSetId,
                 locked = locked,
                 rowBounds = rowBounds,
+                reorder = setReorder,
+                index = setIndex,
+                count = sets.size,
             )
         }
 
@@ -739,6 +780,9 @@ private fun SetRow(
     isCurrent: Boolean,
     locked: Boolean,
     rowBounds: SnapshotStateMap<Long, IntRange>,
+    reorder: ReorderState,
+    index: Int,
+    count: Int,
 ) {
     val measurement = se.exercise.measurementType
     var loadText by remember(set.id) {
@@ -760,13 +804,15 @@ private fun SetRow(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.onGloballyPositioned { coords ->
-            val top = coords.positionInRoot().y.roundToInt()
-            rowBounds[set.id] = top..(top + coords.size.height)
-        },
+        modifier = Modifier
+            .reorderableRow(reorder, index, count)
+            .onGloballyPositioned { coords ->
+                val top = coords.positionInRoot().y.roundToInt()
+                rowBounds[set.id] = top..(top + coords.size.height)
+            },
     ) {
         if (!locked) {
-            DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
+            ReorderHandle(reorder, index, count)
         }
 
         // The set to do next is boxed in the accent color — the old tinted
