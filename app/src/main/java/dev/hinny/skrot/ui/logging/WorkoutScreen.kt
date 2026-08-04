@@ -102,6 +102,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -150,7 +151,7 @@ fun WorkoutScreen(
     }
 
     LaunchedEffect(Unit) {
-        container.db.exerciseDao().observeAll().collect { allExercises = it }
+        container.observeExercises().collect { allExercises = it }
     }
 
     // Elapsed clock + coach idle checks
@@ -183,7 +184,24 @@ fun WorkoutScreen(
 
                 is WorkoutEvent.Coach -> {
                     CoachMessages.random(context, settings.coachPersonality, event.trigger)
-                        ?.let { snackbar.showSnackbar(it) }
+                        ?.let { message ->
+                            // 0 seconds means it waits for you; anything else is
+                            // shown indefinitely and taken away on a timer.
+                            if (settings.coachMessageSeconds <= 0) {
+                                snackbar.showSnackbar(
+                                    message = message,
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Indefinite,
+                                )
+                            } else {
+                                withTimeoutOrNull(settings.coachMessageSeconds * 1000L) {
+                                    snackbar.showSnackbar(
+                                        message = message,
+                                        duration = SnackbarDuration.Indefinite,
+                                    )
+                                }
+                            }
+                        }
                 }
             }
         }

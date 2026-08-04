@@ -185,6 +185,14 @@
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Pick another exercise…</string>
     <string name="filter_at_this_gym">At this gym</string>
+    <string name="coach_disabled_hint">Coach comments are switched off, so this card has nothing to show.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="coach_message_seconds">Seconds a comment stays up (0 = until dismissed)</string>
+    <string name="coach_message_seconds_hint">How long a coach comment stays on screen during a workout.</string>
+    <string name="exercise_sort">Exercise order</string>
+    <string name="sort_name">Alphabetical</string>
+    <string name="sort_most_used">Most used</string>
+    <string name="no_icon">No icon</string>
     <string name="equivalents_header">Equivalents</string>
     <string name="flag_equivalent_title">Remember as an equivalent?</string>
     <string name="flag_equivalent_body">Skrot will offer %1$s automatically whenever %2$s isn\'t available.</string>

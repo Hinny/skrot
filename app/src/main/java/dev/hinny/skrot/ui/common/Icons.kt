@@ -85,8 +85,15 @@ import dev.hinny.skrot.data.model.ProgramIcon
  * words instead — see [ExerciseMeta].
  */
 
+/** Null when there is deliberately no icon, so callers can render nothing. */
+@Composable
+fun ProgramIcon?.vectorOrNull(): ImageVector? =
+    if (this == null || this == ProgramIcon.NONE) null else vector()
+
 @Composable
 fun ProgramIcon.vector(): ImageVector = when (this) {
+    // No icon has no drawable; callers should use vectorOrNull instead.
+    ProgramIcon.NONE -> vectorRes(R.drawable.ic_gym_barbell)
     // The gym itself — Tabler Icons (MIT), converted to vector drawables
     ProgramIcon.GYM_BARBELL -> vectorRes(R.drawable.ic_gym_barbell)
     ProgramIcon.GYM_DUMBBELL -> vectorRes(R.drawable.ic_gym_dumbbell)

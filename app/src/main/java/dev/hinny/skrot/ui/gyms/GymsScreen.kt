@@ -51,6 +51,9 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.equipmentLabel
@@ -73,6 +76,13 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     val editingAvailable = MutableStateFlow<Set<Long>>(emptySet())
     val confirmEdits = MutableStateFlow(true)
     val hasPendingChanges = MutableStateFlow(false)
+        /**
+     * Bumped by undo and redo, so text fields holding their own state while you
+     * type adopt the rolled-back value instead of going on showing what you
+     * typed.
+     */
+    val revision = MutableStateFlow(0)
+
     val canUndo = MutableStateFlow(false)
     val canRedo = MutableStateFlow(false)
 
@@ -85,7 +95,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch { db.gymDao().observeAll().collect { gyms.value = it } }
-        viewModelScope.launch { db.exerciseDao().observeAll().collect { exercises.value = it } }
+        viewModelScope.launch { container.observeExercises().collect { exercises.value = it } }
         viewModelScope.launch {
             editingGymId.flatMapLatest { id ->
                 if (id == null) {
@@ -175,7 +185,21 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
         canRedo.value = redoStack.isNotEmpty()
     }
 
+    /** Reorders gyms; the list is presented in [Gym.position] order. */
+    fun move(from: Int, to: Int) {
+        val current = gyms.value
+        if (from !in current.indices || to !in current.indices || from == to) return
+        viewModelScope.launch {
+            val reordered = current.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { index, gym ->
+                if (gym.position != index) db.gymDao().update(gym.copy(position = index))
+            }
+        }
+    }
+
     fun undo() {
+        revision.value++
         val current = editingGym.value ?: return
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(current to editingAvailable.value)
@@ -184,6 +208,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun redo() {
+        revision.value++
         val current = editingGym.value ?: return
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.addLast(current to editingAvailable.value)
@@ -255,11 +280,13 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 fun GymsScreen(container: AppContainer) {
     val vm = containerViewModel(container) { c, _ -> GymsViewModel(c) }
     val gyms by vm.gyms.collectAsState()
+    val gymReorder = rememberReorderState { from, to -> vm.move(from, to) }
     val exercises by vm.exercises.collectAsState()
     val editing by vm.editingGym.collectAsState()
     val available by vm.editingAvailable.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     val canUndo by vm.canUndo.collectAsState()
+    val revision by vm.revision.collectAsState()
     val canRedo by vm.canRedo.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -297,6 +324,7 @@ fun GymsScreen(container: AppContainer) {
                     Card(
                         Modifier
                             .fillMaxWidth()
+                            .reorderableRow(gymReorder, i, gyms.size)
                             .clickable { vm.enterEditing(g.id) },
                     ) {
                         Row(
@@ -305,6 +333,8 @@ fun GymsScreen(container: AppContainer) {
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            ReorderHandle(gymReorder, i, gyms.size)
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 g.name,
                                 style = MaterialTheme.typography.titleMedium,
@@ -331,7 +361,7 @@ fun GymsScreen(container: AppContainer) {
         }
     } else {
         // Gym editor: which exercises are available here
-        var name by remember(gym.id) { mutableStateOf(gym.name) }
+        var name by remember(gym.id, revision) { mutableStateOf(gym.name) }
         val exerciseNames = exercises.associateWith { it.displayName() }
         Column(Modifier.fillMaxSize()) {
         LazyColumn(

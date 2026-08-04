@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.OneRepMaxRange
@@ -52,6 +53,8 @@ data class Settings(
     val coachEnabled: Boolean = false,
     val coachPersonality: CoachPersonality = CoachPersonality.PT,
     val coachFrequency: CoachFrequency = CoachFrequency.MEDIUM,
+    /** Seconds a coach comment stays on screen during a workout; 0 = until dismissed. */
+    val coachMessageSeconds: Int = 5,
     val progressionIncrementKg: Double = ProgressionEngine.DEFAULT_INCREMENT_KG,
     val progressionIncrementLevel: Double = ProgressionEngine.DEFAULT_INCREMENT_LEVEL,
     val bodyweightFallbackKg: Double = VolumeCalculator.DEFAULT_BODYWEIGHT_FALLBACK_KG,
@@ -88,6 +91,8 @@ data class Settings(
     val oneRepMaxRange: OneRepMaxRange = OneRepMaxRange.CURRENT,
     /** Which language exercise names are shown in, independent of the app's UI language. */
     val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
+    /** Order exercise lists and pickers are shown in, everywhere in the app. */
+    val exerciseSort: ExerciseSort = ExerciseSort.NAME,
     /** How an exercise's muscle groups are rendered in lists and detail views. */
     val muscleDisplay: MetaDisplay = MetaDisplay.TEXT,
     /** How an exercise's equipment is rendered in lists and detail views. */
@@ -113,6 +118,7 @@ class SettingsRepository(private val context: Context) {
         val coachEnabled = booleanPreferencesKey("coach_enabled")
         val coachPersonality = stringPreferencesKey("coach_personality")
         val coachFrequency = stringPreferencesKey("coach_frequency")
+        val coachMessageSeconds = intPreferencesKey("coach_message_seconds")
         val progressionIncrementKg = doublePreferencesKey("progression_increment_kg")
         val progressionIncrementLevel = doublePreferencesKey("progression_increment_level")
         val bodyweightFallbackKg = doublePreferencesKey("bodyweight_fallback_kg")
@@ -132,6 +138,7 @@ class SettingsRepository(private val context: Context) {
         val oneRepMaxExerciseIds = stringPreferencesKey("one_rep_max_exercise_ids")
         val oneRepMaxRange = stringPreferencesKey("one_rep_max_range")
         val exerciseNameLanguage = stringPreferencesKey("exercise_name_language")
+        val exerciseSort = stringPreferencesKey("exercise_sort")
         val muscleDisplay = stringPreferencesKey("muscle_display")
         val equipmentDisplay = stringPreferencesKey("equipment_display")
     }
@@ -156,6 +163,7 @@ class SettingsRepository(private val context: Context) {
             coachEnabled = p[Keys.coachEnabled] ?: defaults.coachEnabled,
             coachPersonality = p[Keys.coachPersonality].toEnum(defaults.coachPersonality),
             coachFrequency = p[Keys.coachFrequency].toEnum(defaults.coachFrequency),
+            coachMessageSeconds = p[Keys.coachMessageSeconds] ?: defaults.coachMessageSeconds,
             progressionIncrementKg = p[Keys.progressionIncrementKg] ?: defaults.progressionIncrementKg,
             progressionIncrementLevel = p[Keys.progressionIncrementLevel] ?: defaults.progressionIncrementLevel,
             bodyweightFallbackKg = p[Keys.bodyweightFallbackKg] ?: defaults.bodyweightFallbackKg,
@@ -182,6 +190,7 @@ class SettingsRepository(private val context: Context) {
                 ?: defaults.oneRepMaxExerciseIds,
             oneRepMaxRange = p[Keys.oneRepMaxRange].toEnum(defaults.oneRepMaxRange),
             exerciseNameLanguage = p[Keys.exerciseNameLanguage].toEnum(defaults.exerciseNameLanguage),
+            exerciseSort = p[Keys.exerciseSort].toEnum(defaults.exerciseSort),
             muscleDisplay = p[Keys.muscleDisplay].toEnum(defaults.muscleDisplay),
             equipmentDisplay = p[Keys.equipmentDisplay].toEnum(defaults.equipmentDisplay),
         )
@@ -201,6 +210,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCoachEnabled(v: Boolean) = context.dataStore.edit { it[Keys.coachEnabled] = v }
     suspend fun setCoachPersonality(v: CoachPersonality) = context.dataStore.edit { it[Keys.coachPersonality] = v.name }
     suspend fun setCoachFrequency(v: CoachFrequency) = context.dataStore.edit { it[Keys.coachFrequency] = v.name }
+    suspend fun setCoachMessageSeconds(v: Int) =
+        context.dataStore.edit { it[Keys.coachMessageSeconds] = v.coerceAtLeast(0) }
     suspend fun setProgressionIncrementKg(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementKg] = v }
     suspend fun setProgressionIncrementLevel(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementLevel] = v }
     suspend fun setBodyweightFallbackKg(v: Double) = context.dataStore.edit { it[Keys.bodyweightFallbackKg] = v }
@@ -231,6 +242,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.oneRepMaxRange] = v.name }
     suspend fun setExerciseNameLanguage(v: AppLanguage) =
         context.dataStore.edit { it[Keys.exerciseNameLanguage] = v.name }
+    suspend fun setExerciseSort(v: ExerciseSort) =
+        context.dataStore.edit { it[Keys.exerciseSort] = v.name }
     suspend fun setMuscleDisplay(v: MetaDisplay) =
         context.dataStore.edit { it[Keys.muscleDisplay] = v.name }
     suspend fun setEquipmentDisplay(v: MetaDisplay) =

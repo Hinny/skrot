@@ -32,6 +32,23 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises ORDER BY nameEn")
     fun observeAll(): Flow<List<Exercise>>
 
+    /**
+     * Most-logged first, then alphabetically. Counts completed sets rather than
+     * sessions, so an exercise you do a lot of work on outranks one you touch
+     * often and briefly. Exercises never performed sort last, in name order.
+     */
+    @Query(
+        "SELECT e.* FROM exercises e " +
+            "LEFT JOIN (" +
+            "SELECT se.exerciseId AS exerciseId, COUNT(ls.id) AS uses " +
+            "FROM session_exercises se " +
+            "JOIN logged_sets ls ON ls.sessionExerciseId = se.id " +
+            "WHERE ls.completed = 1 GROUP BY se.exerciseId" +
+            ") u ON u.exerciseId = e.id " +
+            "ORDER BY COALESCE(u.uses, 0) DESC, e.nameEn"
+    )
+    fun observeAllByUsage(): Flow<List<Exercise>>
+
     @Query("SELECT * FROM exercises ORDER BY nameEn")
     suspend fun getAll(): List<Exercise>
 
@@ -410,7 +427,7 @@ interface SessionDao {
 
 @Dao
 interface GymDao {
-    @Query("SELECT * FROM gyms ORDER BY name")
+    @Query("SELECT * FROM gyms ORDER BY position, name")
     fun observeAll(): Flow<List<Gym>>
 
     @Query("SELECT * FROM gyms ORDER BY name")

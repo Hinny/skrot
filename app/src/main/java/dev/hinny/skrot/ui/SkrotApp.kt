@@ -239,7 +239,9 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             composable(Routes.PROFILE) { ProfileScreen(container, settings) }
             composable(Routes.GUIDE) { GuideScreen() }
             composable(Routes.SETTINGS) { SettingsScreen(container, settings, navController) }
-            composable(Routes.HOME_SETTINGS) { HomeSettingsScreen(container, settings) }
+            composable(Routes.HOME_SETTINGS) {
+                HomeSettingsScreen(container, settings) { navController.navigate(Routes.SETTINGS) }
+            }
             composable(Routes.BACKUP) { BackupScreen(container) }
             composable(Routes.ABOUT) { AboutScreen() }
         }

@@ -91,7 +91,7 @@ class DayEditorViewModel(
             }
         }
         viewModelScope.launch {
-            db.exerciseDao().observeAll().collect { allExercises.value = it }
+            container.observeExercises().collect { allExercises.value = it }
         }
         viewModelScope.launch {
             container.settings.settings.collect {

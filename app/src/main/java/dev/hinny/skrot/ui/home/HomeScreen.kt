@@ -73,6 +73,7 @@ import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
+import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.ui.session.RecoveryStartCard
 import dev.hinny.skrot.ui.session.StartFlowHost
@@ -889,7 +890,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(active.routine.icon.vector(), null)
+                        active.routine.icon.vectorOrNull()?.let { Icon(it, null) }
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text(

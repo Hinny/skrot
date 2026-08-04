@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Redo
@@ -57,6 +58,7 @@ import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
+import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -138,6 +140,13 @@ class ProgramEditorViewModel(
         updateUndoRedoFlags()
     }
 
+    /**
+     * Bumped by undo and redo. Text fields keep their own state while you type,
+     * so without this they would go on showing what you typed after the value
+     * behind them was rolled back — undo appeared to do nothing to them.
+     */
+    val revision = MutableStateFlow(0)
+
     private fun updateUndoRedoFlags() {
         canUndo.value = undoStack.isNotEmpty()
         canRedo.value = redoStack.isNotEmpty()
@@ -148,6 +157,7 @@ class ProgramEditorViewModel(
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(current)
         updateUndoRedoFlags()
+        revision.value++
         viewModelScope.launch { restoreSnapshot(previous) }
     }
 
@@ -156,6 +166,7 @@ class ProgramEditorViewModel(
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.addLast(current)
         updateUndoRedoFlags()
+        revision.value++
         viewModelScope.launch { restoreSnapshot(next) }
     }
 
@@ -230,9 +241,12 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     var showAddDay by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
-    var name by remember(r.routine.id) { mutableStateOf(r.routine.name) }
-    var description by remember(r.routine.id) { mutableStateOf(r.routine.description) }
-    var tags by remember(r.routine.id) { mutableStateOf(r.routine.tags.joinToString(", ")) }
+    val revision by vm.revision.collectAsState()
+    var name by remember(r.routine.id, revision) { mutableStateOf(r.routine.name) }
+    var description by remember(r.routine.id, revision) { mutableStateOf(r.routine.description) }
+    var tags by remember(r.routine.id, revision) {
+        mutableStateOf(r.routine.tags.joinToString(", "))
+    }
     val dayReorder = rememberReorderState { from, to -> vm.moveDay(from, to) }
 
     Column(Modifier.fillMaxSize()) {
@@ -269,7 +283,10 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showIconPicker = true }) {
-                    Icon(r.routine.icon.vector(), stringResource(R.string.icon))
+                    Icon(
+                        r.routine.icon.vectorOrNull() ?: Icons.Filled.Add,
+                        stringResource(R.string.icon),
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 OutlinedTextField(
@@ -485,12 +502,18 @@ fun IconPickerDialog(onPick: (ProgramIcon) -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.icon)) },
         text = {
-            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(360.dp)) {
-                val icons = ProgramIcon.pickable
-                items(icons.size) { i ->
-                    val icon = icons[i]
-                    IconButton(onClick = { onPick(icon) }) {
-                        Icon(icon.vector(), icon.name)
+            Column {
+                // Going without an icon is a choice, not the absence of one.
+                TextButton(onClick = { onPick(ProgramIcon.NONE) }) {
+                    Text(stringResource(R.string.no_icon))
+                }
+                LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(320.dp)) {
+                    val icons = ProgramIcon.pickable
+                    items(icons.size) { i ->
+                        val icon = icons[i]
+                        IconButton(onClick = { onPick(icon) }) {
+                            Icon(icon.vector(), icon.name)
+                        }
                     }
                 }
             }

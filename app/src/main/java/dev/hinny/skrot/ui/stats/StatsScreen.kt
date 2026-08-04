@@ -108,7 +108,7 @@ class StatsViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             // No default selection: picking the first exercise with data looks
             // like a real answer to a question nobody asked.
-            db.exerciseDao().observeAll().collect { all -> exercises.value = all }
+            container.observeExercises().collect { all -> exercises.value = all }
         }
         viewModelScope.launch {
             range.flatMapLatest { db.sessionDao().observeSessionDates(fromMs(it)) }

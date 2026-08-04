@@ -198,6 +198,7 @@ data class Gym(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val isDefault: Boolean = false,
+    val position: Int = 0,
 )
 
 /** Marks an exercise as available at a gym. */

@@ -48,6 +48,7 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
@@ -147,6 +148,18 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
         }
 
         // Exercise name language (independent of the UI language above)
+        SettingSection(stringResource(R.string.exercise_sort)) {
+            ChipRow(
+                options = listOf(
+                    ExerciseSort.NAME to stringResource(R.string.sort_name),
+                    ExerciseSort.MOST_USED to stringResource(R.string.sort_most_used),
+                ),
+                selected = settings.exerciseSort,
+            ) { scope.launch { repo.setExerciseSort(it) } }
+        }
+
+        HorizontalDivider()
+
         SettingSection(stringResource(R.string.exercise_name_language)) {
             ChipRow(
                 options = listOf(
@@ -323,6 +336,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     ),
                     selected = settings.coachFrequency,
                 ) { scope.launch { repo.setCoachFrequency(it) } }
+                NumberSetting(
+                    label = stringResource(R.string.coach_message_seconds),
+                    value = settings.coachMessageSeconds,
+                ) { scope.launch { repo.setCoachMessageSeconds(it) } }
+                Text(
+                    stringResource(R.string.coach_message_seconds_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 

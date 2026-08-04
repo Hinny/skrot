@@ -89,6 +89,13 @@ class ExerciseDetailViewModel(
     val sets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val groups = MutableStateFlow<List<ExerciseGroup>>(emptyList())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
+        /**
+     * Bumped by undo and redo, so text fields holding their own state while you
+     * type adopt the rolled-back value instead of going on showing what you
+     * typed.
+     */
+    val revision = MutableStateFlow(0)
+
     val canUndo = MutableStateFlow(false)
     val canRedo = MutableStateFlow(false)
 
@@ -139,6 +146,7 @@ class ExerciseDetailViewModel(
     }
 
     fun undo() {
+        revision.value++
         val current = draft.value ?: return
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(current)
@@ -148,6 +156,7 @@ class ExerciseDetailViewModel(
     }
 
     fun redo() {
+        revision.value++
         val current = draft.value ?: return
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.addLast(current)
@@ -215,6 +224,7 @@ fun ExerciseDetailScreen(
     val draft by vm.draft.collectAsState()
     val confirmEdits by vm.confirmEdits.collectAsState()
     val canUndo by vm.canUndo.collectAsState()
+    val revision by vm.revision.collectAsState()
     val canRedo by vm.canRedo.collectAsState()
     val sets by vm.sets.collectAsState()
     val groups by vm.groups.collectAsState()
@@ -274,7 +284,7 @@ fun ExerciseDetailScreen(
         }
         item {
             val initialName = e.displayName()
-            var name by remember(e.id) { mutableStateOf(initialName) }
+            var name by remember(e.id, revision) { mutableStateOf(initialName) }
             OutlinedTextField(
                 value = if (e.isCustom) name else e.displayName(),
                 onValueChange = {
@@ -409,7 +419,7 @@ fun ExerciseDetailScreen(
 
         if (e.measurementType == MeasurementType.BODYWEIGHT) {
             item {
-                var factorText by remember(e.id) { mutableStateOf(e.bodyweightFactor.toString()) }
+                var factorText by remember(e.id, revision) { mutableStateOf(e.bodyweightFactor.toString()) }
                 OutlinedTextField(
                     value = factorText,
                     onValueChange = {
@@ -473,7 +483,7 @@ fun ExerciseDetailScreen(
         }
 
         item {
-            var noteText by remember(e.id) { mutableStateOf(e.nextTimeNote) }
+            var noteText by remember(e.id, revision) { mutableStateOf(e.nextTimeNote) }
             OutlinedTextField(
                 value = noteText,
                 onValueChange = { noteText = it; vm.update { ex -> ex.copy(nextTimeNote = it) } },
@@ -482,7 +492,7 @@ fun ExerciseDetailScreen(
             )
         }
         item {
-            var notesText by remember(e.id) { mutableStateOf(e.notes) }
+            var notesText by remember(e.id, revision) { mutableStateOf(e.notes) }
             OutlinedTextField(
                 value = notesText,
                 onValueChange = { notesText = it; vm.update { ex -> ex.copy(notes = it) } },

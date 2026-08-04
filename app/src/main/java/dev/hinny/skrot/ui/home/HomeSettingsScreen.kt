@@ -53,7 +53,7 @@ class HomeSettingsViewModel(container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            container.db.exerciseDao().observeAll().collect { exercises.value = it }
+            container.observeExercises().collect { exercises.value = it }
         }
     }
 }
@@ -87,7 +87,11 @@ fun rangeLabel(range: OneRepMaxRange): String = stringResource(
 
 /** Picks which cards the home screen shows, and configures the ones with options. */
 @Composable
-fun HomeSettingsScreen(container: AppContainer, settings: Settings) {
+fun HomeSettingsScreen(
+    container: AppContainer,
+    settings: Settings,
+    onOpenSettings: () -> Unit,
+) {
     val vm = containerViewModel(container) { c, _ -> HomeSettingsViewModel(c) }
     val allExercises by vm.exercises.collectAsState()
     val scope = remember { CoroutineScope(Dispatchers.Main) }
@@ -118,13 +122,30 @@ fun HomeSettingsScreen(container: AppContainer, settings: Settings) {
 
         HomeSection.entries.forEach { section ->
             val enabled = section in settings.homeSections
+            // The coach card can't show anything while coach comments are off
+            // altogether; saying so beats a switch that silently does nothing.
+            val blocked = section == HomeSection.COACH && !settings.coachEnabled
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Switch(checked = enabled, onCheckedChange = { toggle(section, it) })
+                Switch(
+                    checked = enabled && !blocked,
+                    enabled = !blocked,
+                    onCheckedChange = { toggle(section, it) },
+                )
                 Spacer(Modifier.width(12.dp))
                 Text(sectionLabel(section), modifier = Modifier.weight(1f))
+            }
+            if (blocked) {
+                Text(
+                    stringResource(R.string.coach_disabled_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(onClick = onOpenSettings) {
+                    Text(stringResource(R.string.open_settings))
+                }
             }
 
             // Cards with knobs of their own reveal them once switched on.

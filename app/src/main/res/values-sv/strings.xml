@@ -183,6 +183,14 @@
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Välj en annan övning…</string>
     <string name="filter_at_this_gym">På det här gymmet</string>
+    <string name="coach_disabled_hint">Coachkommentarer är avstängda, så det här kortet har inget att visa.</string>
+    <string name="open_settings">Öppna inställningar</string>
+    <string name="coach_message_seconds">Sekunder en kommentar visas (0 = tills du stänger den)</string>
+    <string name="coach_message_seconds_hint">Hur länge en coachkommentar ligger kvar på skärmen under ett pass.</string>
+    <string name="exercise_sort">Övningsordning</string>
+    <string name="sort_name">Alfabetisk</string>
+    <string name="sort_most_used">Mest använda</string>
+    <string name="no_icon">Ingen ikon</string>
     <string name="equivalents_header">Likvärdiga</string>
     <string name="flag_equivalent_title">Kom ihåg som likvärdig?</string>
     <string name="flag_equivalent_body">Skrot föreslår %1$s automatiskt när %2$s inte finns.</string>

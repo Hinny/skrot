@@ -78,6 +78,13 @@ class HistorySessionViewModel(
 
     val draft = MutableStateFlow<SessionWithContent?>(null)
     val confirmEdits = MutableStateFlow(true)
+        /**
+     * Bumped by undo and redo, so text fields holding their own state while you
+     * type adopt the rolled-back value instead of going on showing what you
+     * typed.
+     */
+    val revision = MutableStateFlow(0)
+
     val canUndo = MutableStateFlow(false)
     val canRedo = MutableStateFlow(false)
     val allExercises = MutableStateFlow<List<Exercise>>(emptyList())
@@ -104,7 +111,7 @@ class HistorySessionViewModel(
             }
         }
         viewModelScope.launch {
-            db.exerciseDao().observeAll().collect { allExercises.value = it }
+            container.observeExercises().collect { allExercises.value = it }
         }
     }
 
@@ -197,6 +204,7 @@ class HistorySessionViewModel(
     fun setNote(note: String) = edit { it.copy(session = it.session.copy(note = note)) }
 
     fun undo() {
+        revision.value++
         val current = draft.value ?: return
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(current)
@@ -207,6 +215,7 @@ class HistorySessionViewModel(
     }
 
     fun redo() {
+        revision.value++
         val current = draft.value ?: return
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.addLast(current)
@@ -295,6 +304,7 @@ fun HistorySessionScreen(
     }
     val content by vm.draft.collectAsState()
     val canUndo by vm.canUndo.collectAsState()
+    val revision by vm.revision.collectAsState()
     val canRedo by vm.canRedo.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     val allExercises by vm.allExercises.collectAsState()
@@ -373,7 +383,7 @@ fun HistorySessionScreen(
                 ) { Text(stringResource(R.string.add_exercise)) }
             }
             item {
-                var note by remember(session.session.id) { mutableStateOf(session.session.note) }
+                var note by remember(session.session.id, revision) { mutableStateOf(session.session.note) }
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it; vm.setNote(it) },
@@ -449,10 +459,11 @@ private fun HistorySetRow(
 ) {
     val measurement = se.exercise.measurementType
     val seId = se.sessionExercise.id
-    var loadText by remember(set.id) {
+    val revision by vm.revision.collectAsState()
+    var loadText by remember(set.id, revision) {
         mutableStateOf(Units.formatValue(Units.toDisplay(set.load, settings.unit, measurement)))
     }
-    var repsText by remember(set.id) { mutableStateOf(set.reps.toString()) }
+    var repsText by remember(set.id, revision) { mutableStateOf(set.reps.toString()) }
     val unitLabel = when (measurement) {
         MeasurementType.MACHINE_LEVEL -> stringResource(R.string.measurement_level)
         else -> if (settings.unit == WeightUnit.KG) "kg" else "lbs"

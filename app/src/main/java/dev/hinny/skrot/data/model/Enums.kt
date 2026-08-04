@@ -98,6 +98,8 @@ enum class Equipment {
  * of the picker by [pickable].
  */
 enum class ProgramIcon {
+    /** Deliberately no icon. Kept out of [pickable]; the picker offers it separately. */
+    NONE,
     BARBELL,
     DUMBBELL,
     RUN,
@@ -389,4 +391,10 @@ enum class OneRepMaxRange {
     PAST_YEAR,
     PAST_3_YEARS,
     ALL_TIME,
+}
+
+/** Order exercise lists and pickers are presented in. */
+enum class ExerciseSort {
+    NAME,
+    MOST_USED,
 }
