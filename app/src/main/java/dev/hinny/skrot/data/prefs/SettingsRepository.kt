@@ -73,6 +73,11 @@ data class Settings(
     /** Whether newly started sessions begin locked against structural edits. */
     val sessionsLockedByDefault: Boolean = false,
     /**
+     * Whether program, gym and workout-day lists open locked against
+     * reordering. Drag handles sitting there permanently invite accidents.
+     */
+    val listsLockedByDefault: Boolean = true,
+    /**
      * Whether starting a routine workout always runs through the exercise plan
      * first — the same screen that otherwise only appears when the gym forces a
      * choice, but listing every exercise and its availability.
@@ -130,6 +135,7 @@ class SettingsRepository(private val context: Context) {
         val profileSex = stringPreferencesKey("profile_sex")
         val confirmLibraryEdits = booleanPreferencesKey("confirm_library_edits")
         val sessionsLockedByDefault = booleanPreferencesKey("sessions_locked_by_default")
+        val listsLockedByDefault = booleanPreferencesKey("lists_locked_by_default")
         val planExercisesBeforeStart = booleanPreferencesKey("plan_exercises_before_start")
         val celebrateWorkoutFinish = booleanPreferencesKey("celebrate_workout_finish")
         val alwaysOfferRecovery = booleanPreferencesKey("always_offer_recovery")
@@ -175,6 +181,7 @@ class SettingsRepository(private val context: Context) {
             profileSex = p[Keys.profileSex].toEnum(defaults.profileSex),
             confirmLibraryEdits = p[Keys.confirmLibraryEdits] ?: defaults.confirmLibraryEdits,
             sessionsLockedByDefault = p[Keys.sessionsLockedByDefault] ?: defaults.sessionsLockedByDefault,
+            listsLockedByDefault = p[Keys.listsLockedByDefault] ?: defaults.listsLockedByDefault,
             planExercisesBeforeStart = p[Keys.planExercisesBeforeStart] ?: defaults.planExercisesBeforeStart,
             celebrateWorkoutFinish = p[Keys.celebrateWorkoutFinish] ?: defaults.celebrateWorkoutFinish,
             alwaysOfferRecovery = p[Keys.alwaysOfferRecovery] ?: defaults.alwaysOfferRecovery,
@@ -226,6 +233,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.confirmLibraryEdits] = v }
     suspend fun setSessionsLockedByDefault(v: Boolean) =
         context.dataStore.edit { it[Keys.sessionsLockedByDefault] = v }
+    suspend fun setListsLockedByDefault(v: Boolean) =
+        context.dataStore.edit { it[Keys.listsLockedByDefault] = v }
     suspend fun setPlanExercisesBeforeStart(v: Boolean) =
         context.dataStore.edit { it[Keys.planExercisesBeforeStart] = v }
     suspend fun setCelebrateWorkoutFinish(v: Boolean) =

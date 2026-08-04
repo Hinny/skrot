@@ -468,6 +468,14 @@ private fun ResolveExercisesDialog(
                             item.planned.exercise.displayName(),
                             style = MaterialTheme.typography.titleSmall,
                         )
+                        // The warning describes the gym as it was when the dialog
+                        // opened. Once the exercise has been swapped, or marked
+                        // available, it is out of date — so it is recomputed from
+                        // what has been decided since.
+                        val settled = chosen != null &&
+                            (chosen != item.planned.exercise.id ||
+                                chosen in pending.availableExerciseIds ||
+                                chosen in addedToGym)
                         if (showAll) {
                             val sets = item.planned.sortedSets
                             val target = sets.firstNotNullOfOrNull { it.targetRepsMin }
@@ -480,9 +488,9 @@ private fun ResolveExercisesDialog(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            ResolutionStatus(item.resolution)
+                            if (!settled) ResolutionStatus(item.resolution)
                         }
-                        if (item.resolution is GymResolution.NoEquivalent) {
+                        if (item.resolution is GymResolution.NoEquivalent && !settled) {
                             Text(
                                 stringResource(R.string.not_available_no_equivalent),
                                 style = MaterialTheme.typography.bodySmall,

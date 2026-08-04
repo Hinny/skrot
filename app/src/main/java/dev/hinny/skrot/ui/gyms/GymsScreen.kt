@@ -50,8 +50,11 @@ import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.displayName
@@ -277,10 +280,11 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun GymsScreen(container: AppContainer) {
+fun GymsScreen(container: AppContainer, settings: Settings) {
     val vm = containerViewModel(container) { c, _ -> GymsViewModel(c) }
     val gyms by vm.gyms.collectAsState()
     val gymReorder = rememberReorderState { from, to -> vm.move(from, to) }
+    val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
     val exercises by vm.exercises.collectAsState()
     val editing by vm.editingGym.collectAsState()
     val available by vm.editingAvailable.collectAsState()
@@ -309,11 +313,16 @@ fun GymsScreen(container: AppContainer) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
-                    Text(
-                        stringResource(R.string.gyms),
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.gyms),
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 12.dp),
+                        )
+                        ReorderLockButton(orderLocked)
+                    }
                     Text(
                         stringResource(R.string.gyms_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -324,7 +333,10 @@ fun GymsScreen(container: AppContainer) {
                     Card(
                         Modifier
                             .fillMaxWidth()
-                            .reorderableRow(gymReorder, i, gyms.size)
+                            .then(
+                                if (orderLocked.value) Modifier
+                                else Modifier.reorderableRow(gymReorder, i, gyms.size)
+                            )
                             .clickable { vm.enterEditing(g.id) },
                     ) {
                         Row(
@@ -333,8 +345,10 @@ fun GymsScreen(container: AppContainer) {
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ReorderHandle(gymReorder, i, gyms.size)
-                            Spacer(Modifier.width(8.dp))
+                            if (!orderLocked.value) {
+                                ReorderHandle(gymReorder, i, gyms.size)
+                                Spacer(Modifier.width(8.dp))
+                            }
                             Text(
                                 g.name,
                                 style = MaterialTheme.typography.titleMedium,

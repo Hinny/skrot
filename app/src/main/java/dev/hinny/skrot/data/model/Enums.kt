@@ -365,7 +365,6 @@ enum class HomeSection {
     NEXT_WORKOUT,
     RECOVERY,
     BACKUP_REMINDER,
-    GYM_READINESS,
     LAST_SESSION,
     BODY_METRIC,
     DAYS_SINCE_LAST,
@@ -379,7 +378,7 @@ enum class HomeSection {
          */
         val DEFAULTS: Set<HomeSection> = setOf(
             COACH, NEXT_WORKOUT, RECOVERY, BACKUP_REMINDER,
-            GYM_READINESS, LAST_SESSION, BODY_METRIC,
+            LAST_SESSION, BODY_METRIC,
         )
     }
 }

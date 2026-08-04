@@ -53,7 +53,10 @@ import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ConfirmDialog
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.PendingChangesBar
@@ -229,7 +232,12 @@ class ProgramEditorViewModel(
 }
 
 @Composable
-fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routineId: Long) {
+fun ProgramEditorScreen(
+    container: AppContainer,
+    settings: Settings,
+    nav: NavHostController,
+    routineId: Long,
+) {
     val vm = containerViewModel(container, key = "program_$routineId") { c, _ ->
         ProgramEditorViewModel(c, routineId)
     }
@@ -248,6 +256,7 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         mutableStateOf(r.routine.tags.joinToString(", "))
     }
     val dayReorder = rememberReorderState { from, to -> vm.moveDay(from, to) }
+    val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -393,7 +402,14 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
         }
         item {
-            Text(stringResource(R.string.workout_days), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.workout_days),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                ReorderLockButton(orderLocked)
+            }
         }
         val days = r.sortedDays
         items(days.size) { i ->
@@ -401,11 +417,14 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             Card(
                 Modifier
                     .fillMaxWidth()
-                    .reorderableRow(dayReorder, i, days.size)
+                    .then(
+                        if (orderLocked.value) Modifier
+                        else Modifier.reorderableRow(dayReorder, i, days.size)
+                    )
             ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ReorderHandle(dayReorder, i, days.size)
+                        if (!orderLocked.value) ReorderHandle(dayReorder, i, days.size)
                         Spacer(Modifier.width(8.dp))
                         Column(
                             Modifier

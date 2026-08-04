@@ -66,7 +66,6 @@ private fun sectionLabel(section: HomeSection): String = stringResource(
         HomeSection.NEXT_WORKOUT -> R.string.home_section_next_workout
         HomeSection.RECOVERY -> R.string.home_section_recovery
         HomeSection.BACKUP_REMINDER -> R.string.home_section_backup
-        HomeSection.GYM_READINESS -> R.string.home_section_gym
         HomeSection.LAST_SESSION -> R.string.home_section_last_session
         HomeSection.BODY_METRIC -> R.string.home_section_body
         HomeSection.DAYS_SINCE_LAST -> R.string.home_section_days_since

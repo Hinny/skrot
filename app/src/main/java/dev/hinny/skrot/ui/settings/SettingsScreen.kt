@@ -289,6 +289,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 stringResource(R.string.always_offer_recovery_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
+            ToggleSetting(
+                stringResource(R.string.lists_locked_by_default),
+                settings.listsLockedByDefault,
+            ) { scope.launch { repo.setListsLockedByDefault(it) } }
+            Text(
+                stringResource(R.string.lists_locked_by_default_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()

@@ -52,6 +52,8 @@ import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.NewExercise
@@ -319,6 +321,7 @@ fun DayEditorScreen(
     var name by remember(d.day.id) { mutableStateOf(d.day.name) }
     var description by remember(d.day.id) { mutableStateOf(d.day.description) }
     val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
+    val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -330,6 +333,7 @@ fun DayEditorScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
+                ReorderLockButton(orderLocked)
                 TextButton(onClick = { nav.popBackStack() }) {
                     Text(stringResource(R.string.done))
                 }
@@ -369,11 +373,16 @@ fun DayEditorScreen(
             Card(
                 Modifier
                     .fillMaxWidth()
-                    .reorderableRow(blockReorder, blockIndex, blocks.size)
+                    .then(
+                        if (orderLocked.value) Modifier
+                        else Modifier.reorderableRow(blockReorder, blockIndex, blocks.size)
+                    )
             ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ReorderHandle(blockReorder, blockIndex, blocks.size)
+                        if (!orderLocked.value) {
+                            ReorderHandle(blockReorder, blockIndex, blocks.size)
+                        }
                         Spacer(Modifier.width(6.dp))
                         Text(
                             if (block.size > 1) stringResource(R.string.superset)

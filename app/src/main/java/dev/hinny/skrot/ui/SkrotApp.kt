@@ -205,11 +205,11 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             composable(Routes.HOME) { HomeScreen(container, settings, navController) }
             composable(Routes.SESSION) { SessionScreen(container, settings, navController) }
             composable(Routes.LIBRARY) { LibraryScreen(navController) }
-            composable(Routes.PROGRAMS) { ProgramsScreen(container, navController) }
+            composable(Routes.PROGRAMS) { ProgramsScreen(container, settings, navController) }
             composable(
                 "program/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            ) { ProgramEditorScreen(container, navController, it.arguments!!.getLong("id")) }
+            ) { ProgramEditorScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(
                 "day/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
@@ -234,7 +234,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             ) { ExerciseDetailScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(Routes.STATS) { StatsScreen(container, settings, navController) }
             composable(Routes.MORE) { MoreScreen(navController) }
-            composable(Routes.GYMS) { GymsScreen(container) }
+            composable(Routes.GYMS) { GymsScreen(container, settings) }
             composable(Routes.BODY) { BodyScreen(container, settings) }
             composable(Routes.PROFILE) { ProfileScreen(container, settings) }
             composable(Routes.GUIDE) { GuideScreen() }

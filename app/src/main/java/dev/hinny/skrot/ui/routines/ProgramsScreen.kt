@@ -42,7 +42,10 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Routine
 import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.lastPerformedText
@@ -101,11 +104,12 @@ class ProgramsViewModel(private val container: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
+fun ProgramsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> ProgramsViewModel(c) }
     val routines by vm.routines.collectAsState()
     val last by vm.lastByRoutine.collectAsState()
     val reorder = rememberReorderState { from, to -> vm.move(from, to) }
+    val locked = rememberReorderLock(settings.listsLockedByDefault)
     var showCreate by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -125,18 +129,26 @@ fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
-                Text(
-                    stringResource(R.string.tab_programs),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.tab_programs),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp),
+                    )
+                    ReorderLockButton(locked)
+                }
             }
             items(routines.size) { i ->
                 val r = routines[i]
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .reorderableRow(reorder, i, routines.size)
+                        .then(
+                            if (locked.value) Modifier
+                            else Modifier.reorderableRow(reorder, i, routines.size)
+                        )
                         .clickable { nav.navigate(Routes.program(r.routine.id)) },
                 ) {
                     Row(
@@ -145,8 +157,10 @@ fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ReorderHandle(reorder, i, routines.size)
-                        Spacer(Modifier.width(8.dp))
+                        if (!locked.value) {
+                            ReorderHandle(reorder, i, routines.size)
+                            Spacer(Modifier.width(8.dp))
+                        }
                         r.routine.icon.vectorOrNull()?.let { Icon(it, null) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {

@@ -109,7 +109,6 @@ data class HomeUiState(
     val latestMetric: BodyMetric? = null,
     /** The entry before [latestMetric], for the change shown next to it. */
     val previousMetric: BodyMetric? = null,
-    val gymReadiness: GymReadiness? = null,
     val weekStreak: Int = 0,
     val oneRepMaxes: List<OneRepMaxEntry> = emptyList(),
 )
@@ -126,18 +125,6 @@ data class LastSessionSummary(
     val completedSets: Int,
     val volumeKg: Double,
     val sessionId: Long,
-)
-
-/**
- * How ready the gym you last trained at is for the next workout. [available] of
- * [planned] exercises are on its equipment list; an empty list at a gym means
- * nothing has been marked yet, which is not the same as nothing being there.
- */
-data class GymReadiness(
-    val gym: Gym,
-    val available: Int,
-    val planned: Int,
-    val unlisted: Boolean,
 )
 
 /** One planned exercise checked against the selected gym. */
@@ -256,7 +243,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     lastSession = lastFinished?.let { summarize(it, settings.bodyweightFallbackKg) },
                     latestMetric = sortedMetrics.firstOrNull(),
                     previousMetric = sortedMetrics.getOrNull(1),
-                    gymReadiness = gymReadiness(lastFinished, state.gyms, nextDay),
                     weekStreak = streak,
                     oneRepMaxes = oneRepMaxes,
                 )
@@ -327,31 +313,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             completedSets = setCount,
             volumeKg = volume,
             sessionId = session.id,
-        )
-    }
-
-    /**
-     * How the next workout stands at the gym you last trained at (falling back to
-     * the default gym), so a missing machine is known before leaving the house.
-     */
-    private suspend fun gymReadiness(
-        lastFinished: WorkoutSession?,
-        gyms: List<Gym>,
-        nextDay: RoutineDay?,
-    ): GymReadiness? {
-        val gym = lastFinished?.gymId?.let { id -> gyms.find { it.id == id } }
-            ?: gyms.find { it.isDefault }
-            ?: return null
-        val planned = nextDay
-            ?.let { db.routineDao().dayWithContent(it.id) }
-            ?.exercises
-            ?: emptyList()
-        val availableIds = db.gymDao().exerciseIdsAt(gym.id).toSet()
-        return GymReadiness(
-            gym = gym,
-            available = planned.count { it.exercise.id in availableIds },
-            planned = planned.size,
-            unlisted = availableIds.isEmpty(),
         )
     }
 
@@ -696,37 +657,6 @@ private fun OneRepMaxCard(
     }
 }
 
-/** How many of the next workout's exercises the usual gym has. */
-@Composable
-private fun GymReadinessCard(readiness: GymReadiness) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.Place, null)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(readiness.gym.name, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    when {
-                        readiness.unlisted -> stringResource(R.string.gym_nothing_marked)
-                        readiness.planned == 0 -> stringResource(R.string.gym_no_workout_planned)
-                        else -> stringResource(
-                            R.string.gym_available_count,
-                            readiness.available,
-                            readiness.planned,
-                        )
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-    }
-}
-
 /** Recap of the workout most recently finished. */
 @Composable
 private fun LastSessionCard(
@@ -953,9 +883,6 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
                 range = settings.oneRepMaxRange,
                 settings = settings,
             )
-        }
-        if (shows(HomeSection.GYM_READINESS)) {
-            state.gymReadiness?.let { GymReadinessCard(it) }
         }
         if (shows(HomeSection.LAST_SESSION)) {
             state.lastSession?.let { last ->
