@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -159,7 +162,9 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     ) {
     Scaffold(
         bottomBar = {
-            Column {
+            // targetSdk 35 means the window is edge-to-edge and the IME no longer
+            // resizes it, so the bars have to step over the keyboard themselves.
+            Column(Modifier.imePadding()) {
                 // When the nav bar is hidden (during a workout) the timer bar is the
                 // bottom-most element and must clear the system navigation bar itself.
                 RestTimerBar(container, settings, applyNavInsets = hideBars)
@@ -253,8 +258,12 @@ private fun RestTimerBar(
                 .fillMaxWidth()
                 .then(
                     if (applyNavInsets) {
+                        // Excluding the IME keeps this from stacking on top of the
+                        // imePadding the bottom bar already applies.
                         Modifier.windowInsetsPadding(
-                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                            WindowInsets.navigationBars
+                                .only(WindowInsetsSides.Bottom)
+                                .exclude(WindowInsets.ime)
                         )
                     } else {
                         Modifier

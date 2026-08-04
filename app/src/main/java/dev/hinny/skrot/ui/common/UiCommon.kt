@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -209,7 +210,9 @@ fun CompactValueButton(
  */
 @Composable
 fun PendingChangesBar(onApply: () -> Unit, onCancel: () -> Unit) {
-    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
+    // The window is edge-to-edge (targetSdk 35), so this has to step over the
+    // keyboard itself or it ends up underneath it while a field is focused.
+    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp, modifier = Modifier.imePadding()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

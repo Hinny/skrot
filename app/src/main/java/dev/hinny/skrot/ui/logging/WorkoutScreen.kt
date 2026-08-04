@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -56,16 +58,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -97,6 +104,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,6 +131,12 @@ fun WorkoutScreen(
     var showFinish by remember { mutableStateOf(false) }
     var allExercises by remember { mutableStateOf(listOf<Exercise>()) }
     var elapsed by remember { mutableLongStateOf(0L) }
+
+    // Root-relative bounds of the list and of each set row, recorded as they are
+    // laid out, so the current set can be scrolled to the middle of the screen.
+    val listState = rememberLazyListState()
+    val rowBounds = remember { mutableStateMapOf<Long, IntRange>() }
+    var listBounds by remember { mutableStateOf<IntRange?>(null) }
 
     // Keep the screen awake during an active workout (configurable).
     val view = LocalView.current
@@ -214,11 +228,52 @@ fun WorkoutScreen(
         val locked = session.session.locked
         val removedMsg = stringResource(R.string.exercise_removed)
         val applyLabel = stringResource(R.string.apply_future_sessions)
+        val blocks = session.blocks
+        // The single set to do next in the whole session: the first block
+        // (in order) with an incomplete set, alternating within a superset
+        // (A1, B1, A2, B2, ...). Only one set is ever "current" at a time —
+        // not one per exercise/block.
+        val currentSetId = blocks.firstNotNullOfOrNull { block ->
+            block
+                .flatMapIndexed { exIndex, se ->
+                    se.sortedSets.mapIndexedNotNull { setIndex, s ->
+                        if (!s.completed) Triple(setIndex, exIndex, s.id) else null
+                    }
+                }
+                .minWithOrNull(compareBy({ it.first }, { it.second }))
+        }?.third
+
+        // Finishing a set moves "current" to the next one, which is often just
+        // off-screen. Pull it back to the middle so the next set is always in
+        // reach without scrolling.
+        LaunchedEffect(currentSetId) {
+            val id = currentSetId ?: return@LaunchedEffect
+            delay(CENTER_SCROLL_SETTLE_MS)
+            if (rowBounds[id] == null) {
+                // Not composed yet: jump to its block first, then centre it.
+                val blockIndex = blocks.indexOfFirst { block ->
+                    block.any { se -> se.sets.any { it.id == id } }
+                }
+                if (blockIndex < 0) return@LaunchedEffect
+                listState.animateScrollToItem(blockIndex + if (locked) 1 else 0)
+                delay(CENTER_SCROLL_SETTLE_MS)
+            }
+            val row = rowBounds[id] ?: return@LaunchedEffect
+            val list = listBounds ?: return@LaunchedEffect
+            val delta = ((row.first + row.last) / 2 - (list.first + list.last) / 2).toFloat()
+            if (abs(delta) > CENTER_SCROLL_THRESHOLD_PX) listState.animateScrollBy(delta)
+        }
+
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 12.dp)
+                .onGloballyPositioned { coords ->
+                    val top = coords.positionInRoot().y.roundToInt()
+                    listBounds = top..(top + coords.size.height)
+                },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (locked) {
@@ -243,20 +298,6 @@ fun WorkoutScreen(
                     }
                 }
             }
-            val blocks = session.blocks
-            // The single set to do next in the whole session: the first block
-            // (in order) with an incomplete set, alternating within a superset
-            // (A1, B1, A2, B2, ...). Only one set is ever "current" at a time —
-            // not one per exercise/block.
-            val currentSetId = blocks.firstNotNullOfOrNull { block ->
-                block
-                    .flatMapIndexed { exIndex, se ->
-                        se.sortedSets.mapIndexedNotNull { setIndex, s ->
-                            if (!s.completed) Triple(setIndex, exIndex, s.id) else null
-                        }
-                    }
-                    .minWithOrNull(compareBy({ it.first }, { it.second }))
-            }?.third
             items(blocks.size) { blockIndex ->
                 val block = blocks[blockIndex]
                 Card {
@@ -281,6 +322,7 @@ fun WorkoutScreen(
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
+                                rowBounds = rowBounds,
                                 onRemove = { removed ->
                                     val peId = removed.sessionExercise.plannedExerciseId
                                     vm.removeExercise(removed)
@@ -404,6 +446,7 @@ private fun ExerciseSection(
     currentSetId: Long?,
     hasRoutineDay: Boolean,
     locked: Boolean,
+    rowBounds: SnapshotStateMap<Long, IntRange>,
     onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -511,6 +554,7 @@ private fun ExerciseSection(
                 vm = vm,
                 isCurrent = set.id == currentSetId,
                 locked = locked,
+                rowBounds = rowBounds,
             )
         }
 
@@ -629,6 +673,7 @@ private fun SetRow(
     vm: WorkoutViewModel,
     isCurrent: Boolean,
     locked: Boolean,
+    rowBounds: SnapshotStateMap<Long, IntRange>,
 ) {
     val measurement = se.exercise.measurementType
     var loadText by remember(set.id) {
@@ -648,7 +693,13 @@ private fun SetRow(
         return Units.fromDisplay(raw, settings.unit, measurement)
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.onGloballyPositioned { coords ->
+            val top = coords.positionInRoot().y.roundToInt()
+            rowBounds[set.id] = top..(top + coords.size.height)
+        },
+    ) {
         if (!locked) {
             DragHandle(onMove = { delta -> vm.moveSet(se, set, delta) }, rowHeightDp = 48f)
         }
@@ -807,6 +858,14 @@ private fun SetRowContent(
 ) {
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
+    val focusManager = LocalFocusManager.current
+
+    // Finishing a set drops focus: leaving the cursor in a field keeps the
+    // keyboard up over half the screen for no reason.
+    fun finishSet() {
+        focusManager.clearFocus()
+        vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+    }
 
     // Everything but the type marker and the trailing button is weighted, so the
     // row fits any phone width instead of pushing the Done button off-screen.
@@ -908,9 +967,7 @@ private fun SetRowContent(
                 }
 
                 isCurrent -> Button(
-                    onClick = {
-                        vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
-                    },
+                    onClick = ::finishSet,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -922,9 +979,7 @@ private fun SetRowContent(
                 }
 
                 else -> IconButton(
-                    onClick = {
-                        vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
-                    },
+                    onClick = ::finishSet,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
@@ -940,6 +995,12 @@ private fun SetRowContent(
 
 /** Digits allowed in the load and reps fields; three is plenty for both. */
 private const val MAX_INPUT_DIGITS = 3
+
+/** Time given to layout (and the keyboard) to settle before measuring for the centre scroll. */
+private const val CENTER_SCROLL_SETTLE_MS = 80L
+
+/** Don't bother animating a scroll shorter than this; it just looks like jitter. */
+private const val CENTER_SCROLL_THRESHOLD_PX = 24f
 
 /**
  * Keeps the load field narrow: at most three whole digits plus one decimal,
