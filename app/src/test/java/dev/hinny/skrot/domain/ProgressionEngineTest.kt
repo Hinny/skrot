@@ -47,7 +47,7 @@ class ProgressionEngineTest {
     }
 
     @Test
-    fun `a legacy stored range is ignored - only the single target counts`() {
+    fun `a legacy stored max is ignored - the minimum is the target`() {
         val planned = listOf(
             PlannedSet(
                 id = 0, plannedExerciseId = 1, position = 0,

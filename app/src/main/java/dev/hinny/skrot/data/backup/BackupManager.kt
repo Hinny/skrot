@@ -99,11 +99,10 @@ class BackupManager(private val db: SkrotDatabase, private val appVersion: Strin
             dao.insertDays(backup.days)
             dao.insertPlannedExercises(backup.plannedExercises)
             // Backups from before rep ranges were removed carry a target range;
-            // fold it down the same way migration 3 -> 4 does.
+            // drop the top of it, the same way migration 3 -> 4 does.
             dao.insertPlannedSets(
                 backup.plannedSets.map {
-                    if (it.targetRepsMax == null) it
-                    else it.copy(targetRepsMin = it.targetRepsMax, targetRepsMax = null)
+                    if (it.targetRepsMax == null) it else it.copy(targetRepsMax = null)
                 }
             )
             dao.insertGyms(backup.gyms)

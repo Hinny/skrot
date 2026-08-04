@@ -67,16 +67,15 @@ abstract class SkrotDatabase : RoomDatabase() {
         }
 
         /**
-         * v3 -> v4: target-rep ranges were removed. Progression already keyed off
-         * the top of the range, so the max is what survives as the single target;
-         * the column stays (unused, always null) for backward-compatible backups.
+         * v3 -> v4: target-rep ranges were removed. The single target is the reps
+         * you must reach for the set to count, so the bottom of the range is what
+         * survives — the top was only ever a progression trigger, and a max of 12
+         * left behind by the old editor default is not a target anyone chose.
+         * The column stays (unused, always null) for backward-compatible backups.
          */
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                db.execSQL(
-                    "UPDATE planned_sets SET targetRepsMin = COALESCE(targetRepsMax, targetRepsMin), " +
-                        "targetRepsMax = NULL"
-                )
+                db.execSQL("UPDATE planned_sets SET targetRepsMax = NULL")
             }
         }
 

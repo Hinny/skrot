@@ -64,10 +64,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Target reps for a freshly planned set. Matches the old 8-12 default: progression
- * keyed off the top of the range, so 12 is the target that behavior came from.
+ * Target reps for a freshly planned set: the bottom of the old 8-12 default, the
+ * reps you have to reach before the load goes up.
  */
-private const val DEFAULT_TARGET_REPS = 12
+private const val DEFAULT_TARGET_REPS = 8
 
 class DayEditorViewModel(
     private val container: AppContainer,
