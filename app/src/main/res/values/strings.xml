@@ -16,6 +16,7 @@
 
     <!-- Generic -->
     <string name="ok">OK</string>
+    <string name="time">Time</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="apply">Apply</string>

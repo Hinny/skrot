@@ -15,14 +15,21 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,8 +54,14 @@ import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
+private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val DATE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 class BodyViewModel(private val container: AppContainer) : ViewModel() {
     val metrics = MutableStateFlow<List<BodyMetric>>(emptyList())
@@ -73,7 +86,6 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
     val vm = containerViewModel(container) { c, _ -> BodyViewModel(c) }
     val metrics by vm.metrics.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
-    val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
     val zone = remember { ZoneId.systemDefault() }
     val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
 
@@ -132,8 +144,8 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                Instant.ofEpochMilli(m.date).atZone(zone).toLocalDate()
-                                    .format(dateFormat),
+                                Instant.ofEpochMilli(m.date).atZone(zone).toLocalDateTime()
+                                    .format(DATE_TIME_FORMAT),
                                 style = MaterialTheme.typography.labelMedium,
                             )
                             m.weightKg?.let {
@@ -178,6 +190,7 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
 }
 
 /** Body-metric entry dialog, shared between the Body page and Statistics. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BodyMetricDialog(
     unit: WeightUnit,
@@ -190,14 +203,85 @@ fun BodyMetricDialog(
     var arms by remember { mutableStateOf("") }
     var thighs by remember { mutableStateOf("") }
     var hips by remember { mutableStateOf("") }
+    // Defaults to now; editable so a measurement can be backdated, and so the
+    // time of day is on record for anyone reading trends out of the chart.
+    var timestamp by remember { mutableStateOf(LocalDateTime.now().withSecond(0).withNano(0)) }
+    var pickingDate by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
 
     fun parse(text: String): Double? = text.replace(',', '.').toDoubleOrNull()
+
+    if (pickingDate) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = timestamp.toLocalDate()
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { pickingDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    // The picker works in UTC; only the calendar date it returns
+                    // is meaningful, so read it back the same way.
+                    state.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneOffset.UTC)
+                            .toLocalDate()
+                        timestamp = LocalDateTime.of(picked, timestamp.toLocalTime())
+                    }
+                    pickingDate = false
+                }) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickingDate = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        ) {
+            DatePicker(state = state)
+        }
+    }
+    if (pickingTime) {
+        val state = rememberTimePickerState(
+            initialHour = timestamp.hour,
+            initialMinute = timestamp.minute,
+            is24Hour = true,
+        )
+        AlertDialog(
+            onDismissRequest = { pickingTime = false },
+            title = { Text(stringResource(R.string.time)) },
+            text = { TimePicker(state = state) },
+            confirmButton = {
+                TextButton(onClick = {
+                    timestamp = timestamp.withHour(state.hour).withMinute(state.minute)
+                    pickingTime = false
+                }) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickingTime = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.log_body_weight)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(onClick = { pickingDate = true }) {
+                        Text(timestamp.toLocalDate().format(DATE_FORMAT))
+                    }
+                    OutlinedButton(onClick = { pickingTime = true }) {
+                        Text(timestamp.toLocalTime().format(TIME_FORMAT))
+                    }
+                }
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { weight = it },
@@ -234,7 +318,7 @@ fun BodyMetricDialog(
                 }
                 onSave(
                     BodyMetric(
-                        date = System.currentTimeMillis(),
+                        date = timestamp.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                         weightKg = weightKg,
                         waistCm = parse(waist),
                         chestCm = parse(chest),

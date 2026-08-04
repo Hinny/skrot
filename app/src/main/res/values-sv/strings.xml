@@ -14,6 +14,7 @@
 
     <!-- Generic -->
     <string name="ok">OK</string>
+    <string name="time">Tid</string>
     <string name="cancel">Avbryt</string>
     <string name="save">Spara</string>
     <string name="apply">Tillämpa</string>
