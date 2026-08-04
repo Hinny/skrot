@@ -165,6 +165,8 @@
     <string name="apply_future_sessions">Apply to future sessions</string>
     <string name="exercise_removed">Exercise removed from this session</string>
     <string name="rest_s">Rest s</string>
+    <string name="target_short">Target</string>
+    <string name="set_type">Set type</string>
     <string name="level">Level</string>
 
     <!-- Workout logging -->

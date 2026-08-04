@@ -163,6 +163,8 @@
     <string name="apply_future_sessions">Spara till framtida pass</string>
     <string name="exercise_removed">Övning borttagen från detta pass</string>
     <string name="rest_s">Vila s</string>
+    <string name="target_short">Mål</string>
+    <string name="set_type">Settyp</string>
     <string name="level">Nivå</string>
 
     <!-- Workout logging -->

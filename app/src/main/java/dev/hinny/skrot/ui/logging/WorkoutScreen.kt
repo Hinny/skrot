@@ -1,8 +1,9 @@
 package dev.hinny.skrot.ui.logging
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +29,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -60,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -84,6 +86,8 @@ import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
+import dev.hinny.skrot.ui.common.CompactNumberField
+import dev.hinny.skrot.ui.common.CompactValueButton
 import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.StepperNumberField
@@ -627,7 +631,6 @@ private fun SetRow(
     locked: Boolean,
 ) {
     val measurement = se.exercise.measurementType
-    val isLevel = measurement == MeasurementType.MACHINE_LEVEL
     var loadText by remember(set.id) {
         mutableStateOf(
             if (set.load == 0.0 && !set.completed && measurement == MeasurementType.BODYWEIGHT) ""
@@ -658,13 +661,20 @@ private fun SetRow(
             onDelete = { vm.removeSet(se, set) },
             modifier = Modifier.weight(1f),
         ) {
+            // The set to do next is boxed in the accent color — the old tinted
+            // fill alone was too easy to lose track of mid-workout.
             Surface(
                 color = if (isCurrent) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                 } else {
                     Color.Transparent
                 },
                 shape = RoundedCornerShape(10.dp),
+                border = if (isCurrent) {
+                    BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                } else {
+                    null
+                },
             ) {
                 SetRowContent(
                     se = se,
@@ -798,11 +808,14 @@ private fun SetRowContent(
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
 
+    // Everything but the type marker and the trailing button is weighted, so the
+    // row fits any phone width instead of pushing the Done button off-screen.
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp, horizontal = 2.dp),
+            .padding(vertical = 4.dp, horizontal = 4.dp),
     ) {
         // Set type marker; tap cycles warmup -> standard -> drop -> failure
         val typeLabel = when (set.setType) {
@@ -811,7 +824,8 @@ private fun SetRowContent(
             SetType.DROP_SET -> stringResource(R.string.set_marker_drop)
             SetType.FAILURE -> stringResource(R.string.set_marker_failure)
         }
-        AssistChip(
+        SetTypeMarker(
+            label = typeLabel,
             enabled = !locked,
             onClick = {
                 val next = when (set.setType) {
@@ -822,19 +836,7 @@ private fun SetRowContent(
                 }
                 vm.setSetType(set, next)
             },
-            label = { Text(typeLabel) },
         )
-        Spacer(Modifier.width(4.dp))
-
-        // Target reps (reference next to the inputs; editable, persists to routine)
-        val targetText = when {
-            set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
-            planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
-            else -> "—"
-        }
-        TextButton(enabled = !locked, onClick = { if (planned != null) onOpenTarget() }) {
-            Text(targetText, style = MaterialTheme.typography.bodySmall)
-        }
 
         val loadLabel = when (measurement) {
             MeasurementType.WEIGHT_KG ->
@@ -844,70 +846,143 @@ private fun SetRowContent(
             MeasurementType.BODYWEIGHT ->
                 if (settings.unit == WeightUnit.KG) "+kg" else "+lbs"
         }
-        OutlinedTextField(
+        CompactNumberField(
             value = loadText,
             onValueChange = {
-                onLoadText(it.filter { c -> c.isDigit() || c == '.' || c == ',' || c == '-' })
-                vm.updateSetValues(
-                    set,
-                    currentLoadKg(),
-                    repsText.toIntOrNull() ?: 0,
-                )
+                onLoadText(limitLoadInput(it))
+                vm.updateSetValues(set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
             },
-            label = { Text(loadLabel, style = MaterialTheme.typography.labelSmall) },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = if (isLevel) KeyboardType.Number else KeyboardType.Decimal
-            ),
-            singleLine = true,
-            modifier = Modifier.width(84.dp),
+            label = loadLabel,
+            decimal = !isLevel,
+            modifier = Modifier.weight(1.25f),
         )
-        Spacer(Modifier.width(6.dp))
-        OutlinedTextField(
+        CompactNumberField(
             value = repsText,
             onValueChange = {
-                val filtered = it.filter { c -> c.isDigit() }
+                val filtered = it.filter { c -> c.isDigit() }.take(MAX_INPUT_DIGITS)
                 onRepsText(filtered)
                 vm.updateSetValues(set, currentLoadKg(), filtered.toIntOrNull() ?: 0)
             },
-            label = { Text(stringResource(R.string.reps), style = MaterialTheme.typography.labelSmall) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.width(72.dp),
+            label = stringResource(R.string.reps),
+            modifier = Modifier.weight(1f),
         )
-        TextButton(enabled = !locked, onClick = onOpenRest) {
-            Text("${set.restSec}s", style = MaterialTheme.typography.bodySmall)
-        }
-        Spacer(Modifier.weight(1f))
-        when {
-            set.completed -> IconButton(onClick = { vm.uncompleteSet(set) }) {
-                Icon(
-                    Icons.Filled.CheckCircle,
-                    contentDescription = stringResource(R.string.undo_set),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
 
-            isCurrent -> Button(
-                onClick = {
-                    vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
-                },
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-            ) {
-                Text(stringResource(R.string.finish_set))
-            }
+        // Target sits directly right of the actual reps: the number you are
+        // aiming for next to the number you just entered.
+        val targetText = when {
+            set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
+            planned?.targetRepsMin != null -> "${planned.targetRepsMin}"
+            else -> "—"
+        }
+        CompactValueButton(
+            value = targetText,
+            label = stringResource(R.string.target_short),
+            onClick = { if (planned != null) onOpenTarget() },
+            enabled = !locked && planned != null,
+            modifier = Modifier.weight(0.9f),
+        )
+        CompactValueButton(
+            value = "${set.restSec}s",
+            label = stringResource(R.string.rest_s),
+            onClick = onOpenRest,
+            enabled = !locked,
+            modifier = Modifier.weight(0.9f),
+        )
 
-            else -> IconButton(
-                onClick = {
-                    vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
-                },
-            ) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = stringResource(R.string.finish_set),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                )
+        Box(
+            modifier = Modifier
+                .width(64.dp)
+                .height(40.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                set.completed -> IconButton(
+                    onClick = { vm.uncompleteSet(set) },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = stringResource(R.string.undo_set),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+
+                isCurrent -> Button(
+                    onClick = {
+                        vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(R.string.finish_set),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                    )
+                }
+
+                else -> IconButton(
+                    onClick = {
+                        vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
+                    },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = stringResource(R.string.finish_set),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    )
+                }
             }
         }
+    }
+}
+
+/** Digits allowed in the load and reps fields; three is plenty for both. */
+private const val MAX_INPUT_DIGITS = 3
+
+/**
+ * Keeps the load field narrow: at most three whole digits plus one decimal,
+ * with an optional leading minus for bodyweight assistance.
+ */
+private fun limitLoadInput(text: String): String {
+    val cleaned = text.filter { it.isDigit() || it == '.' || it == ',' || it == '-' }
+    val negative = cleaned.startsWith("-")
+    val body = if (negative) cleaned.drop(1) else cleaned
+    val separator = body.indexOfFirst { it == '.' || it == ',' }
+    val whole: String
+    val fraction: String
+    if (separator < 0) {
+        whole = body.filter(Char::isDigit).take(MAX_INPUT_DIGITS)
+        fraction = ""
+    } else {
+        whole = body.take(separator).filter(Char::isDigit).take(MAX_INPUT_DIGITS)
+        fraction = body.drop(separator + 1).filter(Char::isDigit).take(1)
+    }
+    val separatorText = if (separator < 0) "" else body[separator].toString()
+    return (if (negative) "-" else "") + whole + separatorText + fraction
+}
+
+/** Compact square marker for the set type; tapping it cycles the type. */
+@Composable
+private fun SetTypeMarker(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp, 40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(
+                enabled = enabled,
+                onClickLabel = stringResource(R.string.set_type),
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

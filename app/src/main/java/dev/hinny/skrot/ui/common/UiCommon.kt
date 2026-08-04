@@ -1,11 +1,20 @@
 package dev.hinny.skrot.ui.common
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
@@ -22,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -101,6 +113,94 @@ fun StepperNumberField(
 fun formatNumber(value: Double, integerOnly: Boolean): String =
     if (integerOnly) value.toLong().toString()
     else dev.hinny.skrot.domain.Units.formatValue(value)
+
+/** Height of the input box in [CompactNumberField] and [CompactValueButton]. */
+private val CompactFieldHeight = 40.dp
+
+/**
+ * Tight numeric field for the logging screen: a bordered box with a small label
+ * above it. Material3's OutlinedTextField carries far too much padding to fit a
+ * load, reps, target, rest and a readable Done button on one phone-width row.
+ */
+@Composable
+fun CompactNumberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    decimal: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+            maxLines = 1,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = colors.onSurface,
+                textAlign = TextAlign.Center,
+            ),
+            cursorBrush = SolidColor(colors.primary),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(CompactFieldHeight)
+                .border(1.dp, colors.outline, RoundedCornerShape(8.dp))
+                .padding(horizontal = 2.dp),
+            decorationBox = { inner ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
+            },
+        )
+    }
+}
+
+/**
+ * Read-only counterpart of [CompactNumberField]: same footprint, opens a dialog
+ * on tap. Used for the target reps and the rest duration.
+ */
+@Composable
+fun CompactValueButton(
+    value: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(CompactFieldHeight)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) colors.onSurface else colors.onSurface.copy(alpha = 0.5f),
+                maxLines = 1,
+            )
+        }
+    }
+}
 
 /**
  * Bottom bar shown when "confirm library edits" is on and there are unsaved
