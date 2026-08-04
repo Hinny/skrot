@@ -189,6 +189,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 stringResource(R.string.sessions_locked_by_default_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
+            ToggleSetting(
+                stringResource(R.string.plan_before_start),
+                settings.planExercisesBeforeStart,
+            ) { scope.launch { repo.setPlanExercisesBeforeStart(it) } }
+            Text(
+                stringResource(R.string.plan_before_start_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         HorizontalDivider()

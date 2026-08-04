@@ -180,6 +180,14 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="plan_exercises">Plan the workout</string>
+    <string name="plan_sets">%1$d sets</string>
+    <string name="plan_sets_reps">%1$d sets × %2$d reps</string>
+    <string name="status_available">Available here</string>
+    <string name="status_auto_swapped">Swapped to %1$s</string>
+    <string name="status_choose">Pick one below</string>
+    <string name="plan_before_start">Plan exercises before starting</string>
+    <string name="plan_before_start_hint">Walk through every exercise and whether the gym has it, instead of only being asked when something is missing.</string>
     <string name="update_program_day">Update program day</string>
     <string name="update_program_day_warning">The program day will be rewritten to match this session: exercises, order, supersets and how many sets each exercise has. Rep targets and target loads are kept, and nothing you have logged today changes.</string>
     <string name="save_to_program_day">Save to the program day</string>

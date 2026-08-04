@@ -36,6 +36,7 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
@@ -47,7 +48,7 @@ import dev.hinny.skrot.ui.home.HomeViewModel
  * any other day, or an empty session).
  */
 @Composable
-fun SessionScreen(container: AppContainer, nav: NavHostController) {
+fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
     val state by vm.uiState.collectAsState()
     var startTarget by remember { mutableStateOf<Pair<RoutineWithDays?, RoutineDay?>?>(null) }
@@ -156,6 +157,7 @@ fun SessionScreen(container: AppContainer, nav: NavHostController) {
     StartFlowHost(
         vm = vm,
         nav = nav,
+        settings = settings,
         gyms = state.gyms,
         startTarget = startTarget,
         onClearTarget = { startTarget = null },

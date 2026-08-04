@@ -518,6 +518,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
     StartFlowHost(
         vm = vm,
         nav = nav,
+        settings = settings,
         gyms = state.gyms,
         startTarget = startTarget,
         onClearTarget = { startTarget = null },

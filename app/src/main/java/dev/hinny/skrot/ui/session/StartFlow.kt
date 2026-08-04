@@ -40,6 +40,7 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.displayName
@@ -59,6 +60,7 @@ import kotlinx.coroutines.launch
 fun StartFlowHost(
     vm: HomeViewModel,
     nav: NavHostController,
+    settings: Settings,
     gyms: List<Gym>,
     startTarget: Pair<RoutineWithDays?, RoutineDay?>?,
     onClearTarget: () -> Unit,
@@ -84,7 +86,7 @@ fun StartFlowHost(
                             it.resolution is GymResolution.Choice ||
                                 it.resolution is GymResolution.NoEquivalent
                         }
-                        if (needsInput) {
+                        if (needsInput || settings.planExercisesBeforeStart) {
                             pending = prepared
                         } else {
                             val id = vm.startSession(prepared, emptyMap(), emptySet())
@@ -99,6 +101,7 @@ fun StartFlowHost(
     pending?.let { prepared ->
         ResolveExercisesDialog(
             pending = prepared,
+            showAll = settings.planExercisesBeforeStart,
             onDismiss = { pending = null },
             onConfirm = { picks, alwaysUse ->
                 pending = null
@@ -108,6 +111,34 @@ fun StartFlowHost(
                 }
             },
         )
+    }
+}
+
+/** One-line availability note for an exercise at the selected gym. */
+@Composable
+private fun ResolutionStatus(resolution: GymResolution) {
+    val colors = MaterialTheme.colorScheme
+    when (resolution) {
+        is GymResolution.Available -> Text(
+            stringResource(R.string.status_available),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
+
+        is GymResolution.AutoSwapped -> Text(
+            stringResource(R.string.status_auto_swapped, resolution.to.displayName()),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.tertiary,
+        )
+
+        is GymResolution.Choice -> Text(
+            stringResource(R.string.status_choose),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.tertiary,
+        )
+
+        // NoEquivalent already gets its own, louder line below.
+        is GymResolution.NoEquivalent -> Unit
     }
 }
 
@@ -250,9 +281,16 @@ private fun StartWorkoutDialog(
     )
 }
 
+/**
+ * Exercise resolution before a workout starts. Normally only the exercises the
+ * gym forces a decision about are listed; with the planning setting on,
+ * [showAll] lists the whole day with each exercise's availability and set plan,
+ * so the workout can be walked through before the first rep.
+ */
 @Composable
 private fun ResolveExercisesDialog(
     pending: PendingStart,
+    showAll: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (picks: Map<Long, Long?>, alwaysUse: Set<Long>) -> Unit,
 ) {
@@ -260,11 +298,18 @@ private fun ResolveExercisesDialog(
     val always = remember { mutableStateOf(setOf<Long>()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.resolve_exercises)) },
+        title = {
+            Text(
+                stringResource(
+                    if (showAll) R.string.plan_exercises else R.string.resolve_exercises
+                )
+            )
+        },
         text = {
             LazyColumn {
                 val needing = pending.items.filter {
-                    it.resolution is GymResolution.Choice ||
+                    showAll ||
+                        it.resolution is GymResolution.Choice ||
                         it.resolution is GymResolution.NoEquivalent
                 }
                 items(needing.size) { i ->
@@ -277,6 +322,20 @@ private fun ResolveExercisesDialog(
                             item.planned.exercise.displayName(),
                             style = MaterialTheme.typography.titleSmall,
                         )
+                        if (showAll) {
+                            val sets = item.planned.sortedSets
+                            val target = sets.firstNotNullOfOrNull { it.targetRepsMin }
+                            Text(
+                                if (target == null) {
+                                    stringResource(R.string.plan_sets, sets.size)
+                                } else {
+                                    stringResource(R.string.plan_sets_reps, sets.size, target)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            ResolutionStatus(item.resolution)
+                        }
                         if (item.resolution is GymResolution.NoEquivalent) {
                             Text(
                                 stringResource(R.string.not_available_no_equivalent),

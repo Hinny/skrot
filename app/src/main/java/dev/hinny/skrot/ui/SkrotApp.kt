@@ -201,7 +201,7 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.HOME) { HomeScreen(container, settings, navController) }
-            composable(Routes.SESSION) { SessionScreen(container, navController) }
+            composable(Routes.SESSION) { SessionScreen(container, settings, navController) }
             composable(Routes.LIBRARY) { LibraryScreen(navController) }
             composable(Routes.PROGRAMS) { ProgramsScreen(container, navController) }
             composable(

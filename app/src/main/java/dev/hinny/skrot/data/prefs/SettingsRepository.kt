@@ -60,6 +60,12 @@ data class Settings(
     val confirmLibraryEdits: Boolean = true,
     /** Whether newly started sessions begin locked against structural edits. */
     val sessionsLockedByDefault: Boolean = false,
+    /**
+     * Whether starting a routine workout always runs through the exercise plan
+     * first — the same screen that otherwise only appears when the gym forces a
+     * choice, but listing every exercise and its availability.
+     */
+    val planExercisesBeforeStart: Boolean = false,
     /** Which language exercise names are shown in, independent of the app's UI language. */
     val exerciseNameLanguage: AppLanguage = AppLanguage.SYSTEM,
     /** How an exercise's muscle groups are rendered in lists and detail views. */
@@ -97,6 +103,7 @@ class SettingsRepository(private val context: Context) {
         val profileSex = stringPreferencesKey("profile_sex")
         val confirmLibraryEdits = booleanPreferencesKey("confirm_library_edits")
         val sessionsLockedByDefault = booleanPreferencesKey("sessions_locked_by_default")
+        val planExercisesBeforeStart = booleanPreferencesKey("plan_exercises_before_start")
         val exerciseNameLanguage = stringPreferencesKey("exercise_name_language")
         val muscleDisplay = stringPreferencesKey("muscle_display")
         val equipmentDisplay = stringPreferencesKey("equipment_display")
@@ -132,6 +139,7 @@ class SettingsRepository(private val context: Context) {
             profileSex = p[Keys.profileSex].toEnum(defaults.profileSex),
             confirmLibraryEdits = p[Keys.confirmLibraryEdits] ?: defaults.confirmLibraryEdits,
             sessionsLockedByDefault = p[Keys.sessionsLockedByDefault] ?: defaults.sessionsLockedByDefault,
+            planExercisesBeforeStart = p[Keys.planExercisesBeforeStart] ?: defaults.planExercisesBeforeStart,
             exerciseNameLanguage = p[Keys.exerciseNameLanguage].toEnum(defaults.exerciseNameLanguage),
             muscleDisplay = p[Keys.muscleDisplay].toEnum(defaults.muscleDisplay),
             equipmentDisplay = p[Keys.equipmentDisplay].toEnum(defaults.equipmentDisplay),
@@ -165,6 +173,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.confirmLibraryEdits] = v }
     suspend fun setSessionsLockedByDefault(v: Boolean) =
         context.dataStore.edit { it[Keys.sessionsLockedByDefault] = v }
+    suspend fun setPlanExercisesBeforeStart(v: Boolean) =
+        context.dataStore.edit { it[Keys.planExercisesBeforeStart] = v }
     suspend fun setExerciseNameLanguage(v: AppLanguage) =
         context.dataStore.edit { it[Keys.exerciseNameLanguage] = v.name }
     suspend fun setMuscleDisplay(v: MetaDisplay) =
