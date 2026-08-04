@@ -182,6 +182,12 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Välj en annan övning…</string>
+    <string name="last_session">Senaste passet</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="sets_count">%1$d set</string>
+    <string name="gym_available_count">%1$d av %2$d övningar finns</string>
+    <string name="gym_nothing_marked">Inga övningar markerade som tillgängliga än</string>
+    <string name="gym_no_workout_planned">Inget pass inplanerat</string>
     <string name="continue_recovery_title">Fortsätta återhämtningen?</string>
     <string name="continue_recovery_body">Ditt senaste pass kom från ett återhämtningsprogram. Nästa i ordningen:</string>
     <string name="recovery_program">Återhämtningsprogram</string>
@@ -440,6 +446,26 @@
     <string name="about_offline">Skrot har ingen nätverksbehörighet — appen är bevisligen offline.</string>
 
     <!-- Coach: Hejaklack -->
+    <string-array name="coach_cheerleader_home">
+        <item>I dag är en perfekt dag att lyfta något tungt!</item>
+        <item>Kolla, du är här igen. Älskar det!</item>
+        <item>Ditt framtida jag tackar dig redan.</item>
+    </string-array>
+    <string-array name="coach_bro_home">
+        <item>Dags att flytta lite järn, brorsan.</item>
+        <item>Gymmet saknar dig. Kör.</item>
+        <item>Lätt vikt, baby. Nu kör vi.</item>
+    </string-array>
+    <string-array name="coach_pt_home">
+        <item>Kontinuitet slår intensitet. Ett bra pass i taget.</item>
+        <item>Värm upp ordentligt så sköter resten sig självt.</item>
+        <item>Små framsteg, upprepade, är hela grejen.</item>
+    </string-array>
+    <string-array name="coach_minimal_home">
+        <item>Redo när du är.</item>
+        <item>Dags att träna.</item>
+        <item>Nu kör vi.</item>
+    </string-array>
     <string-array name="coach_cheerleader_welcome_back">
         <item>Välkommen tillbaka — vad kul att se dig igen! 🎉</item>
         <item>Du dök upp. Det är det svåraste — nu kör vi!</item>

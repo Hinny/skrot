@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
@@ -40,6 +42,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymOverride
@@ -50,12 +53,17 @@ import dev.hinny.skrot.data.model.PrefillMode
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.model.SessionExercise
+import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.model.WorkoutSession
+import dev.hinny.skrot.domain.CoachTrigger
 import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.domain.GymResolver
 import dev.hinny.skrot.domain.PrefillEngine
 import dev.hinny.skrot.domain.ScheduleEngine
+import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -86,6 +94,34 @@ data class HomeUiState(
      * as an ordinary session is finished.
      */
     val continueRecovery: Pair<RoutineWithDays, RoutineDay>? = null,
+    val lastSession: LastSessionSummary? = null,
+    val latestMetric: BodyMetric? = null,
+    /** The entry before [latestMetric], for the change shown next to it. */
+    val previousMetric: BodyMetric? = null,
+    val gymReadiness: GymReadiness? = null,
+)
+
+/** What the last finished workout amounted to, for the Home recap card. */
+data class LastSessionSummary(
+    val startedAt: Long,
+    val title: String,
+    val durationMs: Long,
+    val exerciseCount: Int,
+    val completedSets: Int,
+    val volumeKg: Double,
+    val sessionId: Long,
+)
+
+/**
+ * How ready the gym you last trained at is for the next workout. [available] of
+ * [planned] exercises are on its equipment list; an empty list at a gym means
+ * nothing has been marked yet, which is not the same as nothing being there.
+ */
+data class GymReadiness(
+    val gym: Gym,
+    val available: Int,
+    val planned: Int,
+    val unlisted: Boolean,
 )
 
 /** One planned exercise checked against the selected gym. */
@@ -129,13 +165,18 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     gyms = gyms,
                 )
             }
-            combine(
+            val withHistory = combine(
                 base,
                 db.sessionDao().observeFinishedSessions(),
+                db.bodyMetricDao().observeAll(),
+            ) { state, finished, metrics -> Triple(state, finished, metrics) }
+
+            combine(
+                withHistory,
                 container.settings.settings,
                 comebackDismissed,
                 backupReminderDismissed,
-            ) { state, finished, settings, dismissed, backupDismissed ->
+            ) { (state, finished, metrics), settings, dismissed, backupDismissed ->
                 val active = state.allRoutines.find { it.routine.isActive }
                 val nextDay = active?.let {
                     ScheduleEngine.nextDay(it.routine, it.days, LocalDate.now())
@@ -172,6 +213,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     backupBasis != null &&
                     System.currentTimeMillis() - backupBasis >
                     settings.backupReminderDays * 86_400_000L
+                val sortedMetrics = metrics.sortedByDescending { it.date }
                 state.copy(
                     activeRoutine = active,
                     nextDay = nextDay,
@@ -179,9 +221,73 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     comebackRoutines = if (daysSince == null) emptyList() else comeback,
                     backupOverdue = backupOverdue,
                     continueRecovery = continueRecovery,
+                    lastSession = lastFinished?.let { summarize(it, settings.bodyweightFallbackKg) },
+                    latestMetric = sortedMetrics.firstOrNull(),
+                    previousMetric = sortedMetrics.getOrNull(1),
+                    gymReadiness = gymReadiness(lastFinished, state.gyms, nextDay),
                 )
             }.collect { uiState.value = it }
         }
+    }
+
+    /** Totals for the last finished workout, for the Home recap card. */
+    private suspend fun summarize(
+        session: WorkoutSession,
+        bodyweightFallbackKg: Double,
+    ): LastSessionSummary? {
+        val content = db.sessionDao().sessionWithContent(session.id) ?: return null
+        val bodyweight = db.bodyMetricDao().latestWeightAtOrBefore(session.startedAt)
+            ?.weightKg ?: bodyweightFallbackKg
+        var volume = 0.0
+        var setCount = 0
+        for (se in content.exercises) {
+            val completed = se.sets.filter { it.completed }
+            setCount += completed.size
+            for (set in completed) {
+                VolumeCalculator.setVolumeKg(
+                    se.exercise.measurementType,
+                    set.load,
+                    set.reps,
+                    bodyweight,
+                    se.exercise.bodyweightFactor,
+                )?.let { volume += it }
+            }
+        }
+        val dayName = session.routineDayId?.let { db.routineDao().dayWithContent(it)?.day?.name }
+        return LastSessionSummary(
+            startedAt = session.startedAt,
+            title = dayName.orEmpty(),
+            durationMs = (session.endedAt ?: session.startedAt) - session.startedAt,
+            exerciseCount = content.exercises.size,
+            completedSets = setCount,
+            volumeKg = volume,
+            sessionId = session.id,
+        )
+    }
+
+    /**
+     * How the next workout stands at the gym you last trained at (falling back to
+     * the default gym), so a missing machine is known before leaving the house.
+     */
+    private suspend fun gymReadiness(
+        lastFinished: WorkoutSession?,
+        gyms: List<Gym>,
+        nextDay: RoutineDay?,
+    ): GymReadiness? {
+        val gym = lastFinished?.gymId?.let { id -> gyms.find { it.id == id } }
+            ?: gyms.find { it.isDefault }
+            ?: return null
+        val planned = nextDay
+            ?.let { db.routineDao().dayWithContent(it.id) }
+            ?.exercises
+            ?: emptyList()
+        val availableIds = db.gymDao().exerciseIdsAt(gym.id).toSet()
+        return GymReadiness(
+            gym = gym,
+            available = planned.count { it.exercise.id in availableIds },
+            planned = planned.size,
+            unlisted = availableIds.isEmpty(),
+        )
     }
 
     /** Checks each planned exercise against the gym; the UI asks the user where needed. */
@@ -372,6 +478,154 @@ fun RecoverySection(
     }
 }
 
+/**
+ * The coach outside a workout. Uses the welcome-back lines when you have been
+ * away long enough for them to mean something, and the home greeting otherwise.
+ * Held in [remember] so it doesn't reshuffle on every recomposition.
+ */
+@Composable
+private fun CoachCard(settings: Settings, daysSince: Int?) {
+    val context = LocalContext.current
+    val trigger = if (daysSince != null && daysSince >= settings.comebackDays) {
+        CoachTrigger.WELCOME_BACK
+    } else {
+        CoachTrigger.HOME
+    }
+    val message = remember(settings.coachPersonality, trigger) {
+        CoachMessages.random(context, settings.coachPersonality, trigger)
+    } ?: return
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/** How many of the next workout's exercises the usual gym has. */
+@Composable
+private fun GymReadinessCard(readiness: GymReadiness) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Place, null)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(readiness.gym.name, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    when {
+                        readiness.unlisted -> stringResource(R.string.gym_nothing_marked)
+                        readiness.planned == 0 -> stringResource(R.string.gym_no_workout_planned)
+                        else -> stringResource(
+                            R.string.gym_available_count,
+                            readiness.available,
+                            readiness.planned,
+                        )
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+/** Recap of the workout most recently finished. */
+@Composable
+private fun LastSessionCard(
+    summary: LastSessionSummary,
+    settings: Settings,
+    onOpen: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(R.string.last_session),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(
+                summary.title.ifBlank { stringResource(R.string.workout) },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            val volume =
+                if (settings.unit == WeightUnit.KG) summary.volumeKg
+                else Units.kgToLbs(summary.volumeKg)
+            Text(
+                listOf(
+                    lastPerformedText(summary.startedAt),
+                    stringResource(R.string.minutes_short, summary.durationMs / 60_000),
+                    stringResource(R.string.sets_count, summary.completedSets),
+                    "${Units.formatValue(volume)} " +
+                        if (settings.unit == WeightUnit.KG) "kg" else "lbs",
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+/** Most recent body measurement, with the change since the one before it. */
+@Composable
+private fun LastMetricCard(
+    metric: BodyMetric,
+    previous: BodyMetric?,
+    settings: Settings,
+    onOpen: () -> Unit,
+) {
+    val weightKg = metric.weightKg ?: return
+    val display = if (settings.unit == WeightUnit.KG) weightKg else Units.kgToLbs(weightKg)
+    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val deltaKg = previous?.weightKg?.let { weightKg - it }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(R.string.body_metrics),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${Units.formatValue(display)} $unitLabel",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (deltaKg != null && deltaKg != 0.0) {
+                    val deltaDisplay =
+                        if (settings.unit == WeightUnit.KG) deltaKg else Units.kgToLbs(deltaKg)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        (if (deltaKg > 0) "+" else "") +
+                            "${Units.formatValue(deltaDisplay)} $unitLabel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(
+                lastPerformedText(metric.date),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
 @Composable
 fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
@@ -387,6 +641,10 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+
+        if (settings.coachEnabled) {
+            CoachCard(settings = settings, daysSince = state.daysSinceLastSession)
+        }
 
         state.openSession?.let { open ->
             Card(
@@ -492,44 +750,27 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
             }
         }
 
-        OutlinedButton(onClick = { startTarget = null to null; }) {
+        OutlinedButton(onClick = { startTarget = null to null }) {
             Text(stringResource(R.string.start_empty_workout))
         }
 
-        if (state.allRoutines.isNotEmpty()) {
-            Text(stringResource(R.string.tab_programs), style = MaterialTheme.typography.titleMedium)
-            state.allRoutines.forEach { r ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { nav.navigate(Routes.program(r.routine.id)) },
-                ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(r.routine.icon.vector(), null)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(r.routine.name, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                lastPerformedText(state.lastByRoutine[r.routine.id]),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        if (r.routine.isActive) {
-                            Text(
-                                stringResource(R.string.active_badge),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        }
-                    }
-                }
-            }
+        state.gymReadiness?.let { GymReadinessCard(it) }
+        state.lastSession?.let { last ->
+            LastSessionCard(
+                summary = last,
+                settings = settings,
+                onOpen = { nav.navigate(Routes.historySession(last.sessionId)) },
+            )
         }
+        state.latestMetric?.let { metric ->
+            LastMetricCard(
+                metric = metric,
+                previous = state.previousMetric,
+                settings = settings,
+                onOpen = { nav.navigate(Routes.BODY) },
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
     }
 

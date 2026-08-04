@@ -3,6 +3,8 @@ package dev.hinny.skrot.domain
 import dev.hinny.skrot.data.model.CoachFrequency
 
 enum class CoachTrigger {
+    /** Greeting on the home screen, outside any session. */
+    HOME,
     WELCOME_BACK,
     PR_CHANCE,
     IDLE,
