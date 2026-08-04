@@ -176,6 +176,9 @@
     <string name="discard_workout_warning">Detta tar bort passet och allt som loggats i det.</string>
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
+    <string name="remove_set_button">− Set</string>
+    <string name="remove_set_pick">Välj setet som ska tas bort</string>
+    <string name="set_completed_note">klart</string>
     <string name="set_marker_warmup">U</string>
     <string name="set_marker_standard">S</string>
     <string name="set_marker_drop">D</string>

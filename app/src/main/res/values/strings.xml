@@ -178,6 +178,9 @@
     <string name="discard_workout_warning">This deletes the session and everything logged in it.</string>
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
+    <string name="remove_set_button">− Set</string>
+    <string name="remove_set_pick">Pick the set to remove</string>
+    <string name="set_completed_note">completed</string>
     <string name="set_marker_warmup">W</string>
     <string name="set_marker_standard">S</string>
     <string name="set_marker_drop">D</string>
