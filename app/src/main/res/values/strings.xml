@@ -180,6 +180,8 @@
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
     <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="update_program_day">Update program day</string>
+    <string name="update_program_day_warning">The program day will be rewritten to match this session: exercises, order, supersets and how many sets each exercise has. Rep targets and target loads are kept, and nothing you have logged today changes.</string>
     <string name="save_to_program_day">Save to the program day</string>
     <string name="remove_set_pick">Pick the set to remove</string>
     <string name="set_completed_note">completed</string>

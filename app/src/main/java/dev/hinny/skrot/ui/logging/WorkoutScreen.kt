@@ -88,6 +88,7 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.CompactNumberField
 import dev.hinny.skrot.ui.common.CompactValueButton
+import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.ReorderHandle
 import dev.hinny.skrot.ui.common.ReorderState
@@ -128,6 +129,8 @@ fun WorkoutScreen(
     var addToBlockIndex by remember { mutableStateOf<Int?>(null) }
     var showDiscard by remember { mutableStateOf(false) }
     var showFinish by remember { mutableStateOf(false) }
+    var sessionMenuOpen by remember { mutableStateOf(false) }
+    var showApplyToPlan by remember { mutableStateOf(false) }
     var allExercises by remember { mutableStateOf(listOf<Exercise>()) }
     var elapsed by remember { mutableLongStateOf(0L) }
 
@@ -208,6 +211,26 @@ fun WorkoutScreen(
                                     else R.string.lock_session
                                 ),
                             )
+                        }
+                        // Write the whole session structure back to the routine day
+                        // it came from — the per-change actions further down cover
+                        // one edit at a time.
+                        if (session.session.routineDayId != null && !session.session.locked) {
+                            IconButton(onClick = { sessionMenuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
+                            }
+                            DropdownMenu(
+                                expanded = sessionMenuOpen,
+                                onDismissRequest = { sessionMenuOpen = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.update_program_day)) },
+                                    onClick = {
+                                        sessionMenuOpen = false
+                                        showApplyToPlan = true
+                                    },
+                                )
+                            }
                         }
                     }
                     IconButton(onClick = { showDiscard = true }) {
@@ -448,6 +471,14 @@ fun WorkoutScreen(
                     Text(stringResource(R.string.cancel))
                 }
             },
+        )
+    }
+    if (showApplyToPlan) {
+        ConfirmDialog(
+            title = stringResource(R.string.update_program_day),
+            text = stringResource(R.string.update_program_day_warning),
+            onConfirm = { vm.applySessionToPlan() },
+            onDismiss = { showApplyToPlan = false },
         )
     }
     if (showFinish) {

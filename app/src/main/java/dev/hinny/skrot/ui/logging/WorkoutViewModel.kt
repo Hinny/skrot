@@ -414,6 +414,92 @@ class WorkoutViewModel(
         }
     }
 
+    /**
+     * Rewrites the routine day this session started from so it matches what
+     * actually happened: exercise list, order, supersets and set counts.
+     *
+     * Planned exercises are updated in place rather than rebuilt, so their ids
+     * survive and per-gym overrides pointing at them are not cascaded away.
+     * Targets and target loads already planned stay put — this syncs structure,
+     * not the numbers you lifted today.
+     */
+    fun applySessionToPlan() {
+        viewModelScope.launch {
+            val content = session.value ?: return@launch
+            val dayId = content.session.routineDayId ?: return@launch
+            val dao = db.routineDao()
+            val existing = dao.dayWithContent(dayId) ?: return@launch
+            val existingIds = existing.exercises.map { it.planned.id }.toSet()
+            val kept = mutableSetOf<Long>()
+
+            content.blocks.forEachIndexed { blockIndex, block ->
+                block.forEachIndexed { inBlockIndex, se ->
+                    val existingId = se.sessionExercise.plannedExerciseId
+                        ?.takeIf { it in existingIds }
+                    val peId = if (existingId != null) {
+                        dao.plannedExerciseById(existingId)?.let {
+                            dao.updatePlannedExercise(
+                                it.copy(
+                                    exerciseId = se.exercise.id,
+                                    blockPos = blockIndex,
+                                    inBlockPos = inBlockIndex,
+                                )
+                            )
+                        }
+                        existingId
+                    } else {
+                        val newId = dao.insertPlannedExercise(
+                            PlannedExercise(
+                                dayId = dayId,
+                                exerciseId = se.exercise.id,
+                                blockPos = blockIndex,
+                                inBlockPos = inBlockIndex,
+                            )
+                        )
+                        db.sessionDao().updateSessionExercise(
+                            se.sessionExercise.copy(plannedExerciseId = newId)
+                        )
+                        newId
+                    }
+                    kept += peId
+                    syncPlannedSets(peId, se)
+                }
+            }
+
+            existing.exercises
+                .filter { it.planned.id !in kept }
+                .forEach { dao.deletePlannedExercise(it.planned) }
+
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /** Matches the planned set list of [peId] to the sets actually in the session. */
+    private suspend fun syncPlannedSets(peId: Long, se: SessionExerciseWithDetails) {
+        val dao = db.routineDao()
+        val planned = dao.plannedSets(peId)
+        val sessionSets = se.sortedSets
+        planned.drop(sessionSets.size).forEach { dao.deletePlannedSet(it) }
+        sessionSets.forEachIndexed { i, s ->
+            val current = planned.getOrNull(i)
+            if (current == null) {
+                val template = planned.lastOrNull()
+                dao.insertPlannedSet(
+                    PlannedSet(
+                        plannedExerciseId = peId,
+                        position = i,
+                        setType = s.setType,
+                        targetRepsMin = template?.targetRepsMin,
+                        targetLoad = template?.targetLoad,
+                        restSec = s.restSec,
+                    )
+                )
+            } else {
+                dao.updatePlannedSet(current.copy(setType = s.setType, restSec = s.restSec))
+            }
+        }
+    }
+
     /** "Apply to future sessions" after removing a planned exercise from the session. */
     fun deletePlannedExercise(peId: Long) {
         viewModelScope.launch {
