@@ -105,7 +105,15 @@ fun StartFlowHost(
         ResolveExercisesDialog(
             pending = prepared,
             showAll = settings.planExercisesBeforeStart,
+            // Only a saved gym has an availability list to add to; a temporary
+            // visit deliberately keeps nothing.
+            gymName = prepared.gymId
+                ?.takeIf { !prepared.temporaryVisit }
+                ?.let { id -> gyms.find { it.id == id }?.name },
             onLinkEquivalent = { original, picked -> vm.linkAsEquivalent(original, picked) },
+            onAddToGym = { picked ->
+                prepared.gymId?.let { vm.addExerciseToGym(it, picked.id) }
+            },
             onDismiss = { pending = null },
             onConfirm = { picks, alwaysUse ->
                 pending = null
@@ -295,16 +303,21 @@ private fun StartWorkoutDialog(
 private fun ResolveExercisesDialog(
     pending: PendingStart,
     showAll: Boolean,
+    gymName: String?,
     onLinkEquivalent: (original: Exercise, picked: Exercise) -> Unit,
+    onAddToGym: (picked: Exercise) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (picks: Map<Long, Long?>, alwaysUse: Set<Long>) -> Unit,
 ) {
     val picks = remember { mutableStateOf(mapOf<Long, Long?>()) }
     val always = remember { mutableStateOf(setOf<Long>()) }
     // The item whose replacement is being searched for, then the pair awaiting
-    // an answer to "remember this as an equivalent?".
+    // an answer to "keep this swap in mind?".
     var searchingFor by remember { mutableStateOf<StartItem?>(null) }
-    var confirmEquivalent by remember { mutableStateOf<Pair<Exercise, Exercise>?>(null) }
+    var confirmSwap by remember { mutableStateOf<Pair<Exercise, Exercise>?>(null) }
+    // Added to the gym during this flow; keeps the question from being asked
+    // twice for the same exercise, since the availability snapshot is fixed.
+    var addedToGym by remember { mutableStateOf(setOf<Long>()) }
 
     searchingFor?.let { item ->
         ExercisePickerDialog(
@@ -315,35 +328,75 @@ private fun ResolveExercisesDialog(
                 searchingFor = null
                 picks.value = picks.value + (item.planned.planned.id to picked.id)
                 val original = item.planned.exercise
-                val alreadyEquivalent = picked.id == original.id ||
-                    (original.groupId != null && picked.groupId == original.groupId)
-                if (!alreadyEquivalent) confirmEquivalent = original to picked
+                if (picked.id != original.id) confirmSwap = original to picked
             },
             onDismiss = { searchingFor = null },
         )
     }
 
-    confirmEquivalent?.let { (original, picked) ->
+    confirmSwap?.let { (original, picked) ->
+        val canLink = original.groupId == null || picked.groupId != original.groupId
+        val canAddToGym = gymName != null &&
+            picked.id !in pending.availableExerciseIds &&
+            picked.id !in addedToGym
+        if (!canLink && !canAddToGym) {
+            confirmSwap = null
+            return@let
+        }
+        // Being here means the exercise is at this gym — that is a fact, so it
+        // is pre-ticked. Whether two exercises are interchangeable is a
+        // judgement, so that one is not.
+        var linkEquivalent by remember(picked.id) { mutableStateOf(false) }
+        var addToGym by remember(picked.id) { mutableStateOf(true) }
+
         AlertDialog(
-            onDismissRequest = { confirmEquivalent = null },
-            title = { Text(stringResource(R.string.flag_equivalent_title)) },
+            onDismissRequest = { confirmSwap = null },
+            title = { Text(stringResource(R.string.remember_swap_title)) },
             text = {
-                Text(
-                    stringResource(
-                        R.string.flag_equivalent_body,
-                        picked.displayName(),
-                        original.displayName(),
-                    )
-                )
+                Column {
+                    if (canAddToGym) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = addToGym, onCheckedChange = { addToGym = it })
+                            Text(
+                                stringResource(
+                                    R.string.add_to_gym_body,
+                                    picked.displayName(),
+                                    gymName.orEmpty(),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                    if (canLink) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = linkEquivalent,
+                                onCheckedChange = { linkEquivalent = it },
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.flag_equivalent_body,
+                                    picked.displayName(),
+                                    original.displayName(),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onLinkEquivalent(original, picked)
-                    confirmEquivalent = null
-                }) { Text(stringResource(R.string.flag_equivalent_yes)) }
+                    if (canLink && linkEquivalent) onLinkEquivalent(original, picked)
+                    if (canAddToGym && addToGym) {
+                        onAddToGym(picked)
+                        addedToGym = addedToGym + picked.id
+                    }
+                    confirmSwap = null
+                }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmEquivalent = null }) {
+                TextButton(onClick = { confirmSwap = null }) {
                     Text(stringResource(R.string.flag_equivalent_no))
                 }
             },

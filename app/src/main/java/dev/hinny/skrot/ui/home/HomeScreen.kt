@@ -46,6 +46,7 @@ import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.Gym
+import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.OneRepMaxRange
@@ -426,6 +427,13 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
      * library's definition of an exercise, so this is allowed for built-in
      * exercises too — unlike renaming one.
      */
+    /** Marks [exerciseId] as available at [gymId], as the gym editor would. */
+    fun addExerciseToGym(gymId: Long, exerciseId: Long) {
+        viewModelScope.launch {
+            db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = exerciseId))
+        }
+    }
+
     fun linkAsEquivalent(original: Exercise, picked: Exercise) {
         viewModelScope.launch {
             val groupId = original.groupId ?: db.exerciseDao().insertGroup(
