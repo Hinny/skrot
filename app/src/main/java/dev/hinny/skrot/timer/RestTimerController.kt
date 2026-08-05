@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -112,10 +113,9 @@ class RestTimerController(
 
         if (prefs.timerSound) {
             runCatching {
-                RingtoneManager.getRingtone(
-                    context,
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                )?.play()
+                val uri = prefs.timerSoundUri.takeIf { it.isNotBlank() }?.let(Uri::parse)
+                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                RingtoneManager.getRingtone(context, uri)?.play()
             }
         }
         if (prefs.timerVibrate) {

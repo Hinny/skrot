@@ -76,7 +76,7 @@ class ExercisesViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            container.db.exerciseDao().observeAll().collect { exercises.value = it }
+            container.observeExercises().collect { exercises.value = it }
         }
     }
 

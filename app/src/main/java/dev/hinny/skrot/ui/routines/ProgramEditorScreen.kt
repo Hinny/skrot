@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Redo
@@ -52,9 +53,15 @@ import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.model.ScheduleMode
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ConfirmDialog
-import dev.hinny.skrot.ui.common.DragHandle
+import dev.hinny.skrot.data.prefs.Settings
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
+import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -136,6 +143,13 @@ class ProgramEditorViewModel(
         updateUndoRedoFlags()
     }
 
+    /**
+     * Bumped by undo and redo. Text fields keep their own state while you type,
+     * so without this they would go on showing what you typed after the value
+     * behind them was rolled back — undo appeared to do nothing to them.
+     */
+    val revision = MutableStateFlow(0)
+
     private fun updateUndoRedoFlags() {
         canUndo.value = undoStack.isNotEmpty()
         canRedo.value = redoStack.isNotEmpty()
@@ -146,6 +160,7 @@ class ProgramEditorViewModel(
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(current)
         updateUndoRedoFlags()
+        revision.value++
         viewModelScope.launch { restoreSnapshot(previous) }
     }
 
@@ -154,6 +169,7 @@ class ProgramEditorViewModel(
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.addLast(current)
         updateUndoRedoFlags()
+        revision.value++
         viewModelScope.launch { restoreSnapshot(next) }
     }
 
@@ -184,16 +200,13 @@ class ProgramEditorViewModel(
         viewModelScope.launch { container.db.routineDao().deleteDay(day) }
     }
 
-    fun moveDay(day: RoutineDay, delta: Int) {
+    fun moveDay(from: Int, to: Int) {
         val days = routine.value?.sortedDays ?: return
-        val index = days.indexOfFirst { it.id == day.id }
-        val target = index + delta
-        if (index < 0 || target < 0 || target >= days.size) return
+        if (from !in days.indices || to !in days.indices || from == to) return
         pushUndo()
         viewModelScope.launch {
             val reordered = days.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { i, d ->
                 if (d.position != i) container.db.routineDao().updateDay(d.copy(position = i))
             }
@@ -219,7 +232,12 @@ class ProgramEditorViewModel(
 }
 
 @Composable
-fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routineId: Long) {
+fun ProgramEditorScreen(
+    container: AppContainer,
+    settings: Settings,
+    nav: NavHostController,
+    routineId: Long,
+) {
     val vm = containerViewModel(container, key = "program_$routineId") { c, _ ->
         ProgramEditorViewModel(c, routineId)
     }
@@ -231,9 +249,14 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
     var showAddDay by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showIconPicker by remember { mutableStateOf(false) }
-    var name by remember(r.routine.id) { mutableStateOf(r.routine.name) }
-    var description by remember(r.routine.id) { mutableStateOf(r.routine.description) }
-    var tags by remember(r.routine.id) { mutableStateOf(r.routine.tags.joinToString(", ")) }
+    val revision by vm.revision.collectAsState()
+    var name by remember(r.routine.id, revision) { mutableStateOf(r.routine.name) }
+    var description by remember(r.routine.id, revision) { mutableStateOf(r.routine.description) }
+    var tags by remember(r.routine.id, revision) {
+        mutableStateOf(r.routine.tags.joinToString(", "))
+    }
+    val dayReorder = rememberReorderState { from, to -> vm.moveDay(from, to) }
+    val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -269,7 +292,10 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showIconPicker = true }) {
-                    Icon(r.routine.icon.vector(), stringResource(R.string.icon))
+                    Icon(
+                        r.routine.icon.vectorOrNull() ?: Icons.Filled.Add,
+                        stringResource(R.string.icon),
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 OutlinedTextField(
@@ -325,6 +351,20 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
         }
         item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = r.routine.isRecovery,
+                    onCheckedChange = { on -> vm.update { it.copy(isRecovery = on) } },
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.recovery_program))
+            }
+            Text(
+                stringResource(R.string.recovery_program_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        item {
             Text(stringResource(R.string.schedule), style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
@@ -362,15 +402,29 @@ fun ProgramEditorScreen(container: AppContainer, nav: NavHostController, routine
             }
         }
         item {
-            Text(stringResource(R.string.workout_days), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.workout_days),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                ReorderLockButton(orderLocked)
+            }
         }
         val days = r.sortedDays
         items(days.size) { i ->
             val day = days[i]
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (orderLocked.value) Modifier
+                        else Modifier.reorderableRow(dayReorder, i, days.size)
+                    )
+            ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        DragHandle(onMove = { delta -> vm.moveDay(day, delta) })
+                        if (!orderLocked.value) ReorderHandle(dayReorder, i, days.size)
                         Spacer(Modifier.width(8.dp))
                         Column(
                             Modifier
@@ -467,12 +521,18 @@ fun IconPickerDialog(onPick: (ProgramIcon) -> Unit, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.icon)) },
         text = {
-            LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(360.dp)) {
-                val icons = ProgramIcon.pickable
-                items(icons.size) { i ->
-                    val icon = icons[i]
-                    IconButton(onClick = { onPick(icon) }) {
-                        Icon(icon.vector(), icon.name)
+            Column {
+                // Going without an icon is a choice, not the absence of one.
+                TextButton(onClick = { onPick(ProgramIcon.NONE) }) {
+                    Text(stringResource(R.string.no_icon))
+                }
+                LazyVerticalGrid(columns = GridCells.Fixed(5), modifier = Modifier.height(320.dp)) {
+                    val icons = ProgramIcon.pickable
+                    items(icons.size) { i ->
+                        val icon = icons[i]
+                        IconButton(onClick = { onPick(icon) }) {
+                            Icon(icon.vector(), icon.name)
+                        }
                     }
                 }
             }

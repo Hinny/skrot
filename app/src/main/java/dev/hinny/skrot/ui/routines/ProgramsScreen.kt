@@ -42,8 +42,15 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Routine
 import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.data.prefs.Settings
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
+import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -51,6 +58,21 @@ import kotlinx.coroutines.launch
 
 class ProgramsViewModel(private val container: AppContainer) : ViewModel() {
     val routines = MutableStateFlow<List<RoutineWithDays>>(emptyList())
+
+    /** Reorders programs; the list is presented in [Routine.position] order. */
+    fun move(from: Int, to: Int) {
+        val current = routines.value
+        if (from !in current.indices || to !in current.indices || from == to) return
+        viewModelScope.launch {
+            val reordered = current.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { index, r ->
+                if (r.routine.position != index) {
+                    container.db.routineDao().update(r.routine.copy(position = index))
+                }
+            }
+        }
+    }
     val lastByRoutine = MutableStateFlow<Map<Long, Long>>(emptyMap())
 
     init {
@@ -82,10 +104,12 @@ class ProgramsViewModel(private val container: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
+fun ProgramsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> ProgramsViewModel(c) }
     val routines by vm.routines.collectAsState()
     val last by vm.lastByRoutine.collectAsState()
+    val reorder = rememberReorderState { from, to -> vm.move(from, to) }
+    val locked = rememberReorderLock(settings.listsLockedByDefault)
     var showCreate by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -105,17 +129,26 @@ fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
-                Text(
-                    stringResource(R.string.tab_programs),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.tab_programs),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp),
+                    )
+                    ReorderLockButton(locked)
+                }
             }
             items(routines.size) { i ->
                 val r = routines[i]
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(
+                            if (locked.value) Modifier
+                            else Modifier.reorderableRow(reorder, i, routines.size)
+                        )
                         .clickable { nav.navigate(Routes.program(r.routine.id)) },
                 ) {
                     Row(
@@ -124,7 +157,11 @@ fun ProgramsScreen(container: AppContainer, nav: NavHostController) {
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(r.routine.icon.vector(), null)
+                        if (!locked.value) {
+                            ReorderHandle(reorder, i, routines.size)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        r.routine.icon.vectorOrNull()?.let { Icon(it, null) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(r.routine.name, style = MaterialTheme.typography.titleMedium)

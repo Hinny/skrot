@@ -50,8 +50,12 @@ import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
-import dev.hinny.skrot.ui.common.DragHandle
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.ReorderHandle
+import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.rememberReorderLock
+import dev.hinny.skrot.ui.common.rememberReorderState
+import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
@@ -60,6 +64,12 @@ import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+/**
+ * Target reps for a freshly planned set: the bottom of the old 8-12 default, the
+ * reps you have to reach before the load goes up.
+ */
+private const val DEFAULT_TARGET_REPS = 8
 
 class DayEditorViewModel(
     private val container: AppContainer,
@@ -83,7 +93,7 @@ class DayEditorViewModel(
             }
         }
         viewModelScope.launch {
-            db.exerciseDao().observeAll().collect { allExercises.value = it }
+            container.observeExercises().collect { allExercises.value = it }
         }
         viewModelScope.launch {
             container.settings.settings.collect {
@@ -191,8 +201,7 @@ class DayEditorViewModel(
                     PlannedSet(
                         plannedExerciseId = peId,
                         position = i,
-                        targetRepsMin = 8,
-                        targetRepsMax = 12,
+                        targetRepsMin = DEFAULT_TARGET_REPS,
                         restSec = settings.defaultRestSec,
                     )
                 )
@@ -204,16 +213,13 @@ class DayEditorViewModel(
         viewModelScope.launch { db.routineDao().deletePlannedExercise(pe.planned) }
     }
 
-    fun moveBlock(blockPos: Int, delta: Int) {
+    fun moveBlock(from: Int, to: Int) {
         viewModelScope.launch {
             val content = day.value ?: return@launch
             val blocks = content.blocks
-            val index = blocks.indexOfFirst { it.first().planned.blockPos == blockPos }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= blocks.size) return@launch
+            if (from !in blocks.indices || to !in blocks.indices || from == to) return@launch
             val reordered = blocks.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { newPos, block ->
                 block.forEach { pe ->
                     if (pe.planned.blockPos != newPos) {
@@ -264,8 +270,7 @@ class DayEditorViewModel(
                     ?: PlannedSet(
                         plannedExerciseId = pe.planned.id,
                         position = 0,
-                        targetRepsMin = 8,
-                        targetRepsMax = 12,
+                        targetRepsMin = DEFAULT_TARGET_REPS,
                         restSec = settings.defaultRestSec,
                     )
             )
@@ -315,6 +320,8 @@ fun DayEditorScreen(
     var showIconPicker by remember { mutableStateOf(false) }
     var name by remember(d.day.id) { mutableStateOf(d.day.name) }
     var description by remember(d.day.id) { mutableStateOf(d.day.description) }
+    val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
+    val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
 
     Column(Modifier.fillMaxSize()) {
     LazyColumn(
@@ -326,6 +333,7 @@ fun DayEditorScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
+                ReorderLockButton(orderLocked)
                 TextButton(onClick = { nav.popBackStack() }) {
                     Text(stringResource(R.string.done))
                 }
@@ -362,10 +370,19 @@ fun DayEditorScreen(
         items(blocks.size) { blockIndex ->
             val block = blocks[blockIndex]
             val blockPos = block.first().planned.blockPos
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (orderLocked.value) Modifier
+                        else Modifier.reorderableRow(blockReorder, blockIndex, blocks.size)
+                    )
+            ) {
                 Column(Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        DragHandle(onMove = { delta -> vm.moveBlock(blockPos, delta) })
+                        if (!orderLocked.value) {
+                            ReorderHandle(blockReorder, blockIndex, blocks.size)
+                        }
                         Spacer(Modifier.width(6.dp))
                         Text(
                             if (block.size > 1) stringResource(R.string.superset)
@@ -480,10 +497,7 @@ private fun PlannedSetRow(
     settings: Settings,
     vm: DayEditorViewModel,
 ) {
-    var minText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
-    var maxText by remember(set.id) { mutableStateOf(set.targetRepsMax?.toString() ?: "") }
-    // A single target rep has no interval: the max field only appears on demand.
-    var showMax by remember(set.id) { mutableStateOf(set.targetRepsMax != null) }
+    var targetText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
     var loadText by remember(set.id) {
         mutableStateOf(
             set.targetLoad?.let { Units.formatValue(Units.toDisplay(it, settings.unit, measurement)) }
@@ -513,7 +527,7 @@ private fun PlannedSetRow(
                 }
                 // FAILURE sets are AMRAP: no rep target.
                 vm.updateSet(
-                    if (next == SetType.FAILURE) set.copy(setType = next, targetRepsMin = null, targetRepsMax = null)
+                    if (next == SetType.FAILURE) set.copy(setType = next, targetRepsMin = null)
                     else set.copy(setType = next)
                 )
             },
@@ -521,35 +535,18 @@ private fun PlannedSetRow(
         )
         if (set.setType != SetType.FAILURE) {
             OutlinedTextField(
-                value = minText,
+                value = targetText,
                 onValueChange = {
-                    minText = it.filter(Char::isDigit)
-                    vm.updateSet(set.copy(targetRepsMin = minText.toIntOrNull()))
+                    targetText = it.filter(Char::isDigit).take(3)
+                    vm.updateSet(set.copy(targetRepsMin = targetText.toIntOrNull()))
                 },
                 label = { Text(stringResource(R.string.target_min), style = MaterialTheme.typography.labelSmall) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.width(64.dp),
             )
-            if (showMax) {
-                OutlinedTextField(
-                    value = maxText,
-                    onValueChange = {
-                        maxText = it.filter(Char::isDigit)
-                        vm.updateSet(set.copy(targetRepsMax = maxText.toIntOrNull()))
-                    },
-                    label = { Text(stringResource(R.string.target_max), style = MaterialTheme.typography.labelSmall) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.width(64.dp),
-                )
-            } else {
-                TextButton(onClick = { showMax = true }) {
-                    Text(stringResource(R.string.add_target_max), style = MaterialTheme.typography.labelSmall)
-                }
-            }
         } else {
-            Text(stringResource(R.string.amrap), modifier = Modifier.width(132.dp))
+            Text(stringResource(R.string.amrap), modifier = Modifier.width(64.dp))
         }
         OutlinedTextField(
             value = loadText,

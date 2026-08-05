@@ -33,6 +33,7 @@ private val basicTopics = listOf(
     GuideTopic(R.string.guide_programs_t, R.string.guide_programs_b),
     GuideTopic(R.string.guide_logging_t, R.string.guide_logging_b),
     GuideTopic(R.string.guide_library_t, R.string.guide_library_b),
+    GuideTopic(R.string.guide_home_t, R.string.guide_home_b),
     GuideTopic(R.string.guide_stats_t, R.string.guide_stats_b),
     GuideTopic(R.string.guide_backup_t, R.string.guide_backup_b),
 )
@@ -40,8 +41,11 @@ private val basicTopics = listOf(
 private val advancedTopics = listOf(
     GuideTopic(R.string.guide_gyms_t, R.string.guide_gyms_b),
     GuideTopic(R.string.guide_temp_gym_t, R.string.guide_temp_gym_b),
+    GuideTopic(R.string.guide_planning_t, R.string.guide_planning_b),
     GuideTopic(R.string.guide_plan_edits_t, R.string.guide_plan_edits_b),
     GuideTopic(R.string.guide_supersets_t, R.string.guide_supersets_b),
+    GuideTopic(R.string.guide_order_t, R.string.guide_order_b),
+    GuideTopic(R.string.guide_recovery_t, R.string.guide_recovery_b),
     GuideTopic(R.string.guide_measurements_t, R.string.guide_measurements_b),
     GuideTopic(R.string.guide_prefill_t, R.string.guide_prefill_b),
     GuideTopic(R.string.guide_autofinish_t, R.string.guide_autofinish_b),

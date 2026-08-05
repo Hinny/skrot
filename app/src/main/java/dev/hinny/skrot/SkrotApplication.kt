@@ -5,12 +5,19 @@ import dev.hinny.skrot.data.backup.BackupManager
 import dev.hinny.skrot.data.backup.JefitImporter
 import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.db.SkrotDatabase
+import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.prefs.SettingsRepository
 import dev.hinny.skrot.timer.RestTimerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -24,6 +31,34 @@ class AppContainer(app: Application) {
     val restTimer = RestTimerController(app, scope, settings)
     val backupManager = BackupManager(db, BuildConfig.VERSION_NAME)
     val jefitImporter = JefitImporter(db)
+
+    /**
+     * The exercise library in the order the user asked for — alphabetical, or
+     * what they actually train most. Every list and picker in the app reads it
+     * from here so the choice applies everywhere.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeExercises(): Flow<List<Exercise>> =
+        settings.settings
+            .map { it.exerciseSort }
+            .distinctUntilChanged()
+            .flatMapLatest { sort ->
+                when (sort) {
+                    ExerciseSort.MOST_USED -> db.exerciseDao().observeAllByUsage()
+                    ExerciseSort.NAME -> db.exerciseDao().observeAll()
+                }
+            }
+
+    /**
+     * One-shot counterpart of [observeExercises], for the lists built once when
+     * a dialog opens rather than observed. Same setting, same order — a picker
+     * that ignored it would be the odd one out.
+     */
+    suspend fun exercisesNow(): List<Exercise> =
+        when (settings.settings.first().exerciseSort) {
+            ExerciseSort.MOST_USED -> db.exerciseDao().getAllByUsage()
+            ExerciseSort.NAME -> db.exerciseDao().getAll()
+        }
 
     /**
      * Auto-finish: an in-progress session with no activity for the configured

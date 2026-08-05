@@ -16,6 +16,10 @@
 
     <!-- Generic -->
     <string name="ok">OK</string>
+    <string name="time">Time</string>
+    <string name="change">Change</string>
+    <string name="timer_sound_choice">Timer sound</string>
+    <string name="timer_sound_default">Default notification sound</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="apply">Apply</string>
@@ -29,6 +33,10 @@
     <string name="dismiss">Dismiss</string>
     <string name="accept">Accept</string>
     <string name="skip">Skip</string>
+    <string name="lock_order">Lock order</string>
+    <string name="unlock_order">Unlock to reorder</string>
+    <string name="lists_locked_by_default">Lock list order by default</string>
+    <string name="lists_locked_by_default_hint">Programs, gyms and workout days open locked, so a drag handle cannot shuffle them by accident. Unlock from the padlock on each list.</string>
     <string name="icon">Icon</string>
     <string name="increase">Increase</string>
     <string name="decrease">Decrease</string>
@@ -70,27 +78,35 @@
     <string name="guide_programs_t">Programs and workout days</string>
     <string name="guide_programs_b">A program is a set of workout days, for example Push, Pull and Legs. Each day lists exercises with planned sets, target reps and rest times. Mark one program as active and the home screen suggests which day is next. You can keep several programs and switch whenever you like.</string>
     <string name="guide_logging_t">Starting and logging a workout</string>
-    <string name="guide_logging_b">Start from the Home or Session tab: take the suggested day, pick another one, or begin an empty workout. While training, the current set is highlighted — tap Done to complete it and the rest timer starts by itself. In a superset the highlight alternates between the exercises. Swipe a set to the left to remove it.</string>
+    <string name="guide_logging_b">Start from the Home or Session tab: take the suggested day, pick another one, or begin an empty workout. While training, the set you are on is boxed in the accent colour - tap Done to complete it. The rest timer starts by itself, the keyboard gets out of the way, and the next set scrolls into the middle of the screen. In a superset the box alternates between the exercises. Finish ends the whole workout.</string>
     <string name="guide_library_t">Exercises, search and your own</string>
-    <string name="guide_library_b">The Library tab gathers programs, exercises and gyms. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once — with name hits first. Create your own exercise, or clone an existing one and adjust it.</string>
+    <string name="guide_library_b">The Library tab gathers programs, exercises, gyms, workout history and body metrics. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once - with name hits first. Lists can be ordered alphabetically or by what you train most, from Settings. Create your own exercise, or clone an existing one and adjust it.</string>
     <string name="guide_stats_t">Statistics and history</string>
     <string name="guide_stats_b">Statistics opens with a summary of the selected range — sessions, sets, volume, average length and your run of training weeks — then training frequency, muscle-group balance, volume per week, your most trained exercises and per-exercise charts with personal records. Body weight can be logged and followed here too. The list of logged workouts lives under Library → Workout history, where opening one lets you correct it with undo/redo, or delete it.</string>
     <string name="guide_backup_t">Backups</string>
     <string name="guide_backup_b">Everything is stored offline on your phone — no account, no cloud. Export a JSON backup from More → Backup and keep it somewhere safe; importing it restores everything, including on a new phone. Skrot reminds you when it is time; the interval is set in Settings.</string>
     <string name="guide_gyms_t">Gyms and equipment</string>
-    <string name="guide_gyms_b">Every exercise lists the equipment it needs, and every gym keeps a list of which exercises are available there. When you start a workout at a gym, unavailable exercises are swapped to an equivalent from the same exercise family, or you get to choose. Ticking \"always use at this gym\" saves your choice for next time.</string>
+    <string name="guide_gyms_b">Every exercise lists the equipment it needs, and every gym keeps a list of which exercises are available there. When you start a workout at a gym, unavailable exercises are swapped to an equivalent from the same exercise family, or you get to choose - and you can always search the whole library for something else. Whatever you pick, Skrot offers to remember it: mark it as available here, use it here from now on, or treat the two exercises as interchangeable everywhere.</string>
     <string name="guide_temp_gym_t">Temporary gym</string>
-    <string name="guide_temp_gym_b">Training somewhere that isn\'t one of your saved gyms — on holiday, at a hotel? Pick Temporary gym when starting. Nothing is filtered by availability, you can swap exercises freely, and nothing is saved to your gym setups.</string>
+    <string name="guide_temp_gym_b">Training somewhere that isn\'t one of your saved gyms - on holiday, at a hotel? Pick Temporary gym when starting. Skrot then assumes nothing is available and asks you to confirm every exercise, you can swap freely, and nothing is saved to your gym setups.</string>
     <string name="guide_plan_edits_t">This session vs. the plan</string>
-    <string name="guide_plan_edits_b">Changes made during a workout — adding or removing sets or exercises, adjusting a rest timer — apply to that session only. When something differs from the plan, a discreet \"Apply to future sessions\" button appears; tap it to write the change back into the program. Ignore it and the plan stays untouched.</string>
+    <string name="guide_plan_edits_b">Changes made during a workout - adding or removing sets or exercises, reordering them, swapping one out, building a superset - apply to that session only. When something differs from the plan, a discreet \"Apply to future sessions\" button appears next to it. To write the whole shape of the session back at once - exercises, order, supersets, set counts - use \"Update program day\" in the workout menu. Ignore both and the plan stays untouched.</string>
     <string name="guide_supersets_t">Supersets and set types</string>
-    <string name="guide_supersets_b">In the day editor, exercises placed in the same block are run as a superset: while logging, the highlight alternates so you always see which set is next. Sets can also be marked as warm-up or drop sets; warm-up sets are excluded from the statistics.</string>
+    <string name="guide_supersets_b">Exercises placed in the same block are run as a superset: while logging, the box alternates so you always see which set is next. Build one in the day editor, or during a workout with \"Add exercise to this block\" and \"Link with previous\"; \"Unlink\" splits one back out. Sets can also be marked as warm-up, drop or failure sets; warm-up sets are excluded from records, estimates and progression.</string>
     <string name="guide_measurements_t">Weight, machine levels and bodyweight</string>
     <string name="guide_measurements_b">An exercise measures load as free weight, as a machine level, or as bodyweight with optional added weight. Machine levels aren\'t comparable between gyms, so history and charts for machine exercises are kept per gym. Bodyweight exercises use your logged body weight and a per-exercise factor when volume is estimated.</string>
     <string name="guide_prefill_t">Prefill and progression</string>
-    <string name="guide_prefill_b">When you start a planned day, the sets are prefilled — from your last session or from the plan\'s targets, depending on the program\'s prefill mode. The increment settings decide how big a step the app takes when suggesting more weight or a higher level.</string>
+    <string name="guide_prefill_b">When you start a planned day, the sets are prefilled - from your last session or from the plan\'s targets, depending on the program\'s prefill mode. A set\'s target is the reps you need to reach for it to count: hit the target on every standard set at the same load, and the next session suggests more weight. The increment settings decide how big that step is, globally and per exercise.</string>
+    <string name="guide_recovery_t">Recovery programs</string>
+    <string name="guide_recovery_b">Mark a gentler program as a recovery program in its editor. After a long break it is offered on Home and the Session tab, on the day of your choosing rather than always the first. Finish a recovery workout and the next one is offered straight away, continuing through that program, until you log an ordinary session again. The Session tab can keep the option permanently on hand.</string>
+    <string name="guide_home_t">Making Home yours</string>
+    <string name="guide_home_b">More > Home screen chooses what the home screen shows. The next workout, recovery offers, a recap of your last session and your latest body metric are on by default. Days since your last workout, a run of training weeks and estimated 1RM for lifts you pick are there to switch on. The 1RM card tracks squat, bench and deadlift until you edit the list, and reads from your latest session, the past year, the past three years, or all time.</string>
+    <string name="guide_order_t">Order and locking</string>
+    <string name="guide_order_b">Programs, gyms, workout days, exercises within a session and the sets inside them can all be dragged into order by their handle. Lists open locked so a stray drag cannot shuffle them; the padlock unlocks the one you are looking at, and Settings decides whether they start locked. Sessions lock the same way, which also protects set and exercise structure while you train.</string>
+    <string name="guide_planning_t">Planning before you start</string>
+    <string name="guide_planning_b">Switch on \"Plan exercises before starting\" in Settings and every routine workout runs through its exercise list first: how many sets and target reps each has, and how each stands at the gym you picked - available, swapped automatically, needing a choice, or missing. You can swap or skip from there before the first rep.</string>
     <string name="guide_autofinish_t">Auto-finish and comeback</string>
-    <string name="guide_autofinish_b">A session with no activity for the configured time is finished automatically, so a forgotten workout doesn\'t stay open. And if you\'ve been away for a while, Skrot suggests programs tagged \"rebuild\" to help you ease back in — both thresholds live in Settings.</string>
+    <string name="guide_autofinish_b">A session with no activity for the configured time is finished automatically, so a forgotten workout doesn\'t stay open. The threshold lives in Settings.</string>
     <string name="profile">Profile</string>
     <string name="profile_hint">Everything here is optional and never leaves your device.</string>
     <string name="profile_name">Name</string>
@@ -159,15 +175,14 @@
     <string name="link_superset">Link with previous</string>
     <string name="unlink">Unlink</string>
     <string name="target_min">Reps</string>
-    <string name="target_max">Max</string>
-    <string name="add_target_max">+ max</string>
-    <string name="target_max_optional">Max (optional)</string>
     <string name="finish_set">Done</string>
     <string name="undo_set">Undo set</string>
     <string name="remove_set">Remove set</string>
     <string name="apply_future_sessions">Apply to future sessions</string>
     <string name="exercise_removed">Exercise removed from this session</string>
     <string name="rest_s">Rest s</string>
+    <string name="target_short">Target</string>
+    <string name="set_type">Set type</string>
     <string name="level">Level</string>
 
     <!-- Workout logging -->
@@ -179,6 +194,74 @@
     <string name="discard_workout_warning">This deletes the session and everything logged in it.</string>
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
+    <string name="remove_set_button">− Set</string>
+    <string name="pick_another_exercise">Pick another exercise…</string>
+    <string name="filter_at_this_gym">At this gym</string>
+    <string name="coach_disabled_hint">Coach comments are switched off, so this card has nothing to show.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="coach_message_seconds">Seconds a comment stays up (0 = until dismissed)</string>
+    <string name="coach_message_seconds_hint">How long a coach comment stays on screen during a workout.</string>
+    <string name="exercise_sort">Exercise order</string>
+    <string name="sort_name">Alphabetical</string>
+    <string name="sort_most_used">Most used</string>
+    <string name="no_icon">No icon</string>
+    <string name="equivalents_header">Equivalents</string>
+    <string name="remember_swap_title">Remember this swap?</string>
+    <string name="flag_equivalent_body">Offer %1$s automatically whenever %2$s isn\'t available</string>
+    <string name="add_to_gym_body">Mark %1$s as available at %2$s</string>
+    <string name="always_use_here_body">Use %1$s instead of %2$s at %3$s from now on</string>
+    <string name="flag_equivalent_no">Just this time</string>
+    <string name="workout_completed">Workout completed!</string>
+    <string name="workout_completed_body">%1$d sets · %2$s · %3$s</string>
+    <string name="celebrate_finish">Celebrate finishing a workout</string>
+    <string name="celebrate_finish_hint">Shows what you got done before the workout is closed. Cancel takes you back to the log.</string>
+    <string name="home_settings">Home screen</string>
+    <string name="home_settings_hint">Choose what the home screen shows.</string>
+    <string name="home_section_coach">Coach comment</string>
+    <string name="home_section_next_workout">Next workout</string>
+    <string name="home_section_recovery">Recovery offers</string>
+    <string name="home_section_backup">Backup reminder</string>
+    <string name="home_section_last_session">Last workout</string>
+    <string name="home_section_body">Latest body metric</string>
+    <string name="home_section_days_since">Days since last workout</string>
+    <string name="home_section_streak">Week streak</string>
+    <string name="home_section_one_rep_max">Estimated 1RM</string>
+    <string name="streak_min_per_week">Workouts needed for a week to count</string>
+    <string name="workouts_per_week">Per week</string>
+    <string name="one_rep_max_exercises">Tracked exercises</string>
+    <string name="one_rep_max_range">Taken from</string>
+    <string name="range_current">Latest</string>
+    <string name="range_past_year">Past year</string>
+    <string name="range_past_3_years">Past 3 years</string>
+    <string name="range_all_time">All time</string>
+    <string name="days_since_last_workout">%1$d days since your last workout</string>
+    <string name="trained_today">You trained today</string>
+    <string name="week_streak">%1$d week streak</string>
+    <string name="week_streak_none">No streak yet</string>
+    <string name="last_session">Last workout</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="sets_count">%1$d sets</string>
+    <string name="continue_recovery_title">Carry on recovering?</string>
+    <string name="continue_recovery_body">Your last workout came from a recovery program. Next in order:</string>
+    <string name="recovery_program">Recovery program</string>
+    <string name="recovery_offer_body">Taking it easier today?</string>
+    <string name="start_another_workout">Start another workout</string>
+    <string name="always_offer_recovery">Always offer a recovery workout</string>
+    <string name="always_offer_recovery_hint">Keeps the recovery option on the Session tab even when you have been training regularly.</string>
+    <string name="recovery_program_hint">Suggested after a long break, and offered again after each recovery workout until you train normally.</string>
+    <string name="plan_exercises">Plan the workout</string>
+    <string name="plan_sets">%1$d sets</string>
+    <string name="plan_sets_reps">%1$d sets × %2$d reps</string>
+    <string name="status_available">Available here</string>
+    <string name="status_auto_swapped">Swapped to %1$s</string>
+    <string name="status_choose">Pick one below</string>
+    <string name="plan_before_start">Plan exercises before starting</string>
+    <string name="plan_before_start_hint">Walk through every exercise and whether the gym has it, instead of only being asked when something is missing.</string>
+    <string name="update_program_day">Update program day</string>
+    <string name="update_program_day_warning">The program day will be rewritten to match this session: exercises, order, supersets and how many sets each exercise has. Rep targets and target loads are kept, and nothing you have logged today changes.</string>
+    <string name="save_to_program_day">Save to the program day</string>
+    <string name="remove_set_pick">Pick the set to remove</string>
+    <string name="set_completed_note">completed</string>
     <string name="set_marker_warmup">W</string>
     <string name="set_marker_standard">S</string>
     <string name="set_marker_drop">D</string>
@@ -420,6 +503,26 @@
     <string name="about_offline">Skrot has no network permission — it is provably offline.</string>
 
     <!-- Coach: Cheerleader -->
+    <string-array name="coach_cheerleader_home">
+        <item>Today is a great day to lift something heavy!</item>
+        <item>Look at you, showing up again. Love it!</item>
+        <item>Your future self is already thanking you.</item>
+    </string-array>
+    <string-array name="coach_bro_home">
+        <item>Time to move some iron, brother.</item>
+        <item>The gym misses you. Let\'s go.</item>
+        <item>Light weight, baby. Let\'s get after it.</item>
+    </string-array>
+    <string-array name="coach_pt_home">
+        <item>Consistency beats intensity. One good session at a time.</item>
+        <item>Warm up properly and the rest takes care of itself.</item>
+        <item>Small progress, repeated, is how this works.</item>
+    </string-array>
+    <string-array name="coach_minimal_home">
+        <item>Ready when you are.</item>
+        <item>Time to train.</item>
+        <item>Let\'s begin.</item>
+    </string-array>
     <string-array name="coach_cheerleader_welcome_back">
         <item>Welcome back — so good to see you again! 🎉</item>
         <item>You showed up. That\'s the hardest part — let\'s go!</item>

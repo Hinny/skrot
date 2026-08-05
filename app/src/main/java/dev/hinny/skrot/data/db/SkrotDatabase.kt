@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 3,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -66,8 +66,65 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v3 -> v4: target-rep ranges were removed. The single target is the reps
+         * you must reach for the set to count, so the bottom of the range is what
+         * survives — the top was only ever a progression trigger, and a max of 12
+         * left behind by the old editor default is not a target anyone chose.
+         * The column stays (unused, always null) for backward-compatible backups.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("UPDATE planned_sets SET targetRepsMax = NULL")
+            }
+        }
+
+        /**
+         * v4 -> v5: recovery programs became an explicit flag instead of a magic
+         * "rebuild" tag. Tags are joined with the ASCII unit separator, so a LIKE
+         * on the bare word matches whether it stands alone or sits among others.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE routines ADD COLUMN isRecovery INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "UPDATE routines SET isRecovery = 1 WHERE tags = 'rebuild' " +
+                        "OR tags LIKE 'rebuild' || char(31) || '%' " +
+                        "OR tags LIKE '%' || char(31) || 'rebuild' " +
+                        "OR tags LIKE '%' || char(31) || 'rebuild' || char(31) || '%'"
+                )
+            }
+        }
+
+        /**
+         * v5 -> v6: sets can carry their own rep target, so an exercise added
+         * mid-session is editable instead of showing a dead "—".
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE logged_sets ADD COLUMN targetReps INTEGER")
+            }
+        }
+
+        /**
+         * v6 -> v7: gyms can be ordered by hand. Existing rows keep the
+         * alphabetical order they were displayed in until they are dragged.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE gyms ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "UPDATE gyms SET position = (" +
+                        "SELECT COUNT(*) FROM gyms g2 WHERE g2.name < gyms.name" +
+                        ")"
+                )
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+        )
 
         fun build(context: Context): SkrotDatabase =
             Room.databaseBuilder(context, SkrotDatabase::class.java, "skrot.db")

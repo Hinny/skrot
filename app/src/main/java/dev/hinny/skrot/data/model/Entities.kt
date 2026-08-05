@@ -89,8 +89,14 @@ data class Routine(
     val scheduleMode: ScheduleMode = ScheduleMode.ROTATING,
     /** Exactly zero or one routine is active at a time (enforced in the DAO). */
     val isActive: Boolean = false,
-    /** Free-form tags, e.g. "rebuild" (used by the comeback suggestion). */
+    /** Free-form tags. */
     val tags: List<String> = emptyList(),
+    /**
+     * Marks a gentler program to come back on. Drives the comeback suggestion and
+     * the "carry on recovering?" prompt after a recovery session. Replaces the
+     * magic "rebuild" tag, which migration 4 -> 5 converts.
+     */
+    val isRecovery: Boolean = false,
     /** Index into the ordered day list of the next day to perform (rotating mode). */
     val nextDayIndex: Int = 0,
     val position: Int = 0,
@@ -169,8 +175,16 @@ data class PlannedSet(
     val plannedExerciseId: Long,
     val position: Int = 0,
     val setType: SetType = SetType.STANDARD,
-    /** Target reps: single value stored in [targetRepsMin]; a range also sets [targetRepsMax]. */
+    /**
+     * Target reps: the minimum needed for the set to count. Reach it on every
+     * standard set at the same load and the next session suggests more weight.
+     */
     val targetRepsMin: Int? = null,
+    /**
+     * Legacy upper bound of a target-reps range. Rep ranges were removed; the
+     * column is kept (always null going forward) so that backups written by
+     * older versions still deserialize. Migration 3 -> 4 discards any stored max.
+     */
     val targetRepsMax: Int? = null,
     /** Optional target load in kg (or machine level). */
     val targetLoad: Double? = null,
@@ -184,6 +198,7 @@ data class Gym(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val isDefault: Boolean = false,
+    val position: Int = 0,
 )
 
 /** Marks an exercise as available at a gym. */
@@ -348,6 +363,12 @@ data class LoggedSet(
     val reps: Int = 0,
     val completed: Boolean = false,
     val note: String = "",
+    /**
+     * Target reps for sets with no plan behind them — an exercise added during
+     * the session. Planned sets keep their target on [PlannedSet] instead, so
+     * editing it there still writes back to the routine.
+     */
+    val targetReps: Int? = null,
     /** Rest duration attached to this set when it was logged. */
     val restSec: Int = 90,
     val completedAt: Long? = null,

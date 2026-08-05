@@ -52,9 +52,19 @@ fun ExercisePickerDialog(
     onDismiss: () -> Unit,
     onCreate: ((NewExercise) -> Unit)? = null,
     title: String = stringResource(R.string.pick_exercise),
+    /**
+     * Exercises marked as available at the gym being trained at. When given, the
+     * list can be narrowed to them — the usual reason for opening this picker
+     * mid-start is that something isn't there.
+     */
+    availableIds: Set<Long>? = null,
 ) {
     var query by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
+    // null = both, false = built-in only, true = custom only. Same three-way
+    // filter the Exercises tab uses.
+    var categoryFilter by remember { mutableStateOf<Boolean?>(null) }
+    var atThisGym by remember { mutableStateOf(availableIds != null) }
 
     if (creating && onCreate != null) {
         CreateExerciseDialog(
@@ -72,13 +82,51 @@ fun ExercisePickerDialog(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    label = { Text(stringResource(R.string.search_exercises)) },
+                    // Placeholder rather than a label: the hint belongs inside the
+                    // empty box, not floating above a field you haven't used yet.
+                    placeholder = { Text(stringResource(R.string.search_exercises)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 6.dp),
+                ) {
+                    FilterChip(
+                        selected = categoryFilter == null,
+                        onClick = { categoryFilter = null },
+                        label = { Text(stringResource(R.string.category_all)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == false,
+                        onClick = { categoryFilter = false },
+                        label = { Text(stringResource(R.string.category_builtin)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == true,
+                        onClick = { categoryFilter = true },
+                        label = { Text(stringResource(R.string.category_custom)) },
+                    )
+                    if (availableIds != null) {
+                        FilterChip(
+                            selected = atThisGym,
+                            onClick = { atThisGym = !atThisGym },
+                            label = { Text(stringResource(R.string.filter_at_this_gym)) },
+                        )
+                    }
+                }
+                val pool =
+                    if (availableIds != null && atThisGym) {
+                        exercises.filter { it.id in availableIds }
+                    } else {
+                        exercises
+                    }
                 val filtered = ExerciseSearch.search(
-                    exercises = exercises,
+                    exercises = pool,
                     query = query,
+                    customFilter = categoryFilter,
                     muscleNames = searchMuscleNames(),
                     equipmentNames = searchEquipmentNames(),
                 )
@@ -91,7 +139,27 @@ fun ExercisePickerDialog(
                                 .clickable { onPick(e) }
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                         ) {
-                            Text(e.displayName(), style = MaterialTheme.typography.bodyLarge)
+                            Row {
+                                Text(
+                                    e.displayName(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                // Whether an exercise is one of yours matters when
+                                // picking between two similarly named entries.
+                                Text(
+                                    stringResource(
+                                        if (e.isCustom) R.string.custom_badge
+                                        else R.string.category_builtin
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (e.isCustom) {
+                                        MaterialTheme.colorScheme.tertiary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
                             ExerciseMeta(e)
                         }
                     }

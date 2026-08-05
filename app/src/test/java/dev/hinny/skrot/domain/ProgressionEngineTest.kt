@@ -11,10 +11,10 @@ import org.junit.Test
 
 class ProgressionEngineTest {
 
-    private fun plannedSets(vararg targets: Pair<Int, Int?>) = targets.mapIndexed { i, (min, max) ->
+    private fun plannedSets(vararg targets: Int) = targets.mapIndexed { i, target ->
         PlannedSet(
             id = i.toLong(), plannedExerciseId = 1, position = i,
-            targetRepsMin = min, targetRepsMax = max,
+            targetRepsMin = target,
         )
     }
 
@@ -26,24 +26,40 @@ class ProgressionEngineTest {
     }
 
     @Test
-    fun `hitting top of range on all sets at the same load suggests an increase`() {
+    fun `hitting the target on all sets at the same load suggests an increase`() {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.WEIGHT_KG,
             logged(60.0 to 12, 60.0 to 12, 60.0 to 12),
-            plannedSets(8 to 12, 8 to 12, 8 to 12),
+            plannedSets(12, 12, 12),
         )
         val increase = suggestion as ProgressionSuggestion.IncreaseLoad
         assertEquals(62.5, increase.toLoad, 0.0)
     }
 
     @Test
-    fun `missing the top of the range on one set means no suggestion`() {
+    fun `missing the target on one set means no suggestion`() {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.WEIGHT_KG,
             logged(60.0 to 12, 60.0 to 11, 60.0 to 12),
-            plannedSets(8 to 12, 8 to 12, 8 to 12),
+            plannedSets(12, 12, 12),
         )
         assertNull(suggestion)
+    }
+
+    @Test
+    fun `a legacy stored max is ignored - the minimum is the target`() {
+        val planned = listOf(
+            PlannedSet(
+                id = 0, plannedExerciseId = 1, position = 0,
+                targetRepsMin = 8, targetRepsMax = 12,
+            )
+        )
+        val suggestion = ProgressionEngine.suggest(
+            MeasurementType.WEIGHT_KG,
+            logged(60.0 to 8),
+            planned,
+        )
+        assertEquals(62.5, (suggestion as ProgressionSuggestion.IncreaseLoad).toLoad, 0.0)
     }
 
     @Test
@@ -51,7 +67,7 @@ class ProgressionEngineTest {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.WEIGHT_KG,
             logged(60.0 to 12, 62.5 to 12),
-            plannedSets(8 to 12, 8 to 12),
+            plannedSets(12, 12),
         )
         assertNull(suggestion)
     }
@@ -61,7 +77,7 @@ class ProgressionEngineTest {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.MACHINE_LEVEL,
             logged(7.0 to 12, 7.0 to 12),
-            plannedSets(12 to null, 12 to null),
+            plannedSets(12, 12),
         )
         val increase = suggestion as ProgressionSuggestion.IncreaseLoad
         assertEquals(8.0, increase.toLoad, 0.0)
@@ -72,7 +88,7 @@ class ProgressionEngineTest {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.WEIGHT_KG,
             logged(100.0 to 5),
-            plannedSets(5 to null),
+            plannedSets(5),
             exerciseIncrementOverride = 5.0,
         )
         assertEquals(105.0, (suggestion as ProgressionSuggestion.IncreaseLoad).toLoad, 0.0)
@@ -83,7 +99,7 @@ class ProgressionEngineTest {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.BODYWEIGHT,
             logged(0.0 to 10, 0.0 to 10),
-            plannedSets(10 to null, 10 to null),
+            plannedSets(10, 10),
         )
         val addRep = suggestion as ProgressionSuggestion.AddRep
         assertEquals(11, addRep.toReps)
@@ -94,7 +110,7 @@ class ProgressionEngineTest {
         val suggestion = ProgressionEngine.suggest(
             MeasurementType.BODYWEIGHT,
             logged(10.0 to 8, 10.0 to 8),
-            plannedSets(8 to null, 8 to null),
+            plannedSets(8, 8),
         )
         assertTrue(suggestion is ProgressionSuggestion.IncreaseLoad)
     }
@@ -108,7 +124,7 @@ class ProgressionEngineTest {
         )
         val planned = listOf(
             PlannedSet(id = 0, plannedExerciseId = 1, position = 0, setType = SetType.WARMUP, targetRepsMin = 12),
-            PlannedSet(id = 1, plannedExerciseId = 1, position = 1, targetRepsMin = 8, targetRepsMax = 12),
+            PlannedSet(id = 1, plannedExerciseId = 1, position = 1, targetRepsMin = 12),
             PlannedSet(id = 2, plannedExerciseId = 1, position = 2, setType = SetType.DROP_SET),
         )
         val suggestion = ProgressionEngine.suggest(MeasurementType.WEIGHT_KG, sets, planned)

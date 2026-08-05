@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -49,6 +50,9 @@ fun MoreScreen(nav: NavHostController) {
         }
         MoreItem(Icons.Filled.Save, stringResource(R.string.backup_and_import)) {
             nav.navigate(Routes.BACKUP)
+        }
+        MoreItem(Icons.Filled.Home, stringResource(R.string.home_settings)) {
+            nav.navigate(Routes.HOME_SETTINGS)
         }
         MoreItem(Icons.Filled.Settings, stringResource(R.string.settings)) {
             nav.navigate(Routes.SETTINGS)

@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -65,6 +68,7 @@ import dev.hinny.skrot.ui.gyms.GymsScreen
 import dev.hinny.skrot.ui.history.HistorySessionScreen
 import dev.hinny.skrot.ui.history.SessionHistoryScreen
 import dev.hinny.skrot.ui.home.HomeScreen
+import dev.hinny.skrot.ui.home.HomeSettingsScreen
 import dev.hinny.skrot.ui.importexport.BackupScreen
 import dev.hinny.skrot.ui.library.LibraryScreen
 import dev.hinny.skrot.ui.logging.SessionSummaryScreen
@@ -104,6 +108,7 @@ object Routes {
     const val GYMS = "gyms"
     const val BODY = "body"
     const val SETTINGS = "settings"
+    const val HOME_SETTINGS = "home_settings"
     const val BACKUP = "backup"
     const val ABOUT = "about"
     const val PROFILE = "profile"
@@ -159,7 +164,9 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
     ) {
     Scaffold(
         bottomBar = {
-            Column {
+            // targetSdk 35 means the window is edge-to-edge and the IME no longer
+            // resizes it, so the bars have to step over the keyboard themselves.
+            Column(Modifier.imePadding()) {
                 // When the nav bar is hidden (during a workout) the timer bar is the
                 // bottom-most element and must clear the system navigation bar itself.
                 RestTimerBar(container, settings, applyNavInsets = hideBars)
@@ -196,13 +203,13 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             modifier = Modifier.padding(padding),
         ) {
             composable(Routes.HOME) { HomeScreen(container, settings, navController) }
-            composable(Routes.SESSION) { SessionScreen(container, navController) }
+            composable(Routes.SESSION) { SessionScreen(container, settings, navController) }
             composable(Routes.LIBRARY) { LibraryScreen(navController) }
-            composable(Routes.PROGRAMS) { ProgramsScreen(container, navController) }
+            composable(Routes.PROGRAMS) { ProgramsScreen(container, settings, navController) }
             composable(
                 "program/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
-            ) { ProgramEditorScreen(container, navController, it.arguments!!.getLong("id")) }
+            ) { ProgramEditorScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(
                 "day/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
@@ -227,11 +234,14 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             ) { ExerciseDetailScreen(container, settings, navController, it.arguments!!.getLong("id")) }
             composable(Routes.STATS) { StatsScreen(container, settings, navController) }
             composable(Routes.MORE) { MoreScreen(navController) }
-            composable(Routes.GYMS) { GymsScreen(container) }
+            composable(Routes.GYMS) { GymsScreen(container, settings) }
             composable(Routes.BODY) { BodyScreen(container, settings) }
             composable(Routes.PROFILE) { ProfileScreen(container, settings) }
             composable(Routes.GUIDE) { GuideScreen() }
             composable(Routes.SETTINGS) { SettingsScreen(container, settings, navController) }
+            composable(Routes.HOME_SETTINGS) {
+                HomeSettingsScreen(container, settings) { navController.navigate(Routes.SETTINGS) }
+            }
             composable(Routes.BACKUP) { BackupScreen(container) }
             composable(Routes.ABOUT) { AboutScreen() }
         }
@@ -253,8 +263,12 @@ private fun RestTimerBar(
                 .fillMaxWidth()
                 .then(
                     if (applyNavInsets) {
+                        // Excluding the IME keeps this from stacking on top of the
+                        // imePadding the bottom bar already applies.
                         Modifier.windowInsetsPadding(
-                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                            WindowInsets.navigationBars
+                                .only(WindowInsetsSides.Bottom)
+                                .exclude(WindowInsets.ime)
                         )
                     } else {
                         Modifier

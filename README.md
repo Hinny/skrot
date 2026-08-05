@@ -13,12 +13,17 @@ so it is provably offline.
 ## Features
 
 - **Fast workout logging** — sets pre-fill from your last session, routine targets, or a
-  hybrid of both (per program); most sets are a single tap to confirm.
+  hybrid of both (per program); most sets are a single tap to confirm. The set you're on
+  is boxed in the accent colour, and confirming it scrolls the next one into view.
 - **Programs with named days**, supersets/circuits, drag-to-reorder, program/day icons and
   descriptions, free-form tags.
+- **Sessions are editable mid-workout** — reorder sets and exercises, build a superset,
+  swap in any exercise, add or remove sets. Changes stay session-only unless you ask
+  otherwise; "Update program day" writes the whole structure back to the routine.
 - **Two scheduling modes**: fixed weekdays (Mon = Legs…) or rotating (A → B → C → A…).
   The home screen proposes the next workout and always waits for your confirmation —
   swapping in another day is one tap and configurable in how it affects the sequence.
+  Optionally plan every exercise, and how it stands at your gym, before starting.
 - **Three measurement types per exercise**: weight (kg/lbs), unit-less machine levels, and
   bodyweight (reps with optional added weight or assistance, plus a per-exercise
   bodyweight factor for volume).
@@ -26,7 +31,7 @@ so it is provably offline.
   excluded from PRs, 1RM estimates, and progression.
 - **Rest timer with memory** — per-set durations stored in the routine; adjust during a
   workout and the routine remembers next time. `0` = no timer. Countdown in-app and as a
-  notification with optional sound/vibration.
+  notification, with a sound you can pick yourself so it isn't just another email chime.
 - **Progression suggestions** — hit your target reps on all sets and next session suggests
   a load increase (increments configurable globally and per exercise).
 - **PR detection** adapted to measurement type (heaviest weight, best estimated 1RM, rep
@@ -36,9 +41,14 @@ so it is provably offline.
   ("always use this here") and a temporary-visit mode. Machine-level history is per-gym.
 - **Statistics** — load and estimated 1RM over time (Epley, capped at 12 reps), a
   GitHub-style training calendar, sets per muscle group; all filterable by time range.
-- **Body metrics** — weight and measurements with a trend chart.
+- **Body metrics** — weight and measurements with a trend chart, logged at any date and
+  time so you can backfill and see time-of-day patterns.
+- **Recovery programs** — mark a gentler program as a recovery one and it's offered after
+  a long break, on the day of your choosing, and again after each recovery workout until
+  you're training normally.
 - **Coach comments** (off by default) — local, rule-based encouragements in four
-  personalities (Cheerleader, Bro, PT, Minimal) with a frequency setting.
+  personalities (Cheerleader, Bro, PT, Minimal) with a frequency setting, on the home
+  screen and during workouts.
 - **Backup** — full JSON export/import via the system file picker, CSV export of the log,
   and **JEFIT CSV import** with preview.
 - **Localized** in English and Swedish; dark theme by default.

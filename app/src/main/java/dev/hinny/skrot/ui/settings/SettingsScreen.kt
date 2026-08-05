@@ -1,5 +1,11 @@
 package dev.hinny.skrot.ui.settings
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,6 +48,7 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
@@ -50,6 +58,56 @@ import dev.hinny.skrot.data.prefs.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
+/**
+ * Picks the sound the rest timer ends on, through the system ringtone picker so
+ * anything already on the phone can be used and nothing has to be bundled.
+ * Empty [uri] means the default notification sound.
+ */
+@Composable
+private fun TimerSoundSetting(uri: String, onPicked: (String) -> Unit) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val picked: Uri? = result.data
+                ?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            onPicked(picked?.toString().orEmpty())
+        }
+    }
+    val defaultLabel = stringResource(R.string.timer_sound_default)
+    val title = remember(uri) {
+        uri.takeIf { it.isNotBlank() }
+            ?.let { runCatching { RingtoneManager.getRingtone(context, Uri.parse(it)) }.getOrNull() }
+            ?.let { runCatching { it.getTitle(context) }.getOrNull() }
+            ?: defaultLabel
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.timer_sound_choice))
+            Text(title, style = MaterialTheme.typography.bodySmall)
+        }
+        OutlinedButton(onClick = {
+            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, defaultLabel)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                putExtra(
+                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                    uri.takeIf { it.isNotBlank() }?.let(Uri::parse),
+                )
+            }
+            runCatching { launcher.launch(intent) }
+        }) { Text(stringResource(R.string.change)) }
+    }
+}
 
 @Composable
 fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
@@ -90,6 +148,18 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
         }
 
         // Exercise name language (independent of the UI language above)
+        SettingSection(stringResource(R.string.exercise_sort)) {
+            ChipRow(
+                options = listOf(
+                    ExerciseSort.NAME to stringResource(R.string.sort_name),
+                    ExerciseSort.MOST_USED to stringResource(R.string.sort_most_used),
+                ),
+                selected = settings.exerciseSort,
+            ) { scope.launch { repo.setExerciseSort(it) } }
+        }
+
+        HorizontalDivider()
+
         SettingSection(stringResource(R.string.exercise_name_language)) {
             ChipRow(
                 options = listOf(
@@ -150,6 +220,12 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ToggleSetting(stringResource(R.string.timer_sound), settings.timerSound) {
                 scope.launch { repo.setTimerSound(it) }
             }
+            if (settings.timerSound) {
+                TimerSoundSetting(
+                    uri = settings.timerSoundUri,
+                    onPicked = { scope.launch { repo.setTimerSoundUri(it) } },
+                )
+            }
             ToggleSetting(stringResource(R.string.timer_vibration), settings.timerVibrate) {
                 scope.launch { repo.setTimerVibrate(it) }
             }
@@ -187,6 +263,38 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ) { scope.launch { repo.setSessionsLockedByDefault(it) } }
             Text(
                 stringResource(R.string.sessions_locked_by_default_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            ToggleSetting(
+                stringResource(R.string.plan_before_start),
+                settings.planExercisesBeforeStart,
+            ) { scope.launch { repo.setPlanExercisesBeforeStart(it) } }
+            Text(
+                stringResource(R.string.plan_before_start_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            ToggleSetting(
+                stringResource(R.string.celebrate_finish),
+                settings.celebrateWorkoutFinish,
+            ) { scope.launch { repo.setCelebrateWorkoutFinish(it) } }
+            Text(
+                stringResource(R.string.celebrate_finish_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            ToggleSetting(
+                stringResource(R.string.always_offer_recovery),
+                settings.alwaysOfferRecovery,
+            ) { scope.launch { repo.setAlwaysOfferRecovery(it) } }
+            Text(
+                stringResource(R.string.always_offer_recovery_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            ToggleSetting(
+                stringResource(R.string.lists_locked_by_default),
+                settings.listsLockedByDefault,
+            ) { scope.launch { repo.setListsLockedByDefault(it) } }
+            Text(
+                stringResource(R.string.lists_locked_by_default_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -236,6 +344,14 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     ),
                     selected = settings.coachFrequency,
                 ) { scope.launch { repo.setCoachFrequency(it) } }
+                NumberSetting(
+                    label = stringResource(R.string.coach_message_seconds),
+                    value = settings.coachMessageSeconds,
+                ) { scope.launch { repo.setCoachMessageSeconds(it) } }
+                Text(
+                    stringResource(R.string.coach_message_seconds_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 

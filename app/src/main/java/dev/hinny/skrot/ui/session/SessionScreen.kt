@@ -36,18 +36,21 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.common.vector
+import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.ui.home.HomeViewModel
+import dev.hinny.skrot.ui.home.RecoverySection
 
 /**
  * The Session tab: resume the workout in progress, or start one (scheduled day,
  * any other day, or an empty session).
  */
 @Composable
-fun SessionScreen(container: AppContainer, nav: NavHostController) {
+fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
     val state by vm.uiState.collectAsState()
     var startTarget by remember { mutableStateOf<Pair<RoutineWithDays?, RoutineDay?>?>(null) }
@@ -90,7 +93,7 @@ fun SessionScreen(container: AppContainer, nav: NavHostController) {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(active.routine.icon.vector(), null)
+                            active.routine.icon.vectorOrNull()?.let { Icon(it, null) }
                             Spacer(Modifier.width(8.dp))
                             Column {
                                 Text(
@@ -136,6 +139,16 @@ fun SessionScreen(container: AppContainer, nav: NavHostController) {
                 }
             }
 
+            RecoverySection(
+                state = state,
+                onDismissComeback = { vm.comebackDismissed.value = true },
+                onStart = { r, day -> startTarget = r to day },
+                alwaysOffer = settings.alwaysOfferRecovery,
+            )
+
+            OutlinedButton(onClick = { showPicker = true }) {
+                Text(stringResource(R.string.start_another_workout))
+            }
             OutlinedButton(onClick = { startTarget = null to null }) {
                 Text(stringResource(R.string.start_empty_workout))
             }
@@ -156,6 +169,7 @@ fun SessionScreen(container: AppContainer, nav: NavHostController) {
     StartFlowHost(
         vm = vm,
         nav = nav,
+        settings = settings,
         gyms = state.gyms,
         startTarget = startTarget,
         onClearTarget = { startTarget = null },

@@ -12,6 +12,10 @@ import dev.hinny.skrot.domain.CoachTrigger
 object CoachMessages {
 
     private val arrays: Map<Pair<CoachPersonality, CoachTrigger>, Int> = mapOf(
+        (CoachPersonality.CHEERLEADER to CoachTrigger.HOME) to R.array.coach_cheerleader_home,
+        (CoachPersonality.BRO to CoachTrigger.HOME) to R.array.coach_bro_home,
+        (CoachPersonality.PT to CoachTrigger.HOME) to R.array.coach_pt_home,
+        (CoachPersonality.MINIMAL to CoachTrigger.HOME) to R.array.coach_minimal_home,
         (CoachPersonality.CHEERLEADER to CoachTrigger.WELCOME_BACK) to R.array.coach_cheerleader_welcome_back,
         (CoachPersonality.CHEERLEADER to CoachTrigger.PR_CHANCE) to R.array.coach_cheerleader_pr_chance,
         (CoachPersonality.CHEERLEADER to CoachTrigger.IDLE) to R.array.coach_cheerleader_idle,

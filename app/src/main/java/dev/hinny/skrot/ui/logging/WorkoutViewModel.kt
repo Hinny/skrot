@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.PlannedExercise
@@ -87,7 +88,9 @@ class WorkoutViewModel(
     /** Loads planned targets, progression suggestions, and swap options. */
     private suspend fun refreshAuxiliary(content: SessionWithContent) {
         val settings = container.settings.settings.first()
-        val allExercises = db.exerciseDao().getAll()
+        // Ordered by the exercise-order setting, so the swap options a session
+        // offers match every other exercise list in the app.
+        val allExercises = container.exercisesNow()
 
         val planned = mutableMapOf<Long, List<PlannedSet>>()
         val suggestionMap = mutableMapOf<Long, ProgressionSuggestion>()
@@ -190,7 +193,7 @@ class WorkoutViewModel(
             val target = se.sessionExercise.plannedExerciseId
                 ?.let { plannedSetsByPe.value[it] }
                 ?.find { it.position == nextSet.position }
-                ?.let { it.targetRepsMax ?: it.targetRepsMin }
+                ?.targetRepsMin
             val gymId = content.session.gymId
             val history = db.sessionDao().setsForExercise(se.exercise.id)
                 .filter { it.sessionId != sessionId }
@@ -277,18 +280,56 @@ class WorkoutViewModel(
         }
     }
 
-    /** Reorders a set within its exercise by [delta] positions (+1 = later, -1 = earlier). */
-    fun moveSet(se: SessionExerciseWithDetails, set: LoggedSet, delta: Int) {
+    /** Reorders a set within its exercise. */
+    fun moveSet(seId: Long, from: Int, to: Int) {
         viewModelScope.launch {
-            val sets = se.sortedSets
-            val index = sets.indexOfFirst { it.id == set.id }
-            val target = index + delta
-            if (index < 0 || target < 0 || target >= sets.size) return@launch
+            val sets = session.value?.exercises
+                ?.find { it.sessionExercise.id == seId }
+                ?.sortedSets
+                ?: return@launch
+            if (from !in sets.indices || to !in sets.indices || from == to) return@launch
             val reordered = sets.toMutableList()
-            val moved = reordered.removeAt(index)
-            reordered.add(target, moved)
+            reordered.add(to, reordered.removeAt(from))
             reordered.forEachIndexed { newPos, s ->
                 if (s.position != newPos) db.sessionDao().updateLoggedSet(s.copy(position = newPos))
+            }
+            touch()
+        }
+    }
+
+    /** Reorders whole blocks (an exercise, or a superset) within the session. */
+    fun moveBlock(from: Int, to: Int) {
+        viewModelScope.launch {
+            val blocks = session.value?.blocks ?: return@launch
+            if (from !in blocks.indices || to !in blocks.indices || from == to) return@launch
+            val reordered = blocks.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { newPos, block ->
+                block.forEach { se ->
+                    if (se.sessionExercise.blockPos != newPos) {
+                        db.sessionDao().updateSessionExercise(
+                            se.sessionExercise.copy(blockPos = newPos)
+                        )
+                    }
+                }
+            }
+            touch()
+        }
+    }
+
+    /** Reorders the exercises inside one superset block. */
+    fun moveExerciseInBlock(blockIndex: Int, from: Int, to: Int) {
+        viewModelScope.launch {
+            val block = session.value?.blocks?.getOrNull(blockIndex) ?: return@launch
+            if (from !in block.indices || to !in block.indices || from == to) return@launch
+            val reordered = block.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { newPos, se ->
+                if (se.sessionExercise.inBlockPos != newPos) {
+                    db.sessionDao().updateSessionExercise(
+                        se.sessionExercise.copy(inBlockPos = newPos)
+                    )
+                }
             }
             touch()
         }
@@ -335,7 +376,6 @@ class WorkoutViewModel(
                         position = i,
                         setType = s.setType,
                         targetRepsMin = template?.targetRepsMin,
-                        targetRepsMax = template?.targetRepsMax,
                         targetLoad = template?.targetLoad,
                         restSec = s.restSec,
                     )
@@ -376,6 +416,92 @@ class WorkoutViewModel(
         }
     }
 
+    /**
+     * Rewrites the routine day this session started from so it matches what
+     * actually happened: exercise list, order, supersets and set counts.
+     *
+     * Planned exercises are updated in place rather than rebuilt, so their ids
+     * survive and per-gym overrides pointing at them are not cascaded away.
+     * Targets and target loads already planned stay put — this syncs structure,
+     * not the numbers you lifted today.
+     */
+    fun applySessionToPlan() {
+        viewModelScope.launch {
+            val content = session.value ?: return@launch
+            val dayId = content.session.routineDayId ?: return@launch
+            val dao = db.routineDao()
+            val existing = dao.dayWithContent(dayId) ?: return@launch
+            val existingIds = existing.exercises.map { it.planned.id }.toSet()
+            val kept = mutableSetOf<Long>()
+
+            content.blocks.forEachIndexed { blockIndex, block ->
+                block.forEachIndexed { inBlockIndex, se ->
+                    val existingId = se.sessionExercise.plannedExerciseId
+                        ?.takeIf { it in existingIds }
+                    val peId = if (existingId != null) {
+                        dao.plannedExerciseById(existingId)?.let {
+                            dao.updatePlannedExercise(
+                                it.copy(
+                                    exerciseId = se.exercise.id,
+                                    blockPos = blockIndex,
+                                    inBlockPos = inBlockIndex,
+                                )
+                            )
+                        }
+                        existingId
+                    } else {
+                        val newId = dao.insertPlannedExercise(
+                            PlannedExercise(
+                                dayId = dayId,
+                                exerciseId = se.exercise.id,
+                                blockPos = blockIndex,
+                                inBlockPos = inBlockIndex,
+                            )
+                        )
+                        db.sessionDao().updateSessionExercise(
+                            se.sessionExercise.copy(plannedExerciseId = newId)
+                        )
+                        newId
+                    }
+                    kept += peId
+                    syncPlannedSets(peId, se)
+                }
+            }
+
+            existing.exercises
+                .filter { it.planned.id !in kept }
+                .forEach { dao.deletePlannedExercise(it.planned) }
+
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /** Matches the planned set list of [peId] to the sets actually in the session. */
+    private suspend fun syncPlannedSets(peId: Long, se: SessionExerciseWithDetails) {
+        val dao = db.routineDao()
+        val planned = dao.plannedSets(peId)
+        val sessionSets = se.sortedSets
+        planned.drop(sessionSets.size).forEach { dao.deletePlannedSet(it) }
+        sessionSets.forEachIndexed { i, s ->
+            val current = planned.getOrNull(i)
+            if (current == null) {
+                val template = planned.lastOrNull()
+                dao.insertPlannedSet(
+                    PlannedSet(
+                        plannedExerciseId = peId,
+                        position = i,
+                        setType = s.setType,
+                        targetRepsMin = template?.targetRepsMin,
+                        targetLoad = template?.targetLoad,
+                        restSec = s.restSec,
+                    )
+                )
+            } else {
+                dao.updatePlannedSet(current.copy(setType = s.setType, restSec = s.restSec))
+            }
+        }
+    }
+
     /** "Apply to future sessions" after removing a planned exercise from the session. */
     fun deletePlannedExercise(peId: Long) {
         viewModelScope.launch {
@@ -385,13 +511,19 @@ class WorkoutViewModel(
         }
     }
 
-    /** Target-reps edits persist back to the routine, like rest durations. */
-    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, min: Int?, max: Int?) {
+    /**
+     * Target-reps edits persist back to the routine, like rest durations. An
+     * exercise with no plan behind it keeps its target on the logged set, so it
+     * stays editable rather than showing a dead "—".
+     */
+    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, reps: Int?) {
         viewModelScope.launch {
-            se.sessionExercise.plannedExerciseId?.let { peId ->
-                db.routineDao().writeBackTarget(peId, set.position, min, max)
-                val content = session.value ?: return@let
-                refreshAuxiliary(content)
+            val peId = se.sessionExercise.plannedExerciseId
+            if (peId != null) {
+                db.routineDao().writeBackTarget(peId, set.position, reps)
+                session.value?.let { refreshAuxiliary(it) }
+            } else {
+                db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             }
             touch()
         }
@@ -419,22 +551,65 @@ class WorkoutViewModel(
         suggestions.value -= seId
     }
 
-    fun swapExercise(se: SessionExerciseWithDetails, to: Exercise) {
+    /**
+     * Swaps the exercise for this session. The swap is session-only unless asked
+     * to persist: [applyToPlan] rewrites the routine's planned exercise, and
+     * [alwaysAtGym] records it as a per-gym override instead, which keeps the
+     * routine intact and only changes what happens at this gym.
+     */
+    fun swapExercise(
+        se: SessionExerciseWithDetails,
+        to: Exercise,
+        applyToPlan: Boolean = false,
+        alwaysAtGym: Boolean = false,
+    ) {
         viewModelScope.launch {
             db.sessionDao().updateSessionExercise(se.sessionExercise.copy(exerciseId = to.id))
+            val peId = se.sessionExercise.plannedExerciseId
+            if (peId != null) {
+                if (applyToPlan) {
+                    db.routineDao().plannedExerciseById(peId)?.let {
+                        db.routineDao().updatePlannedExercise(it.copy(exerciseId = to.id))
+                    }
+                }
+                val current = session.value?.session
+                if (alwaysAtGym && current?.gymId != null && !current.temporaryVisit) {
+                    db.gymDao().setOverride(GymOverride(current.gymId, peId, to.id))
+                }
+            }
             touch()
+            session.value?.let { refreshAuxiliary(it) }
         }
     }
 
-    fun addExercise(exercise: Exercise) {
+    /**
+     * Adds an exercise to the session, either as a new block or into an existing
+     * one ([intoBlockIndex]), which makes that block a superset.
+     */
+    fun addExercise(exercise: Exercise, intoBlockIndex: Int? = null) {
         viewModelScope.launch {
             val settings = container.settings.settings.first()
             val content = session.value
-            val blockPos = (content?.exercises?.maxOfOrNull { it.sessionExercise.blockPos } ?: -1) + 1
+            val blockPos: Int
+            val inBlockPos: Int
+            if (intoBlockIndex != null) {
+                val block = content?.blocks?.getOrNull(intoBlockIndex) ?: return@launch
+                blockPos = block.first().sessionExercise.blockPos
+                inBlockPos = (block.maxOfOrNull { it.sessionExercise.inBlockPos } ?: -1) + 1
+            } else {
+                blockPos =
+                    (content?.exercises?.maxOfOrNull { it.sessionExercise.blockPos } ?: -1) + 1
+                inBlockPos = 0
+            }
             val seId = db.sessionDao().insertSessionExercise(
-                SessionExercise(sessionId = sessionId, exerciseId = exercise.id, blockPos = blockPos)
+                SessionExercise(
+                    sessionId = sessionId,
+                    exerciseId = exercise.id,
+                    blockPos = blockPos,
+                    inBlockPos = inBlockPos,
+                )
             )
-            repeat(3) { i ->
+            repeat(NEW_EXERCISE_SETS) { i ->
                 db.sessionDao().insertLoggedSet(
                     LoggedSet(
                         sessionExerciseId = seId,
@@ -443,6 +618,35 @@ class WorkoutViewModel(
                     )
                 )
             }
+            touch()
+        }
+    }
+
+    /** Merges a block into the one before it, creating or extending a superset. */
+    fun linkWithPrevious(blockIndex: Int) {
+        viewModelScope.launch {
+            val blocks = session.value?.blocks ?: return@launch
+            if (blockIndex <= 0 || blockIndex >= blocks.size) return@launch
+            val previous = blocks[blockIndex - 1]
+            val targetBlockPos = previous.first().sessionExercise.blockPos
+            val start = (previous.maxOfOrNull { it.sessionExercise.inBlockPos } ?: -1) + 1
+            blocks[blockIndex].forEachIndexed { i, se ->
+                db.sessionDao().updateSessionExercise(
+                    se.sessionExercise.copy(blockPos = targetBlockPos, inBlockPos = start + i)
+                )
+            }
+            touch()
+        }
+    }
+
+    /** Splits an exercise out of its superset into a block of its own at the end. */
+    fun unlink(se: SessionExerciseWithDetails) {
+        viewModelScope.launch {
+            val content = session.value ?: return@launch
+            val maxBlock = content.exercises.maxOfOrNull { it.sessionExercise.blockPos } ?: 0
+            db.sessionDao().updateSessionExercise(
+                se.sessionExercise.copy(blockPos = maxBlock + 1, inBlockPos = 0)
+            )
             touch()
         }
     }
@@ -539,5 +743,8 @@ class WorkoutViewModel(
     companion object {
         const val IDLE_THRESHOLD_MS = 5 * 60_000L
         const val STREAK_WEEKS = 3
+
+        /** Sets created for an exercise added mid-session. */
+        const val NEW_EXERCISE_SETS = 3
     }
 }
