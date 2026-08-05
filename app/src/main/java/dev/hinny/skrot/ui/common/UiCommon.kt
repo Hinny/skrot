@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -69,6 +71,37 @@ fun lastPerformedText(lastMs: Long?): String {
         days == 1 -> stringResource(R.string.yesterday)
         else -> stringResource(R.string.days_ago, days)
     }
+}
+
+/**
+ * The search box used by every list and picker in the app: a magnifier on the
+ * left, and — once there is something to clear — an X on the right, so getting
+ * back to the full list is one tap rather than a held backspace.
+ */
+@Composable
+fun SearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        // Placeholder rather than a label: the hint belongs inside the empty
+        // box, not floating above a field you haven't used yet.
+        placeholder = { Text(placeholder) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.clear_search))
+                }
+            }
+        },
+        singleLine = true,
+        modifier = modifier,
+    )
 }
 
 /** Numeric text field with +/- steppers; big touch targets for tired gym hands. */

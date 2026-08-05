@@ -102,6 +102,23 @@ data class Settings(
     val muscleDisplay: MetaDisplay = MetaDisplay.TEXT,
     /** How an exercise's equipment is rendered in lists and detail views. */
     val equipmentDisplay: MetaDisplay = MetaDisplay.TEXT,
+    /**
+     * Whether a set row shows what you lifted for the same set last time. The
+     * reference is what you beat, so it defaults on.
+     */
+    val showLastSessionValues: Boolean = true,
+    /** Whether barbell set rows offer a plate breakdown for the entered load. */
+    val plateCalculator: Boolean = false,
+    /** Weight of the empty bar, in kg, used by the plate calculator. */
+    val barWeightKg: Double = 20.0,
+    /** Whether the exercise menu offers to generate warm-up sets. */
+    val warmupGenerator: Boolean = false,
+    /** How many warm-up sets that action creates. */
+    val warmupSetCount: Int = 3,
+    /** Whether completing a set, hitting a PR, or finishing rest buzzes the phone. */
+    val hapticFeedback: Boolean = true,
+    /** Whether Back during a running workout asks before leaving the screen. */
+    val confirmExitWorkout: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -147,6 +164,13 @@ class SettingsRepository(private val context: Context) {
         val exerciseSort = stringPreferencesKey("exercise_sort")
         val muscleDisplay = stringPreferencesKey("muscle_display")
         val equipmentDisplay = stringPreferencesKey("equipment_display")
+        val showLastSessionValues = booleanPreferencesKey("show_last_session_values")
+        val plateCalculator = booleanPreferencesKey("plate_calculator")
+        val barWeightKg = doublePreferencesKey("bar_weight_kg")
+        val warmupGenerator = booleanPreferencesKey("warmup_generator")
+        val warmupSetCount = intPreferencesKey("warmup_set_count")
+        val hapticFeedback = booleanPreferencesKey("haptic_feedback")
+        val confirmExitWorkout = booleanPreferencesKey("confirm_exit_workout")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -200,6 +224,13 @@ class SettingsRepository(private val context: Context) {
             exerciseSort = p[Keys.exerciseSort].toEnum(defaults.exerciseSort),
             muscleDisplay = p[Keys.muscleDisplay].toEnum(defaults.muscleDisplay),
             equipmentDisplay = p[Keys.equipmentDisplay].toEnum(defaults.equipmentDisplay),
+            showLastSessionValues = p[Keys.showLastSessionValues] ?: defaults.showLastSessionValues,
+            plateCalculator = p[Keys.plateCalculator] ?: defaults.plateCalculator,
+            barWeightKg = p[Keys.barWeightKg] ?: defaults.barWeightKg,
+            warmupGenerator = p[Keys.warmupGenerator] ?: defaults.warmupGenerator,
+            warmupSetCount = p[Keys.warmupSetCount] ?: defaults.warmupSetCount,
+            hapticFeedback = p[Keys.hapticFeedback] ?: defaults.hapticFeedback,
+            confirmExitWorkout = p[Keys.confirmExitWorkout] ?: defaults.confirmExitWorkout,
         )
     }
 
@@ -257,4 +288,18 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.muscleDisplay] = v.name }
     suspend fun setEquipmentDisplay(v: MetaDisplay) =
         context.dataStore.edit { it[Keys.equipmentDisplay] = v.name }
+    suspend fun setShowLastSessionValues(v: Boolean) =
+        context.dataStore.edit { it[Keys.showLastSessionValues] = v }
+    suspend fun setPlateCalculator(v: Boolean) =
+        context.dataStore.edit { it[Keys.plateCalculator] = v }
+    suspend fun setBarWeightKg(v: Double) =
+        context.dataStore.edit { it[Keys.barWeightKg] = v.coerceAtLeast(0.0) }
+    suspend fun setWarmupGenerator(v: Boolean) =
+        context.dataStore.edit { it[Keys.warmupGenerator] = v }
+    suspend fun setWarmupSetCount(v: Int) =
+        context.dataStore.edit { it[Keys.warmupSetCount] = v.coerceIn(1, 6) }
+    suspend fun setHapticFeedback(v: Boolean) =
+        context.dataStore.edit { it[Keys.hapticFeedback] = v }
+    suspend fun setConfirmExitWorkout(v: Boolean) =
+        context.dataStore.edit { it[Keys.confirmExitWorkout] = v }
 }

@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,12 +36,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,12 +56,15 @@ import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
 import dev.hinny.skrot.data.model.ExerciseSort
+import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.MetaDisplay
 import dev.hinny.skrot.data.model.SwapBehavior
 import dev.hinny.skrot.data.model.ThemeMode
 import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.prefs.Settings
+import dev.hinny.skrot.domain.Units
+import dev.hinny.skrot.ui.common.SearchField
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -114,18 +124,45 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
     val scope = remember { CoroutineScope(Dispatchers.Main) }
     val repo = container.settings
     var showDeleteData by remember { mutableStateOf(false) }
+    // One section open at a time. Thirty-odd controls behind eight titles beats
+    // one unbroken scroll where finding anything means reading all of it.
+    var openSection by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+
+    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium)
+        SearchField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = stringResource(R.string.search_settings),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+        )
 
-        // Language
-        SettingSection(stringResource(R.string.language)) {
+        @Composable
+        fun Section(title: String, content: @Composable () -> Unit) {
+            // A search hides the sections that don't match and opens the ones
+            // that do, so a hit is on screen rather than one tap further.
+            if (query.isNotBlank() && !title.contains(query, ignoreCase = true)) return
+            SettingSection(
+                title = title,
+                expanded = openSection == title || query.isNotBlank(),
+                onToggle = { openSection = if (openSection == title) null else title },
+                content = content,
+            )
+        }
+
+        Section(stringResource(R.string.section_appearance)) {
+            Text(stringResource(R.string.language), style = MaterialTheme.typography.bodyMedium)
             ChipRow(
                 options = listOf(
                     AppLanguage.SYSTEM to stringResource(R.string.follow_system),
@@ -145,22 +182,12 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     )
                 }
             }
-        }
 
-        // Exercise name language (independent of the UI language above)
-        SettingSection(stringResource(R.string.exercise_sort)) {
-            ChipRow(
-                options = listOf(
-                    ExerciseSort.NAME to stringResource(R.string.sort_name),
-                    ExerciseSort.MOST_USED to stringResource(R.string.sort_most_used),
-                ),
-                selected = settings.exerciseSort,
-            ) { scope.launch { repo.setExerciseSort(it) } }
-        }
-
-        HorizontalDivider()
-
-        SettingSection(stringResource(R.string.exercise_name_language)) {
+            // Exercise names have their own language, independent of the UI's.
+            Text(
+                stringResource(R.string.exercise_name_language),
+                style = MaterialTheme.typography.bodyMedium,
+            )
             ChipRow(
                 options = listOf(
                     AppLanguage.SYSTEM to stringResource(R.string.follow_app_language),
@@ -169,32 +196,8 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 ),
                 selected = settings.exerciseNameLanguage,
             ) { language -> scope.launch { repo.setExerciseNameLanguage(language) } }
-        }
 
-        // How muscle groups and equipment are shown throughout the app
-        SettingSection(stringResource(R.string.muscle_display)) {
-            ChipRow(
-                options = metaDisplayOptions(),
-                selected = settings.muscleDisplay,
-            ) { scope.launch { repo.setMuscleDisplay(it) } }
-        }
-        SettingSection(stringResource(R.string.equipment_display)) {
-            ChipRow(
-                options = metaDisplayOptions(),
-                selected = settings.equipmentDisplay,
-            ) { scope.launch { repo.setEquipmentDisplay(it) } }
-        }
-
-        // Display unit
-        SettingSection(stringResource(R.string.display_unit)) {
-            ChipRow(
-                options = listOf(WeightUnit.KG to "kg", WeightUnit.LBS to "lbs"),
-                selected = settings.unit,
-            ) { scope.launch { repo.setUnit(it) } }
-        }
-
-        // Theme
-        SettingSection(stringResource(R.string.theme)) {
+            Text(stringResource(R.string.theme), style = MaterialTheme.typography.bodyMedium)
             ChipRow(
                 options = listOf(
                     ThemeMode.DARK to stringResource(R.string.theme_dark),
@@ -203,12 +206,94 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 ),
                 selected = settings.theme,
             ) { scope.launch { repo.setTheme(it) } }
+
+            Text(stringResource(R.string.display_unit), style = MaterialTheme.typography.bodyMedium)
+            ChipRow(
+                options = listOf(WeightUnit.KG to "kg", WeightUnit.LBS to "lbs"),
+                selected = settings.unit,
+            ) { scope.launch { repo.setUnit(it) } }
+
+            Text(stringResource(R.string.exercise_sort), style = MaterialTheme.typography.bodyMedium)
+            ChipRow(
+                options = listOf(
+                    ExerciseSort.NAME to stringResource(R.string.sort_name),
+                    ExerciseSort.MOST_USED to stringResource(R.string.sort_most_used),
+                ),
+                selected = settings.exerciseSort,
+            ) { scope.launch { repo.setExerciseSort(it) } }
+
+            Text(stringResource(R.string.muscle_display), style = MaterialTheme.typography.bodyMedium)
+            ChipRow(
+                options = metaDisplayOptions(),
+                selected = settings.muscleDisplay,
+            ) { scope.launch { repo.setMuscleDisplay(it) } }
+
+            Text(stringResource(R.string.equipment_display), style = MaterialTheme.typography.bodyMedium)
+            ChipRow(
+                options = metaDisplayOptions(),
+                selected = settings.equipmentDisplay,
+            ) { scope.launch { repo.setEquipmentDisplay(it) } }
         }
 
-        HorizontalDivider()
+        // Everything that changes what the logging screen itself does.
+        Section(stringResource(R.string.section_workout)) {
+            ToggleSetting(
+                stringResource(R.string.show_last_session_values),
+                settings.showLastSessionValues,
+            ) { scope.launch { repo.setShowLastSessionValues(it) } }
+            SettingHint(stringResource(R.string.show_last_session_values_hint))
 
-        // Rest timer
-        SettingSection(stringResource(R.string.rest_timer)) {
+            ToggleSetting(
+                stringResource(R.string.plate_calculator),
+                settings.plateCalculator,
+            ) { scope.launch { repo.setPlateCalculator(it) } }
+            SettingHint(stringResource(R.string.plate_calculator_hint))
+            if (settings.plateCalculator) {
+                // Stored in kg, shown in whatever you lift in.
+                DecimalSetting(
+                    label = stringResource(R.string.bar_weight, unitLabel),
+                    value = Units.toDisplay(
+                        settings.barWeightKg, settings.unit, MeasurementType.WEIGHT_KG,
+                    ),
+                ) { entered ->
+                    scope.launch {
+                        repo.setBarWeightKg(
+                            Units.fromDisplay(entered, settings.unit, MeasurementType.WEIGHT_KG)
+                        )
+                    }
+                }
+            }
+
+            ToggleSetting(
+                stringResource(R.string.warmup_generator),
+                settings.warmupGenerator,
+            ) { scope.launch { repo.setWarmupGenerator(it) } }
+            SettingHint(stringResource(R.string.warmup_generator_hint))
+            if (settings.warmupGenerator) {
+                NumberSetting(
+                    label = stringResource(R.string.warmup_set_count),
+                    value = settings.warmupSetCount,
+                ) { scope.launch { repo.setWarmupSetCount(it) } }
+            }
+
+            ToggleSetting(
+                stringResource(R.string.haptic_feedback),
+                settings.hapticFeedback,
+            ) { scope.launch { repo.setHapticFeedback(it) } }
+            SettingHint(stringResource(R.string.haptic_feedback_hint))
+
+            ToggleSetting(
+                stringResource(R.string.confirm_exit_workout),
+                settings.confirmExitWorkout,
+            ) { scope.launch { repo.setConfirmExitWorkout(it) } }
+            SettingHint(stringResource(R.string.confirm_exit_workout_hint))
+
+            ToggleSetting(stringResource(R.string.keep_screen_on), settings.keepScreenOn) {
+                scope.launch { repo.setKeepScreenOn(it) }
+            }
+        }
+
+        Section(stringResource(R.string.rest_timer)) {
             NumberSetting(
                 label = stringResource(R.string.default_rest_for_new_sets),
                 value = settings.defaultRestSec,
@@ -231,10 +316,7 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             }
         }
 
-        HorizontalDivider()
-
-        // Sessions
-        SettingSection(stringResource(R.string.sessions_section)) {
+        Section(stringResource(R.string.sessions_section)) {
             NumberSetting(
                 label = stringResource(R.string.auto_finish_threshold),
                 value = settings.autoFinishMinutes,
@@ -254,55 +336,34 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 label = stringResource(R.string.comeback_threshold),
                 value = settings.comebackDays,
             ) { scope.launch { repo.setComebackDays(it) } }
-            ToggleSetting(stringResource(R.string.keep_screen_on), settings.keepScreenOn) {
-                scope.launch { repo.setKeepScreenOn(it) }
-            }
             ToggleSetting(
                 stringResource(R.string.sessions_locked_by_default),
                 settings.sessionsLockedByDefault,
             ) { scope.launch { repo.setSessionsLockedByDefault(it) } }
-            Text(
-                stringResource(R.string.sessions_locked_by_default_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.sessions_locked_by_default_hint))
             ToggleSetting(
                 stringResource(R.string.plan_before_start),
                 settings.planExercisesBeforeStart,
             ) { scope.launch { repo.setPlanExercisesBeforeStart(it) } }
-            Text(
-                stringResource(R.string.plan_before_start_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.plan_before_start_hint))
             ToggleSetting(
                 stringResource(R.string.celebrate_finish),
                 settings.celebrateWorkoutFinish,
             ) { scope.launch { repo.setCelebrateWorkoutFinish(it) } }
-            Text(
-                stringResource(R.string.celebrate_finish_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.celebrate_finish_hint))
             ToggleSetting(
                 stringResource(R.string.always_offer_recovery),
                 settings.alwaysOfferRecovery,
             ) { scope.launch { repo.setAlwaysOfferRecovery(it) } }
-            Text(
-                stringResource(R.string.always_offer_recovery_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.always_offer_recovery_hint))
             ToggleSetting(
                 stringResource(R.string.lists_locked_by_default),
                 settings.listsLockedByDefault,
             ) { scope.launch { repo.setListsLockedByDefault(it) } }
-            Text(
-                stringResource(R.string.lists_locked_by_default_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.lists_locked_by_default_hint))
         }
 
-        HorizontalDivider()
-
-        // Progression
-        SettingSection(stringResource(R.string.progression)) {
+        Section(stringResource(R.string.progression)) {
             DecimalSetting(
                 label = stringResource(R.string.increment_kg),
                 value = settings.progressionIncrementKg,
@@ -317,10 +378,7 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             ) { scope.launch { repo.setBodyweightFallbackKg(it) } }
         }
 
-        HorizontalDivider()
-
-        // Coach
-        SettingSection(stringResource(R.string.coach_comments)) {
+        Section(stringResource(R.string.coach_comments)) {
             ToggleSetting(stringResource(R.string.coach_enabled), settings.coachEnabled) {
                 scope.launch { repo.setCoachEnabled(it) }
             }
@@ -348,41 +406,26 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     label = stringResource(R.string.coach_message_seconds),
                     value = settings.coachMessageSeconds,
                 ) { scope.launch { repo.setCoachMessageSeconds(it) } }
-                Text(
-                    stringResource(R.string.coach_message_seconds_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                SettingHint(stringResource(R.string.coach_message_seconds_hint))
             }
         }
 
-        HorizontalDivider()
-
-        // Exercise library
-        SettingSection(stringResource(R.string.library_edits_section)) {
+        Section(stringResource(R.string.library_edits_section)) {
             ToggleSetting(
                 stringResource(R.string.confirm_library_edits),
                 settings.confirmLibraryEdits,
             ) { scope.launch { repo.setConfirmLibraryEdits(it) } }
-            Text(
-                stringResource(R.string.confirm_library_edits_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SettingHint(stringResource(R.string.confirm_library_edits_hint))
         }
 
-        HorizontalDivider()
-
-        // Backup reminder
-        SettingSection(stringResource(R.string.backup)) {
+        Section(stringResource(R.string.backup)) {
             NumberSetting(
                 label = stringResource(R.string.backup_reminder_setting),
                 value = settings.backupReminderDays,
             ) { scope.launch { repo.setBackupReminderDays(it) } }
         }
 
-        HorizontalDivider()
-
-        // Danger zone
-        SettingSection(stringResource(R.string.delete_user_data)) {
+        Section(stringResource(R.string.delete_user_data)) {
             OutlinedButton(
                 onClick = { showDeleteData = true },
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -475,12 +518,50 @@ private fun metaDisplayOptions(): List<Pair<MetaDisplay, String>> = listOf(
     MetaDisplay.HIDDEN to stringResource(R.string.meta_display_hidden),
 )
 
+/** Collapsible group of settings; the title row is the whole touch target. */
 @Composable
-private fun SettingSection(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        content()
+private fun SettingSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+            )
+        }
+        if (expanded) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
+            ) { content() }
+        }
+        HorizontalDivider()
     }
+}
+
+/** The explanatory line under a toggle. */
+@Composable
+private fun SettingHint(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -514,9 +595,21 @@ private fun ToggleSetting(label: String, checked: Boolean, onChange: (Boolean) -
     }
 }
 
+/**
+ * Number field bound to a stored setting.
+ *
+ * The field keeps its own text so typing isn't fought by recomposition, but
+ * re-reads [value] whenever it changes underneath and the field isn't focused —
+ * keying off the label alone meant a value changed elsewhere (a restored
+ * backup, say) never showed up here.
+ */
 @Composable
 private fun NumberSetting(label: String, value: Int, onChange: (Int) -> Unit) {
     var text by remember(label) { mutableStateOf(value.toString()) }
+    var focused by remember(label) { mutableStateOf(false) }
+    LaunchedEffect(value, focused) {
+        if (!focused && text.toIntOrNull() != value) text = value.toString()
+    }
     OutlinedTextField(
         value = text,
         onValueChange = {
@@ -526,14 +619,20 @@ private fun NumberSetting(label: String, value: Int, onChange: (Int) -> Unit) {
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { focused = it.isFocused },
     )
 }
 
 @Composable
 private fun DecimalSetting(label: String, value: Double, onChange: (Double) -> Unit) {
-    var text by remember(label) {
-        mutableStateOf(dev.hinny.skrot.domain.Units.formatValue(value))
+    var text by remember(label) { mutableStateOf(Units.formatValue(value)) }
+    var focused by remember(label) { mutableStateOf(false) }
+    LaunchedEffect(value, focused) {
+        if (!focused && text.replace(',', '.').toDoubleOrNull() != value) {
+            text = Units.formatValue(value)
+        }
     }
     OutlinedTextField(
         value = text,
@@ -544,6 +643,8 @@ private fun DecimalSetting(label: String, value: Double, onChange: (Double) -> U
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { focused = it.isFocused },
     )
 }

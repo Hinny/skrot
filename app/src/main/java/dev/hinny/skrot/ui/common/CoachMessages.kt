@@ -42,9 +42,19 @@ object CoachMessages {
         (CoachPersonality.MINIMAL to CoachTrigger.STREAK) to R.array.coach_minimal_streak,
     )
 
+    /**
+     * Last line handed out per (personality, trigger), so the same one is never
+     * picked twice in a row. Plain randomness on a short list repeats often
+     * enough to look like the app only knows two things to say.
+     */
+    private val lastShown = mutableMapOf<Pair<CoachPersonality, CoachTrigger>, String>()
+
     fun random(context: Context, personality: CoachPersonality, trigger: CoachTrigger): String? {
-        val arrayRes = arrays[personality to trigger] ?: return null
+        val key = personality to trigger
+        val arrayRes = arrays[key] ?: return null
         val options = context.resources.getStringArray(arrayRes)
-        return options.randomOrNull()
+        val previous = lastShown[key]
+        val pool = options.filterNot { it == previous }.ifEmpty { options.toList() }
+        return pool.randomOrNull()?.also { lastShown[key] = it }
     }
 }

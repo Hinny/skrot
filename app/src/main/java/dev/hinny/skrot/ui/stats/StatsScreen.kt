@@ -266,96 +266,114 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
             }
         }
 
+        // Every card below only appears once it has something to plot: four
+        // stacked "no data yet" boxes told the user nothing four times over.
+        if (rangeSessions.isEmpty()) {
+            Text(
+                stringResource(R.string.stats_nothing_in_range),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         // Training frequency heatmap
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text(stringResource(R.string.training_frequency), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                val countsByDay = dates
-                    .groupingBy { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
-                    .eachCount()
-                // Short ranges get one row per week; a year or more would be an
-                // unreadably tall grid that way, so those get one row per month.
-                if (range == StatsRange.Y1 || range == StatsRange.ALL) {
-                    val today = LocalDate.now()
-                    val earliest = countsByDay.keys.minOrNull()
-                    val months = when {
-                        range == StatsRange.Y1 || earliest == null -> 12
-                        else -> ChronoUnit.MONTHS
-                            .between(YearMonth.from(earliest), YearMonth.from(today))
-                            .toInt() + 1
+        val countsByDay = dates
+            .groupingBy { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+            .eachCount()
+        if (countsByDay.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(stringResource(R.string.training_frequency), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    // Short ranges get one row per week; a year or more would be an
+                    // unreadably tall grid that way, so those get one row per month.
+                    if (range == StatsRange.Y1 || range == StatsRange.ALL) {
+                        val today = LocalDate.now()
+                        val earliest = countsByDay.keys.minOrNull()
+                        val months = when {
+                            range == StatsRange.Y1 || earliest == null -> 12
+                            else -> ChronoUnit.MONTHS
+                                .between(YearMonth.from(earliest), YearMonth.from(today))
+                                .toInt() + 1
+                        }
+                        MonthCalendarHeatmap(countsByDay, months = months.coerceIn(1, 60))
+                    } else {
+                        WeekCalendarHeatmap(
+                            countsByDay,
+                            weeks = ((range.days!! + 6) / 7).toInt(),
+                        )
                     }
-                    MonthCalendarHeatmap(countsByDay, months = months.coerceIn(1, 60))
-                } else {
-                    WeekCalendarHeatmap(
-                        countsByDay,
-                        weeks = ((range.days!! + 6) / 7).toInt(),
-                    )
                 }
             }
         }
 
         // Muscle group distribution
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    stringResource(R.string.muscle_distribution),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Spacer(Modifier.height(8.dp))
-                HorizontalBarChart(
-                    items = muscles.map { muscleLabel(it.muscleGroup) to it.setCount },
-                )
+        if (muscles.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(
+                        stringResource(R.string.muscle_distribution),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalBarChart(
+                        items = muscles.map { muscleLabel(it.muscleGroup) to it.setCount },
+                    )
+                }
             }
         }
 
         // Volume per week
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    stringResource(R.string.weekly_volume),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Spacer(Modifier.height(8.dp))
-                val weekFormat = remember { DateTimeFormatter.ofPattern("d MMM") }
-                val byWeek = workingSets
-                    .groupBy {
-                        Instant.ofEpochMilli(it.sessionDate).atZone(zone).toLocalDate()
-                            .with(DayOfWeek.MONDAY)
-                    }
-                    .toSortedMap()
-                    .map { (monday, sets) ->
-                        monday.format(weekFormat) to sets.sumOf { setVolumeKg(it, exercisesById) }
-                    }
-                VerticalBarChart(
-                    items = byWeek,
-                    valueFormatter = {
-                        Units.formatValue(
-                            Units.toDisplay(it, settings.unit, MeasurementType.WEIGHT_KG)
-                        )
-                    },
-                )
+        val weekFormat = remember { DateTimeFormatter.ofPattern("d MMM") }
+        val byWeek = workingSets
+            .groupBy {
+                Instant.ofEpochMilli(it.sessionDate).atZone(zone).toLocalDate()
+                    .with(DayOfWeek.MONDAY)
+            }
+            .toSortedMap()
+            .map { (monday, sets) ->
+                monday.format(weekFormat) to sets.sumOf { setVolumeKg(it, exercisesById) }
+            }
+        if (byWeek.any { it.second > 0.0 }) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(
+                        stringResource(R.string.weekly_volume),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    VerticalBarChart(
+                        items = byWeek,
+                        valueFormatter = {
+                            Units.formatValue(
+                                Units.toDisplay(it, settings.unit, MeasurementType.WEIGHT_KG)
+                            )
+                        },
+                    )
+                }
             }
         }
 
         // Most trained exercises in the range
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    stringResource(R.string.top_exercises),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Spacer(Modifier.height(8.dp))
-                val top = workingSets
-                    .groupingBy { it.exerciseId }
-                    .eachCount()
-                    .entries
-                    .sortedByDescending { it.value }
-                    .take(8)
-                    .mapNotNull { (id, count) ->
-                        exercisesById[id]?.let { it.displayName() to count }
-                    }
-                HorizontalBarChart(items = top)
+        val top = workingSets
+            .groupingBy { it.exerciseId }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(8)
+            .mapNotNull { (id, count) ->
+                exercisesById[id]?.let { it.displayName() to count }
+            }
+        if (top.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(
+                        stringResource(R.string.top_exercises),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalBarChart(items = top)
+                }
             }
         }
 

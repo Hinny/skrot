@@ -22,6 +22,7 @@ import dev.hinny.skrot.domain.ProgressionEngine
 import dev.hinny.skrot.domain.ProgressionSuggestion
 import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
+import dev.hinny.skrot.domain.WarmupGenerator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -44,6 +45,12 @@ class WorkoutViewModel(
     val plannedSetsByPe = MutableStateFlow<Map<Long, List<PlannedSet>>>(emptyMap())
     val suggestions = MutableStateFlow<Map<Long, ProgressionSuggestion>>(emptyMap())
     val groupOptions = MutableStateFlow<Map<Long, List<Exercise>>>(emptyMap())
+
+    /**
+     * Completed sets of the previous session that included each exercise, keyed
+     * by session-exercise id. What you are trying to beat, shown on the row.
+     */
+    val lastSessionSets = MutableStateFlow<Map<Long, List<LoggedSet>>>(emptyMap())
     val events = MutableSharedFlow<WorkoutEvent>(extraBufferCapacity = 8)
 
     private var coach: CoachEngine? = null
@@ -95,6 +102,7 @@ class WorkoutViewModel(
         val planned = mutableMapOf<Long, List<PlannedSet>>()
         val suggestionMap = mutableMapOf<Long, ProgressionSuggestion>()
         val options = mutableMapOf<Long, List<Exercise>>()
+        val previous = mutableMapOf<Long, List<LoggedSet>>()
 
         for (se in content.exercises) {
             val exercise = se.exercise
@@ -106,10 +114,8 @@ class WorkoutViewModel(
             val plannedSets = peId?.let { db.routineDao().plannedSets(it) } ?: emptyList()
             if (peId != null) planned[peId] = plannedSets
 
-            if (se.sessionExercise.id in dismissedSuggestions) continue
-            if (plannedSets.isEmpty()) continue
-            if (se.sets.any { it.completed }) continue
-
+            // Machine levels aren't comparable across gyms, so the lookup is
+            // per-gym for them — the same rule the prefill follows.
             val historyGym =
                 if (exercise.measurementType == MeasurementType.MACHINE_LEVEL) content.session.gymId
                 else null
@@ -118,7 +124,13 @@ class WorkoutViewModel(
             )
             val lastSets = lastSessionId
                 ?.let { db.sessionDao().completedSetsInSession(it, exercise.id) }
-                ?: continue
+            if (lastSets != null) previous[se.sessionExercise.id] = lastSets
+
+            if (se.sessionExercise.id in dismissedSuggestions) continue
+            if (plannedSets.isEmpty()) continue
+            if (se.sets.any { it.completed }) continue
+            if (lastSets == null) continue
+
             val suggestion = ProgressionEngine.suggest(
                 measurement = exercise.measurementType,
                 lastSessionSets = lastSets,
@@ -132,6 +144,7 @@ class WorkoutViewModel(
         plannedSetsByPe.value = planned
         suggestions.value = suggestionMap
         groupOptions.value = options
+        lastSessionSets.value = previous
     }
 
     private suspend fun touch() {
@@ -154,7 +167,7 @@ class WorkoutViewModel(
             touch()
 
             if (set.restSec > 0) {
-                container.restTimer.start(set.restSec, se.exercise.nameEn)
+                container.restTimer.start(set.restSec, se.exercise.nameEn, sessionId)
             }
 
             // PR detection (warmups excluded; machine levels scoped to this gym)
@@ -267,6 +280,49 @@ class WorkoutViewModel(
             )
             touch()
         }
+    }
+
+    /**
+     * Builds a warm-up ramp in front of the first working set, using that set's
+     * load. Existing warmups are left alone — the action adds to what is there
+     * rather than rewriting it, so running it twice is visible, not silent.
+     *
+     * @return how many sets were created; 0 means there was nothing to ramp to
+     */
+    suspend fun addWarmupSets(se: SessionExerciseWithDetails): Int {
+        val settings = container.settings.settings.first()
+        val sets = se.sortedSets
+        val working = sets.firstOrNull { it.setType != SetType.WARMUP } ?: return 0
+        val rounding = when (se.exercise.measurementType) {
+            MeasurementType.MACHINE_LEVEL ->
+                se.exercise.progressionIncrement ?: settings.progressionIncrementLevel
+
+            else -> se.exercise.progressionIncrement ?: settings.progressionIncrementKg
+        }
+        val warmups = WarmupGenerator.generate(
+            workingLoad = working.load,
+            count = settings.warmupSetCount,
+            rounding = rounding,
+        )
+        if (warmups.isEmpty()) return 0
+
+        // The ramp goes in front of everything, so every existing set shifts by
+        // the number of rungs added.
+        sets.forEach { db.sessionDao().updateLoggedSet(it.copy(position = it.position + warmups.size)) }
+        warmups.forEachIndexed { i, warmup ->
+            db.sessionDao().insertLoggedSet(
+                LoggedSet(
+                    sessionExerciseId = se.sessionExercise.id,
+                    position = i,
+                    setType = SetType.WARMUP,
+                    load = warmup.load,
+                    reps = warmup.reps,
+                    restSec = minOf(working.restSec, WARMUP_REST_CAP_SEC),
+                )
+            )
+        }
+        touch()
+        return warmups.size
     }
 
     /** Removes a set from this session only and compacts the positions after it. */
@@ -746,5 +802,8 @@ class WorkoutViewModel(
 
         /** Sets created for an exercise added mid-session. */
         const val NEW_EXERCISE_SETS = 3
+
+        /** Nobody needs the working-set rest between two warm-up rungs. */
+        const val WARMUP_REST_CAP_SEC = 60
     }
 }

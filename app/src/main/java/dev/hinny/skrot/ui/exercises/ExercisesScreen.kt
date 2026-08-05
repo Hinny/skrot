@@ -16,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -24,7 +26,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,11 +53,10 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CreateExerciseDialog
 import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.displayName
-import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.muscleLabel
-import dev.hinny.skrot.ui.common.muscleLabel
+import dev.hinny.skrot.ui.common.SearchField
 import dev.hinny.skrot.ui.common.searchEquipmentNames
 import dev.hinny.skrot.ui.common.searchMuscleNames
 import dev.hinny.skrot.ui.containerViewModel
@@ -129,6 +129,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
     var muscleFilters by remember { mutableStateOf(setOf<MuscleGroup>()) }
     var equipmentFilters by remember { mutableStateOf(setOf<Equipment>()) }
     var categoryFilter by remember { mutableStateOf<Boolean?>(null) }
+    var filtersExpanded by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
     var selectionMode by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<Long>()) }
@@ -159,7 +160,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = { exitSelection() }) {
@@ -178,72 +179,113 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
             } else {
                 Text(
                     stringResource(R.string.tab_exercises),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(vertical = 12.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
             }
-            OutlinedTextField(
+            SearchField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text(stringResource(R.string.search_exercises)) },
-                singleLine = true,
+                placeholder = stringResource(R.string.search_exercises),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 6.dp),
+            // Muscle and equipment are two full rows of chips that most searches
+            // never touch, so they fold away and the results get the space. The
+            // count on the toggle is what stops a forgotten filter looking like
+            // an empty library.
+            val detailFilterCount = muscleFilters.size + equipmentFilters.size
+            val anyFilter = detailFilterCount > 0 || categoryFilter != null
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
             ) {
-                FilterChip(
-                    selected = categoryFilter == null,
-                    onClick = { categoryFilter = null },
-                    label = { Text(stringResource(R.string.category_all)) },
-                )
-                FilterChip(
-                    selected = categoryFilter == false,
-                    onClick = { categoryFilter = false },
-                    label = { Text(stringResource(R.string.category_builtin)) },
-                )
-                FilterChip(
-                    selected = categoryFilter == true,
-                    onClick = { categoryFilter = true },
-                    label = { Text(stringResource(R.string.category_custom)) },
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 6.dp),
-            ) {
-                MuscleGroup.entries.forEach { m ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
                     FilterChip(
-                        selected = m in muscleFilters,
-                        onClick = {
-                            muscleFilters =
-                                if (m in muscleFilters) muscleFilters - m else muscleFilters + m
+                        selected = filtersExpanded || detailFilterCount > 0,
+                        onClick = { filtersExpanded = !filtersExpanded },
+                        label = {
+                            Text(
+                                if (detailFilterCount > 0) {
+                                    stringResource(R.string.filters_count, detailFilterCount)
+                                } else {
+                                    stringResource(R.string.filters)
+                                }
+                            )
                         },
-                        label = { Text(muscleLabel(m)) },
+                        trailingIcon = {
+                            Icon(
+                                if (filtersExpanded) Icons.Filled.ExpandLess
+                                else Icons.Filled.ExpandMore,
+                                contentDescription = null,
+                            )
+                        },
+                    )
+                    if (anyFilter) {
+                        FilterChip(
+                            selected = false,
+                            onClick = {
+                                muscleFilters = emptySet()
+                                equipmentFilters = emptySet()
+                                categoryFilter = null
+                            },
+                            label = { Text(stringResource(R.string.clear_filters)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Close, contentDescription = null)
+                            },
+                        )
+                    }
+                    FilterChip(
+                        selected = categoryFilter == null,
+                        onClick = { categoryFilter = null },
+                        label = { Text(stringResource(R.string.category_all)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == false,
+                        onClick = { categoryFilter = false },
+                        label = { Text(stringResource(R.string.category_builtin)) },
+                    )
+                    FilterChip(
+                        selected = categoryFilter == true,
+                        onClick = { categoryFilter = true },
+                        label = { Text(stringResource(R.string.category_custom)) },
                     )
                 }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 6.dp),
-            ) {
-                Equipment.entries.forEach { eq ->
-                    FilterChip(
-                        selected = eq in equipmentFilters,
-                        onClick = {
-                            equipmentFilters =
-                                if (eq in equipmentFilters) equipmentFilters - eq
-                                else equipmentFilters + eq
-                        },
-                        label = { Text(equipmentLabel(eq)) },
-                    )
+                if (filtersExpanded) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        MuscleGroup.entries.forEach { m ->
+                            FilterChip(
+                                selected = m in muscleFilters,
+                                onClick = {
+                                    muscleFilters =
+                                        if (m in muscleFilters) muscleFilters - m
+                                        else muscleFilters + m
+                                },
+                                label = { Text(muscleLabel(m)) },
+                            )
+                        }
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        Equipment.entries.forEach { eq ->
+                            FilterChip(
+                                selected = eq in equipmentFilters,
+                                onClick = {
+                                    equipmentFilters =
+                                        if (eq in equipmentFilters) equipmentFilters - eq
+                                        else equipmentFilters + eq
+                                },
+                                label = { Text(equipmentLabel(eq)) },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -256,7 +298,37 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                 muscleNames = searchMuscleNames(),
                 equipmentNames = searchEquipmentNames(),
             )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (filtered.isEmpty()) {
+                // A blank screen looks like a broken library; say which of the
+                // two things the user did caused it, and undo that thing.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        stringResource(
+                            if (anyFilter) R.string.no_exercises_match_filters
+                            else R.string.no_exercises_match
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (anyFilter) {
+                        TextButton(onClick = {
+                            muscleFilters = emptySet()
+                            equipmentFilters = emptySet()
+                            categoryFilter = null
+                        }) { Text(stringResource(R.string.clear_filters)) }
+                    } else if (query.isNotBlank()) {
+                        TextButton(onClick = { query = "" }) {
+                            Text(stringResource(R.string.clear_search))
+                        }
+                    }
+                }
+            }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 items(filtered.size) { i ->
                     val e = filtered[i]
                     val canSelect = e.isCustom
@@ -296,7 +368,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                             Column(
                                 Modifier
                                     .weight(1f)
-                                    .padding(12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
                                 Row {
                                     Text(
@@ -312,7 +384,7 @@ fun ExercisesScreen(container: AppContainer, nav: NavHostController) {
                                         )
                                     }
                                 }
-                                ExerciseMeta(e, Modifier.padding(top = 2.dp))
+                                ExerciseMeta(e, Modifier.padding(top = 1.dp))
                             }
                         }
                     }

@@ -23,6 +23,9 @@ data class RestTimerState(
     val totalSec: Int,
     val remainingSec: Int,
     val exerciseName: String,
+    /** The workout this rest belongs to, so the bar can take you back to it. */
+    val sessionId: Long? = null,
+    val paused: Boolean = false,
 )
 
 /**
@@ -40,6 +43,9 @@ class RestTimerController(
     private var job: Job? = null
     private var endAtMs = 0L
 
+    /** Seconds banked while paused; null whenever the clock is running. */
+    private var pausedRemainingSec: Int? = null
+
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -56,19 +62,33 @@ class RestTimerController(
     }
 
     /** Starts the timer; 0 seconds means no timer. */
-    fun start(seconds: Int, exerciseName: String) {
+    fun start(seconds: Int, exerciseName: String, sessionId: Long? = null) {
         job?.cancel()
+        pausedRemainingSec = null
         if (seconds <= 0) {
             clear()
             return
         }
         endAtMs = System.currentTimeMillis() + seconds * 1000L
-        _state.value = RestTimerState(seconds, seconds, exerciseName)
+        _state.value = RestTimerState(seconds, seconds, exerciseName, sessionId)
         job = scope.launch { runCountdown(exerciseName) }
     }
 
     fun adjust(deltaSec: Int) {
         val current = _state.value ?: return
+        if (current.paused) {
+            val remaining = (pausedRemainingSec ?: 0) + deltaSec
+            if (remaining <= 0) {
+                skip()
+                return
+            }
+            pausedRemainingSec = remaining
+            _state.value = current.copy(
+                remainingSec = remaining,
+                totalSec = maxOf(current.totalSec + deltaSec, remaining),
+            )
+            return
+        }
         endAtMs += deltaSec * 1000L
         val remaining = remainingSec()
         if (remaining <= 0) {
@@ -81,8 +101,38 @@ class RestTimerController(
         }
     }
 
+    /**
+     * Holds the clock where it is. Racking a bar, or someone asking to work in,
+     * shouldn't cost you the rest you had left.
+     */
+    fun pause() {
+        val current = _state.value ?: return
+        if (current.paused) return
+        job?.cancel()
+        job = null
+        val banked = remainingSec().coerceAtLeast(1)
+        pausedRemainingSec = banked
+        _state.value = current.copy(remainingSec = banked, paused = true)
+    }
+
+    fun resume() {
+        val current = _state.value ?: return
+        if (!current.paused) return
+        val banked = pausedRemainingSec ?: return
+        pausedRemainingSec = null
+        endAtMs = System.currentTimeMillis() + banked * 1000L
+        _state.value = current.copy(paused = false)
+        job = scope.launch { runCountdown(current.exerciseName) }
+    }
+
+    fun togglePause() {
+        if (_state.value?.paused == true) resume() else pause()
+    }
+
     fun skip() {
         job?.cancel()
+        job = null
+        pausedRemainingSec = null
         clear()
     }
 
