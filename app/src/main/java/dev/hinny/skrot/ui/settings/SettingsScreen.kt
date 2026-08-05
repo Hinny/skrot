@@ -356,11 +356,6 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 settings.alwaysOfferRecovery,
             ) { scope.launch { repo.setAlwaysOfferRecovery(it) } }
             SettingHint(stringResource(R.string.always_offer_recovery_hint))
-            ToggleSetting(
-                stringResource(R.string.lists_locked_by_default),
-                settings.listsLockedByDefault,
-            ) { scope.launch { repo.setListsLockedByDefault(it) } }
-            SettingHint(stringResource(R.string.lists_locked_by_default_hint))
         }
 
         Section(stringResource(R.string.progression)) {
@@ -410,12 +405,19 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             }
         }
 
-        Section(stringResource(R.string.library_edits_section)) {
+        // Programs, gyms and workout days — the things you edit between
+        // workouts rather than during one.
+        Section(stringResource(R.string.library_section)) {
             ToggleSetting(
                 stringResource(R.string.confirm_library_edits),
                 settings.confirmLibraryEdits,
             ) { scope.launch { repo.setConfirmLibraryEdits(it) } }
             SettingHint(stringResource(R.string.confirm_library_edits_hint))
+            ToggleSetting(
+                stringResource(R.string.lists_locked_by_default),
+                settings.listsLockedByDefault,
+            ) { scope.launch { repo.setListsLockedByDefault(it) } }
+            SettingHint(stringResource(R.string.lists_locked_by_default_hint))
         }
 
         Section(stringResource(R.string.backup)) {

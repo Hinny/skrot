@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +55,7 @@ import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.ReorderHandle
 import dev.hinny.skrot.ui.common.ReorderLockButton
+import dev.hinny.skrot.ui.common.ReorderState
 import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
@@ -281,6 +284,29 @@ class DayEditorViewModel(
         viewModelScope.launch { db.routineDao().updatePlannedSet(set) }
     }
 
+    /**
+     * Reorders a set within its exercise. Takes the exercise by id and re-reads
+     * it from the current day rather than trusting a captured snapshot, the same
+     * way [moveBlock] does — the drag state outlives several emissions of the
+     * list it is reordering.
+     */
+    fun moveSet(plannedExerciseId: Long, from: Int, to: Int) {
+        viewModelScope.launch {
+            val sets = day.value?.exercises
+                ?.find { it.planned.id == plannedExerciseId }
+                ?.sortedSets
+                ?: return@launch
+            if (from !in sets.indices || to !in sets.indices || from == to) return@launch
+            val reordered = sets.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            reordered.forEachIndexed { newPos, s ->
+                if (s.position != newPos) {
+                    db.routineDao().updatePlannedSet(s.copy(position = newPos))
+                }
+            }
+        }
+    }
+
     fun removeSet(set: PlannedSet) {
         viewModelScope.launch { db.routineDao().deletePlannedSet(set) }
     }
@@ -398,12 +424,18 @@ fun DayEditorScreen(
                         }
                     }
                     block.forEach { pe ->
-                        PlannedExerciseEditor(
-                            pe = pe,
-                            settings = settings,
-                            inSuperset = block.size > 1,
-                            vm = vm,
-                        )
+                        // Keyed by the exercise, not by its slot: reordering
+                        // blocks otherwise leaves an editor holding the drag
+                        // state of whichever exercise used to sit here.
+                        key(pe.planned.id) {
+                            PlannedExerciseEditor(
+                                pe = pe,
+                                settings = settings,
+                                inSuperset = block.size > 1,
+                                orderLocked = orderLocked.value,
+                                vm = vm,
+                            )
+                        }
                     }
                     TextButton(onClick = { pickerTarget = blockPos }) {
                         Text(stringResource(R.string.add_superset_exercise))
@@ -463,8 +495,11 @@ private fun PlannedExerciseEditor(
     pe: PlannedExerciseWithDetails,
     settings: Settings,
     inSuperset: Boolean,
+    orderLocked: Boolean,
     vm: DayEditorViewModel,
 ) {
+    val setReorder = rememberReorderState { from, to -> vm.moveSet(pe.planned.id, from, to) }
+
     Column(Modifier.padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -481,8 +516,18 @@ private fun PlannedExerciseEditor(
                 Icon(Icons.Filled.Delete, stringResource(R.string.delete))
             }
         }
-        pe.sortedSets.forEach { set ->
-            PlannedSetRow(set = set, measurement = pe.exercise.measurementType, settings = settings, vm = vm)
+        val sets = pe.sortedSets
+        sets.forEachIndexed { index, set ->
+            PlannedSetRow(
+                set = set,
+                measurement = pe.exercise.measurementType,
+                settings = settings,
+                orderLocked = orderLocked,
+                reorder = setReorder,
+                index = index,
+                count = sets.size,
+                vm = vm,
+            )
         }
         TextButton(onClick = { vm.addSet(pe) }) {
             Text(stringResource(R.string.add_set))
@@ -495,6 +540,10 @@ private fun PlannedSetRow(
     set: PlannedSet,
     measurement: MeasurementType,
     settings: Settings,
+    orderLocked: Boolean,
+    reorder: ReorderState,
+    index: Int,
+    count: Int,
     vm: DayEditorViewModel,
 ) {
     var targetText by remember(set.id) { mutableStateOf(set.targetRepsMin?.toString() ?: "") }
@@ -506,11 +555,22 @@ private fun PlannedSetRow(
     }
     var restText by remember(set.id) { mutableStateOf(set.restSec.toString()) }
 
+    // The three fields are weighted rather than fixed-width so the drag handle
+    // fits on a narrow phone instead of pushing the delete button off the row —
+    // the same bargain the logging screen's set row makes.
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (orderLocked) Modifier
+                else Modifier.reorderableRow(reorder, index, count)
+            ),
     ) {
+        if (!orderLocked) {
+            ReorderHandle(reorder, index, count)
+        }
         val typeLabel = when (set.setType) {
             SetType.WARMUP -> stringResource(R.string.set_marker_warmup)
             SetType.STANDARD -> stringResource(R.string.set_marker_standard)
@@ -543,10 +603,10 @@ private fun PlannedSetRow(
                 label = { Text(stringResource(R.string.target_min), style = MaterialTheme.typography.labelSmall) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.width(64.dp),
+                modifier = Modifier.weight(1f),
             )
         } else {
-            Text(stringResource(R.string.amrap), modifier = Modifier.width(64.dp))
+            Text(stringResource(R.string.amrap), modifier = Modifier.weight(1f))
         }
         OutlinedTextField(
             value = loadText,
@@ -569,7 +629,7 @@ private fun PlannedSetRow(
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
-            modifier = Modifier.width(70.dp),
+            modifier = Modifier.weight(1.1f),
         )
         OutlinedTextField(
             value = restText,
@@ -580,9 +640,9 @@ private fun PlannedSetRow(
             label = { Text(stringResource(R.string.rest_s), style = MaterialTheme.typography.labelSmall) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(64.dp),
+            modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = { vm.removeSet(set) }) {
+        IconButton(onClick = { vm.removeSet(set) }, modifier = Modifier.size(36.dp)) {
             Icon(Icons.Filled.Close, stringResource(R.string.delete))
         }
     }

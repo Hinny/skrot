@@ -34,7 +34,7 @@
     <string name="lock_order">Lås ordningen</string>
     <string name="unlock_order">Lås upp för att ändra ordning</string>
     <string name="lists_locked_by_default">Lås listordning som standard</string>
-    <string name="lists_locked_by_default_hint">Program, gym och passdagar öppnas låsta, så att ett draghandtag inte kan kasta om dem av misstag. Lås upp med hänglåset i varje lista.</string>
+    <string name="lists_locked_by_default_hint">Program, gym, passdagar och deras set öppnas låsta, så att ett draghandtag inte kan kasta om dem av misstag. Lås upp med hänglåset i varje lista.</string>
     <string name="icon">Ikon</string>
     <string name="increase">Öka</string>
     <string name="decrease">Minska</string>
@@ -152,6 +152,9 @@
     <string name="prefill_last_session">Senaste passet</string>
     <string name="prefill_targets">Mål</string>
     <string name="prefill_hybrid">Hybrid</string>
+    <string name="program_default_gym">Standardgym</string>
+    <string name="program_default_gym_hint">Förvalt när du startar ett pass från det här programmet. Alla andra gym är fortfarande ett tryck bort.</string>
+    <string name="default_gym_global">Använd mitt standardgym</string>
     <string name="tags_hint">Taggar (t.ex. rebuild)</string>
     <string name="workout_days">Passdagar</string>
     <string name="add_day">Lägg till dag</string>
@@ -501,7 +504,7 @@
     <string name="frequency_medium">Mellan</string>
     <string name="frequency_high">Hög</string>
     <string name="default_gym_setting">Gym &amp; standardgym</string>
-    <string name="library_edits_section">Biblioteksredigeringar</string>
+    <string name="library_section">Bibliotek</string>
     <string name="confirm_library_edits">Bekräfta ändringar i biblioteket</string>
     <string name="confirm_library_edits_hint">På: ändringar av egna övningar, program, träningsdagar och gym väntar på Tillämpa eller Avbryt. Av: ändringar gäller direkt, som tidigare. Inbyggda övningar är alltid låsta oavsett.</string>
 

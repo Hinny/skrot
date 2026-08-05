@@ -73,6 +73,7 @@ fun StartFlowHost(
     startTarget?.let { (routine, day) ->
         StartWorkoutDialog(
             gyms = gyms,
+            programGymId = routine?.routine?.defaultGymId,
             onCreateGym = { name, onCreated -> vm.createGym(name, onCreated) },
             onDismiss = onClearTarget,
             onConfirm = { gymId, temporary ->
@@ -204,16 +205,25 @@ fun WorkoutPickerDialog(
     )
 }
 
+/**
+ * @param programGymId the gym this program is normally done at, if it names one.
+ *   It wins over the globally default gym, but only as a preselection — every
+ *   gym is still one tap away.
+ */
 @Composable
 private fun StartWorkoutDialog(
     gyms: List<Gym>,
+    programGymId: Long?,
     onCreateGym: (name: String, onCreated: (Long) -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (gymId: Long?, temporary: Boolean) -> Unit,
 ) {
-    var selectedGym by remember {
-        mutableStateOf(gyms.find { it.isDefault }?.id ?: gyms.firstOrNull()?.id)
-    }
+    // A program can outlive the gym it named (deleted elsewhere, or missing from
+    // a restored backup), so an id that matches nothing falls through.
+    val preselectedGym = programGymId?.takeIf { id -> gyms.any { it.id == id } }
+        ?: gyms.find { it.isDefault }?.id
+        ?: gyms.firstOrNull()?.id
+    var selectedGym by remember { mutableStateOf(preselectedGym) }
     var temporary by remember { mutableStateOf(false) }
     var addingGym by remember { mutableStateOf(false) }
     var newGymName by remember { mutableStateOf("") }
@@ -271,9 +281,7 @@ private fun StartWorkoutDialog(
                     selected = temporary,
                     onClick = {
                         temporary = !temporary
-                        if (temporary) selectedGym = null
-                        else selectedGym =
-                            gyms.find { it.isDefault }?.id ?: gyms.firstOrNull()?.id
+                        selectedGym = if (temporary) null else preselectedGym
                     },
                     label = { Text(stringResource(R.string.temporary_gym)) },
                     leadingIcon = { Icon(Icons.Filled.Place, null) },

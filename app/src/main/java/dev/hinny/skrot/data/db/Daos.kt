@@ -144,6 +144,14 @@ interface RoutineDao {
     @Query("UPDATE routines SET isActive = 0")
     suspend fun clearActive()
 
+    /**
+     * Drops a deleted gym from any program that preselected it, so the start
+     * dialog falls back to the default gym instead of pointing at a row that is
+     * no longer there.
+     */
+    @Query("UPDATE routines SET defaultGymId = NULL WHERE defaultGymId = :gymId")
+    suspend fun clearDefaultGym(gymId: Long)
+
     @Query("UPDATE routines SET isActive = 1 WHERE id = :id")
     suspend fun markActive(id: Long)
 

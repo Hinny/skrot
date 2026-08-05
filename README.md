@@ -39,6 +39,8 @@ so it is provably offline.
 - **Gyms & exercise swapping** — mark what's available at each gym; the same routine runs
   anywhere via interchangeable-exercise groups, with per-gym overrides
   ("always use this here") and a temporary-visit mode. Machine-level history is per-gym.
+  A program can name the gym it's normally done at, which is then preselected when you
+  start it.
 - **Statistics** — load and estimated 1RM over time (Epley, capped at 12 reps), a
   GitHub-style training calendar, sets per muscle group; all filterable by time range.
 - **Body metrics** — weight and measurements with a trend chart, logged at any date and
@@ -93,7 +95,16 @@ between versions.
 ## Releases & signing
 
 Tagging `v*` triggers the release workflow, which builds a signed release APK and attaches
-it to a GitHub Release. Configure these repository secrets:
+it to a GitHub Release.
+
+The version comes from the tag, so there is nothing to bump by hand: `v1.6.0` builds
+`versionName = "1.6.0"` with `versionCode` one higher than the last, and the workflow
+pushes that change to `app/build.gradle.kts` back to `main` once the release is out.
+Tags must be `vMAJOR.MINOR.PATCH` or the workflow stops before building. The same
+edit is a script — `.github/scripts/set-version.sh 1.6.0` — if you ever need it locally;
+it is idempotent, so re-running a release never double-bumps `versionCode`.
+
+Configure these repository secrets:
 
 | Secret | Content |
 | --- | --- |

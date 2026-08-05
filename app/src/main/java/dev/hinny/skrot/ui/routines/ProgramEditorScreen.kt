@@ -1,6 +1,7 @@
 package dev.hinny.skrot.ui.routines
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
@@ -45,6 +47,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
+import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.PrefillMode
 import dev.hinny.skrot.data.model.ProgramIcon
 import dev.hinny.skrot.data.model.Routine
@@ -71,6 +74,7 @@ class ProgramEditorViewModel(
     private val routineId: Long,
 ) : ViewModel() {
     val routine = MutableStateFlow<RoutineWithDays?>(null)
+    val gyms = MutableStateFlow<List<Gym>>(emptyList())
     val confirmEdits = MutableStateFlow(true)
     val hasPendingChanges = MutableStateFlow(false)
     val canUndo = MutableStateFlow(false)
@@ -89,6 +93,9 @@ class ProgramEditorViewModel(
                 if (baseline == null) baseline = r
                 recomputePending()
             }
+        }
+        viewModelScope.launch {
+            container.db.gymDao().observeAll().collect { gyms.value = it }
         }
         viewModelScope.launch {
             container.settings.settings.collect {
@@ -242,6 +249,7 @@ fun ProgramEditorScreen(
         ProgramEditorViewModel(c, routineId)
     }
     val state by vm.routine.collectAsState()
+    val gyms by vm.gyms.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
     val canUndo by vm.canUndo.collectAsState()
     val canRedo by vm.canRedo.collectAsState()
@@ -398,6 +406,37 @@ fun ProgramEditorScreen(
                     selected = r.routine.prefillMode == PrefillMode.HYBRID,
                     onClick = { vm.update { it.copy(prefillMode = PrefillMode.HYBRID) } },
                     label = { Text(stringResource(R.string.prefill_hybrid)) },
+                )
+            }
+        }
+        // Nothing to choose between until there is more than one gym, and the
+        // whole idea is meaningless with none.
+        if (gyms.size > 1) {
+            item {
+                Text(
+                    stringResource(R.string.program_default_gym),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    FilterChip(
+                        selected = r.routine.defaultGymId == null,
+                        onClick = { vm.update { it.copy(defaultGymId = null) } },
+                        label = { Text(stringResource(R.string.default_gym_global)) },
+                    )
+                    gyms.forEach { gym ->
+                        FilterChip(
+                            selected = r.routine.defaultGymId == gym.id,
+                            onClick = { vm.update { it.copy(defaultGymId = gym.id) } },
+                            label = { Text(gym.name) },
+                        )
+                    }
+                }
+                Text(
+                    stringResource(R.string.program_default_gym_hint),
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
