@@ -16,13 +16,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +39,10 @@ import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.db.SessionCounts
+import dev.hinny.skrot.data.model.SessionWithContent
 import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.ui.Routes
-import dev.hinny.skrot.ui.common.ConfirmDialog
+import dev.hinny.skrot.ui.common.SearchField
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -70,8 +76,33 @@ class SessionHistoryViewModel(private val container: AppContainer) : ViewModel()
         }
     }
 
-    fun delete(id: Long) {
-        viewModelScope.launch { container.db.sessionDao().deleteSession(id) }
+    /** The last workout deleted, held in memory so the snackbar can put it back. */
+    private var lastDeleted: SessionWithContent? = null
+
+    suspend fun delete(id: Long) {
+        val dao = container.db.sessionDao()
+        lastDeleted = dao.sessionWithContent(id)
+        dao.deleteSession(id)
+    }
+
+    /**
+     * Re-inserts the snapshot taken before the delete. Row ids are reassigned on
+     * the way back in — nothing the user can see depends on them, and the
+     * alternative is fighting the autoincrement for no gain.
+     */
+    suspend fun undoDelete() {
+        val snapshot = lastDeleted ?: return
+        lastDeleted = null
+        val dao = container.db.sessionDao()
+        val sessionId = dao.insertSession(snapshot.session.copy(id = 0))
+        for (se in snapshot.exercises) {
+            val seId = dao.insertSessionExercise(
+                se.sessionExercise.copy(id = 0, sessionId = sessionId)
+            )
+            for (set in se.sortedSets) {
+                dao.insertLoggedSet(set.copy(id = 0, sessionExerciseId = seId))
+            }
+        }
     }
 }
 
@@ -84,7 +115,10 @@ fun SessionHistoryScreen(container: AppContainer, nav: NavHostController) {
     val gyms by vm.gyms.collectAsState()
     val counts by vm.counts.collectAsState()
     var query by remember { mutableStateOf("") }
-    var toDelete by remember { mutableStateOf<WorkoutSession?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val deletedMsg = stringResource(R.string.session_deleted)
+    val undoLabel = stringResource(R.string.undo)
 
     val zone = ZoneId.systemDefault()
     val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
@@ -102,9 +136,11 @@ fun SessionHistoryScreen(container: AppContainer, nav: NavHostController) {
         ).any { it.contains(query, ignoreCase = true) }
     }
 
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
             .padding(horizontal = 16.dp),
     ) {
         Text(
@@ -112,11 +148,10 @@ fun SessionHistoryScreen(container: AppContainer, nav: NavHostController) {
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(vertical = 12.dp),
         )
-        OutlinedTextField(
+        SearchField(
             value = query,
             onValueChange = { query = it },
-            label = { Text(stringResource(R.string.search_history)) },
-            singleLine = true,
+            placeholder = stringResource(R.string.search_history),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
@@ -161,7 +196,20 @@ fun SessionHistoryScreen(container: AppContainer, nav: NavHostController) {
                                 )
                             }
                         }
-                        IconButton(onClick = { toDelete = session }) {
+                        // Deleting is undoable rather than confirmed: a dialog
+                        // on every delete is friction on the common case, and
+                        // the whole workout comes back from the snackbar.
+                        IconButton(onClick = {
+                            scope.launch {
+                                vm.delete(session.id)
+                                val result = snackbar.showSnackbar(
+                                    message = deletedMsg,
+                                    actionLabel = undoLabel,
+                                    duration = SnackbarDuration.Long,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) vm.undoDelete()
+                            }
+                        }) {
                             Icon(Icons.Filled.Delete, stringResource(R.string.delete))
                         }
                     }
@@ -170,14 +218,5 @@ fun SessionHistoryScreen(container: AppContainer, nav: NavHostController) {
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
-
-    toDelete?.let { session ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_session),
-            text = stringResource(R.string.delete_session_confirm),
-            confirmLabel = stringResource(R.string.delete),
-            onConfirm = { vm.delete(session.id) },
-            onDismiss = { toDelete = null },
-        )
     }
 }

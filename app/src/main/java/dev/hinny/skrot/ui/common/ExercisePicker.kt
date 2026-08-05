@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.R
@@ -79,13 +80,10 @@ fun ExercisePickerDialog(
         title = { Text(title) },
         text = {
             Column {
-                OutlinedTextField(
+                SearchField(
                     value = query,
                     onValueChange = { query = it },
-                    // Placeholder rather than a label: the hint belongs inside the
-                    // empty box, not floating above a field you haven't used yet.
-                    placeholder = { Text(stringResource(R.string.search_exercises)) },
-                    singleLine = true,
+                    placeholder = stringResource(R.string.search_exercises),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(
@@ -130,7 +128,11 @@ fun ExercisePickerDialog(
                     muscleNames = searchMuscleNames(),
                     equipmentNames = searchEquipmentNames(),
                 )
-                LazyColumn(Modifier.height(320.dp)) {
+                // Scaled to the screen rather than pinned at 320dp: that wasted
+                // half a tall phone and overflowed a short one. Shrinks to fit
+                // when only a handful of exercises match.
+                val maxListHeight = LocalConfiguration.current.screenHeightDp.dp / 2
+                LazyColumn(Modifier.heightIn(min = 160.dp, max = maxListHeight)) {
                     items(filtered.size) { i ->
                         val e = filtered[i]
                         Column(

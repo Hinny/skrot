@@ -34,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,6 +61,7 @@ import dev.hinny.skrot.domain.OneRepMax
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
+import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
@@ -232,6 +234,8 @@ fun ExerciseDetailScreen(
     val e = draft ?: return
     var groupMenu by remember { mutableStateOf(false) }
     var gymFilter by remember { mutableStateOf<Long?>(null) }
+    var historyLimit by remember(exerciseId) { mutableIntStateOf(HISTORY_PAGE_SIZE) }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     val isMachine = e.measurementType == MeasurementType.MACHINE_LEVEL
     val nonWarmup = sets.filter { it.set.setType != SetType.WARMUP }
@@ -272,7 +276,9 @@ fun ExerciseDetailScreen(
                     Icon(Icons.Filled.ContentCopy, stringResource(R.string.clone_exercise))
                 }
                 if (e.isCustom) {
-                    IconButton(onClick = { vm.delete { nav.popBackStack() } }) {
+                    // This one takes the logged sets with it, so unlike a body
+                    // measurement or a session there is nothing to undo it with.
+                    IconButton(onClick = { confirmDelete = true }) {
                         Icon(Icons.Filled.Delete, stringResource(R.string.delete))
                     }
                 }
@@ -585,13 +591,19 @@ fun ExerciseDetailScreen(
             }
         }
 
-        // Full history (all logged sets, warmups included)
-        item {
-            Text(stringResource(R.string.history), style = MaterialTheme.typography.titleMedium)
-        }
+        // Full history (all logged sets, warmups included). Years of logging is
+        // hundreds of cards under the charts, so it arrives a page at a time.
         val bySession = sets.groupBy { it.sessionId }.entries.sortedByDescending { it.value.first().sessionDate }
-        items(bySession.size) { i ->
-            val (_, sessionSets) = bySession[i].toPair()
+        item {
+            Text(
+                if (bySession.isEmpty()) stringResource(R.string.history)
+                else stringResource(R.string.history_with_count, bySession.size),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        val visibleSessions = bySession.take(historyLimit)
+        items(visibleSessions.size) { i ->
+            val (_, sessionSets) = visibleSessions[i].toPair()
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
                     Row {
@@ -629,6 +641,21 @@ fun ExerciseDetailScreen(
                 }
             }
         }
+        if (bySession.size > visibleSessions.size) {
+            item {
+                TextButton(
+                    onClick = { historyLimit += HISTORY_PAGE_SIZE },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.show_more_count,
+                            bySession.size - visibleSessions.size,
+                        )
+                    )
+                }
+            }
+        }
         item { Spacer(Modifier.height(40.dp)) }
     }
 
@@ -636,7 +663,20 @@ fun ExerciseDetailScreen(
         PendingChangesBar(onApply = { vm.applyChanges() }, onCancel = { vm.cancelChanges() })
     }
     }
+
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = stringResource(R.string.delete_exercise),
+            text = stringResource(R.string.delete_exercise_confirm, e.displayName()),
+            confirmLabel = stringResource(R.string.delete),
+            onConfirm = { vm.delete { nav.popBackStack() } },
+            onDismiss = { confirmDelete = false },
+        )
+    }
 }
+
+/** Sessions of history revealed at a time under the charts. */
+private const val HISTORY_PAGE_SIZE = 10
 
 private fun formatSet(
     s: SetWithContext,

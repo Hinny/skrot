@@ -192,6 +192,50 @@
     <string name="discard">Discard</string>
     <string name="discard_workout">Discard workout</string>
     <string name="discard_workout_warning">This deletes the session and everything logged in it.</string>
+    <string name="pause_timer">Pause the rest timer</string>
+    <string name="resume_timer">Resume the rest timer</string>
+    <string name="stats_nothing_in_range">Nothing logged in this range yet. Pick a longer range, or log a workout.</string>
+    <string name="history_with_count">History · %1$d sessions</string>
+    <string name="show_more_count">Show %1$d more</string>
+    <string name="measurements_over_time">Measurements over time</string>
+    <string name="edit_measurement">Edit entry</string>
+    <string name="delete_measurement">Delete this entry?</string>
+    <string name="delete_measurement_confirm">The measurement is removed from your body log.</string>
+    <string name="session_deleted">Workout deleted</string>
+    <string name="measurement_deleted">Entry deleted</string>
+    <string name="delete_exercise">Delete this exercise?</string>
+    <string name="delete_exercise_confirm">%1$s and every set ever logged for it are removed. This cannot be undone.</string>
+    <string name="search_settings">Search settings</string>
+    <string name="section_appearance">Appearance and language</string>
+    <string name="section_workout">During a workout</string>
+    <string name="show_last_session_values">Show last session on each set</string>
+    <string name="show_last_session_values_hint">A set row also shows what you lifted for that set last time, so you know what you are beating.</string>
+    <string name="plate_calculator">Plate calculator</string>
+    <string name="plate_calculator_hint">For barbell exercises, the set you are on shows which discs go on each side.</string>
+    <string name="bar_weight">Bar weight (%1$s)</string>
+    <string name="warmup_generator">Warm-up set generator</string>
+    <string name="warmup_generator_hint">Adds \"Add warm-up sets\" to the exercise menu during a workout, building a ramp up to your first working set.</string>
+    <string name="warmup_set_count">Warm-up sets to generate</string>
+    <string name="haptic_feedback">Vibrate on completed sets</string>
+    <string name="haptic_feedback_hint">A short buzz when you finish a set or hit a personal record, so you know it registered without looking.</string>
+    <string name="confirm_exit_workout">Ask before leaving a workout</string>
+    <string name="confirm_exit_workout_hint">Back during a running workout asks first. The session is never lost either way.</string>
+    <string name="clear_search">Clear the search</string>
+    <string name="filters">Filters</string>
+    <string name="filters_count">Filters · %1$d</string>
+    <string name="clear_filters">Clear filters</string>
+    <string name="no_exercises_match">No exercises match that search.</string>
+    <string name="no_exercises_match_filters">No exercises match the current search and filters.</string>
+    <string name="leave_workout">Leave the workout?</string>
+    <string name="leave_workout_body">The session stays open — you can pick it up again from the Session tab or the home screen.</string>
+    <string name="leave">Leave</string>
+    <string name="stay">Stay</string>
+    <string name="last_session_set">Last: %1$s × %2$d</string>
+    <string name="plates_per_side">Per side: %s</string>
+    <string name="plates_per_side_approx">Per side: %s + a bit</string>
+    <string name="plates_bar_only">Bar only</string>
+    <string name="add_warmup_sets">Add warm-up sets</string>
+    <string name="warmup_needs_working_set">Needs a working set with a load to ramp up to.</string>
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
@@ -400,7 +444,6 @@
     <string name="body_metrics">Body metrics</string>
     <string name="log_body_weight">Log body weight</string>
     <string name="body_weight">Body weight</string>
-    <string name="body_weight_over_time">Body weight over time</string>
     <string name="waist">Waist</string>
     <string name="chest_measure">Chest</string>
     <string name="arms">Arms</string>
@@ -507,114 +550,344 @@
         <item>Today is a great day to lift something heavy!</item>
         <item>Look at you, showing up again. Love it!</item>
         <item>Your future self is already thanking you.</item>
+        <item>Ready to make today count? Let\'s go!</item>
+        <item>Every rep you do today is one your excuses don\'t get.</item>
+        <item>You don\'t have to be perfect — you just have to be here.</item>
+        <item>Somewhere in there is a set that will surprise you.</item>
+        <item>Nobody ever regretted the workout they actually did.</item>
+        <item>Big or small, today\'s session counts.</item>
+        <item>The bar has been waiting for you all day!</item>
+        <item>Let\'s turn a decent day into a great one.</item>
+        <item>You\'ve done hard things before. Here\'s another one.</item>
+        <item>Show up, warm up, and the rest follows.</item>
+        <item>Strong is built on days exactly like this one.</item>
+        <item>No pressure today — just progress.</item>
+        <item>Whatever kind of day it\'s been, this part is yours.</item>
     </string-array>
     <string-array name="coach_bro_home">
         <item>Time to move some iron, brother.</item>
         <item>The gym misses you. Let\'s go.</item>
         <item>Light weight, baby. Let\'s get after it.</item>
+        <item>Iron doesn\'t lie, bro. Go find out.</item>
+        <item>Nobody ever got jacked from the couch.</item>
+        <item>The rack\'s calling. Answer it.</item>
+        <item>Today we feed the machine, bro.</item>
+        <item>Warm up, then get serious.</item>
+        <item>Big day. Big lifts. Let\'s move.</item>
+        <item>You know what time it is.</item>
+        <item>Pre-workout is optional. Showing up isn\'t.</item>
+        <item>Time to make the weights regret it.</item>
+        <item>Let\'s put in the work, bro.</item>
+        <item>Gains don\'t happen in the parking lot. Get inside.</item>
+        <item>Same bar, same you, more weight. Simple.</item>
+        <item>Every legend started with a session like this one.</item>
     </string-array>
     <string-array name="coach_pt_home">
         <item>Consistency beats intensity. One good session at a time.</item>
         <item>Warm up properly and the rest takes care of itself.</item>
         <item>Small progress, repeated, is how this works.</item>
+        <item>Aim for quality reps today; volume follows technique.</item>
+        <item>Decide your first working weight before you start.</item>
+        <item>A short session done well beats a long one rushed.</item>
+        <item>Sleep and food set the ceiling; training sets the direction.</item>
+        <item>Leave one or two reps in reserve on most sets.</item>
+        <item>Progressive overload only works if you record it. You do.</item>
+        <item>Train the plan, not your mood.</item>
+        <item>If something hurts sharply, swap the movement rather than push through.</item>
+        <item>Control the lowering phase — that is where much of the stimulus lives.</item>
+        <item>Drink something before you start; performance drops before thirst does.</item>
+        <item>Today\'s goal: beat last session by a little, not by a lot.</item>
+        <item>Pick your hardest exercise first, while you are fresh.</item>
+        <item>Log honestly. The numbers are only useful if they are true.</item>
     </string-array>
     <string-array name="coach_minimal_home">
         <item>Ready when you are.</item>
         <item>Time to train.</item>
         <item>Let\'s begin.</item>
+        <item>Start.</item>
+        <item>Ready.</item>
+        <item>Your move.</item>
+        <item>Train.</item>
+        <item>Session pending.</item>
+        <item>Nothing missing but you.</item>
+        <item>Go.</item>
+        <item>Begin.</item>
+        <item>Standing by.</item>
     </string-array>
     <string-array name="coach_cheerleader_welcome_back">
         <item>Welcome back — so good to see you again! 🎉</item>
         <item>You showed up. That\'s the hardest part — let\'s go!</item>
         <item>Back at it! Today is going to be great!</item>
+        <item>There you are! The break is over and you\'re here.</item>
+        <item>Coming back is harder than never stopping. You did it!</item>
+        <item>Missed you! Let\'s ease in and enjoy this one.</item>
+        <item>A pause is not a failure — this is the comeback.</item>
+        <item>Day one again, and day one is always brave.</item>
+        <item>Welcome back! Start light, finish proud.</item>
+        <item>Today\'s heaviest lift was getting through the door. Done!</item>
     </string-array>
     <string-array name="coach_cheerleader_pr_chance">
         <item>Hit the target now and it\'s a new PR — you\'ve got this!</item>
         <item>PR within reach! Give it everything!</item>
+        <item>This is the one. Set up, breathe, go!</item>
+        <item>A record is sitting right there. Take it!</item>
+        <item>You\'ve been building to this set. Own it!</item>
+        <item>One good rep away from something brand new!</item>
+        <item>Tight brace, big effort — PR time!</item>
+        <item>If it goes up, it\'s history. Send it!</item>
+        <item>Believe the numbers — you\'re ready for this.</item>
+        <item>New best incoming. I can feel it!</item>
     </string-array>
     <string-array name="coach_cheerleader_idle">
         <item>Shake it off — next set is waiting for you!</item>
         <item>You\'ve rested plenty — time to shine!</item>
+        <item>Still with me? The next set misses you!</item>
+        <item>Great rest. Now let\'s use it!</item>
+        <item>Momentum loves you. Let\'s keep it!</item>
+        <item>Deep breath, grab the bar, back to work!</item>
+        <item>That was a proper break — go get the next one!</item>
+        <item>The hard part is starting again. So start!</item>
+        <item>One more set and you\'re closer than you were.</item>
+        <item>Ready when you are — and you look ready!</item>
     </string-array>
     <string-array name="coach_cheerleader_last_exercise">
         <item>Last exercise — finish strong, superstar!</item>
         <item>One more to go — you\'re amazing!</item>
+        <item>Home stretch! Make it count!</item>
+        <item>Final one. Leave a good memory here!</item>
+        <item>This is the part you\'ll be proud of later.</item>
+        <item>Almost done — quality over speed!</item>
+        <item>Last exercise, best exercise. Go!</item>
+        <item>Finish the way you started: brilliantly.</item>
+        <item>One left. You\'ve already won the day.</item>
+        <item>End on a high note — you deserve it!</item>
     </string-array>
     <string-array name="coach_cheerleader_session_done">
         <item>Workout done — you\'re a rock star! ⭐</item>
         <item>Amazing session! Be proud of yourself!</item>
+        <item>That\'s another one in the bank. Fantastic!</item>
+        <item>You showed up and delivered. Love to see it!</item>
+        <item>Session complete — go enjoy the rest of your day!</item>
+        <item>Done and dusted. That was great work!</item>
+        <item>Future you is grinning right now.</item>
+        <item>Beautiful work today. Rest up!</item>
+        <item>That\'s how it\'s done! See you next time!</item>
+        <item>Logged, done, earned. Well played!</item>
     </string-array>
     <string-array name="coach_cheerleader_streak">
         <item>Another consistent week — the streak lives on!</item>
+        <item>Week after week, you keep showing up. Incredible!</item>
+        <item>The streak is alive and so are you!</item>
+        <item>Consistency looks good on you!</item>
+        <item>Another week in the books — unstoppable!</item>
+        <item>This streak is turning into a habit. Amazing!</item>
+        <item>You\'re building something real here. Keep going!</item>
+        <item>Still going strong — the streak says it all!</item>
     </string-array>
 
     <!-- Coach: Bro -->
     <string-array name="coach_bro_welcome_back">
         <item>Yo, look who\'s back in the iron temple!</item>
         <item>The scrap misses you no more — let\'s move some weight, bro.</item>
+        <item>Rest week\'s over, bro. Time to eat some iron.</item>
+        <item>Look who remembered where the gym is.</item>
+        <item>Muscle memory is real, bro. Let\'s wake it up.</item>
+        <item>Back from the dead. Start light, build it back.</item>
+        <item>The bar didn\'t move while you were gone. Fix that.</item>
+        <item>Deload\'s over. Welcome home, bro.</item>
+        <item>Comeback season. Let\'s write chapter one.</item>
+        <item>Missed a few, so what. Today counts.</item>
     </string-array>
     <string-array name="coach_bro_pr_chance">
         <item>Hit the target and it\'s a PR, bro. Send it.</item>
         <item>PR on the bar. No guts no glory.</item>
+        <item>This set has your name on it. Take it.</item>
+        <item>Records are made to be broken, bro. Break yours.</item>
+        <item>Brace hard, blank mind, move weight.</item>
+        <item>This is the rep you\'ll tell people about.</item>
+        <item>Grip it and rip it, bro.</item>
+        <item>All gas, no brakes. PR time.</item>
+        <item>The numbers say yes. Go prove it.</item>
+        <item>Don\'t think. Lift.</item>
     </string-array>
     <string-array name="coach_bro_idle">
         <item>Bro, the weights aren\'t gonna lift themselves.</item>
         <item>Less scrolling, more lifting.</item>
+        <item>That\'s a long rest, bro. Powerlifter rest, hypertrophy weight.</item>
+        <item>Still here? The bar\'s getting cold.</item>
+        <item>Rest\'s over, bro. Back to work.</item>
+        <item>Enough recovery. Go earn some more.</item>
+        <item>You resting or retiring, bro?</item>
+        <item>Phone down. Bar up.</item>
+        <item>Blood\'s cooling off, bro. Next set.</item>
+        <item>The window\'s open. Climb through it.</item>
     </string-array>
     <string-array name="coach_bro_last_exercise">
         <item>Last one, bro — empty the tank.</item>
         <item>Final exercise. Leave nothing.</item>
+        <item>Home stretch, bro. Send it.</item>
+        <item>One left. Make it hurt the good way.</item>
+        <item>Finish it, then go eat.</item>
+        <item>Last exercise. No half reps, bro.</item>
+        <item>Close it out clean.</item>
+        <item>Nothing left in the tank when you walk out.</item>
+        <item>Last stop. Get loud.</item>
+        <item>One more and it\'s protein o\'clock.</item>
     </string-array>
     <string-array name="coach_bro_session_done">
         <item>Solid session, bro. Gains incoming.</item>
         <item>Done. Now eat.</item>
+        <item>That\'s the work, bro. Recovery starts now.</item>
+        <item>Logged and loaded. Good stuff.</item>
+        <item>Iron moved, box ticked. Nice one, bro.</item>
+        <item>Another deposit in the gains account.</item>
+        <item>Session\'s done. The protein isn\'t.</item>
+        <item>Good work, bro. Sleep is the real supplement.</item>
+        <item>You showed up and paid the toll. Respect.</item>
+        <item>Out of the gym, into the kitchen. Go.</item>
     </string-array>
     <string-array name="coach_bro_streak">
         <item>Week after week. That\'s how it\'s done, bro.</item>
+        <item>Consistency, bro. That\'s the whole secret.</item>
+        <item>Streak\'s alive. Don\'t be the one who breaks it.</item>
+        <item>You keep turning up. That\'s elite, bro.</item>
+        <item>Another week down. The iron respects that.</item>
+        <item>This is the boring part that actually works.</item>
+        <item>Streak intact, bro. Keep stacking weeks.</item>
+        <item>Nobody\'s out-working you right now.</item>
     </string-array>
 
     <!-- Coach: PT -->
     <string-array name="coach_pt_welcome_back">
         <item>Good to have you back. Start light and rebuild gradually.</item>
         <item>After a break, technique first — the load will follow.</item>
+        <item>Expect roughly 10 to 20 percent off your previous loads for a session or two.</item>
+        <item>Reduce volume this week, then return to normal. Soreness settles faster that way.</item>
+        <item>Strength returns quickly after a layoff. Be patient with the first sessions.</item>
+        <item>Aim to finish this session feeling like you could have done more.</item>
+        <item>Rebuild the habit first, the numbers second.</item>
+        <item>Add a couple of warmup sets today; joints appreciate the notice.</item>
+        <item>Half a session is a complete restart. Don\'t overreach.</item>
+        <item>Consistency from here matters more than what you lost.</item>
     </string-array>
     <string-array name="coach_pt_pr_chance">
         <item>Reaching the target here would set a new personal record.</item>
         <item>A PR is within reach this set. Focus on form.</item>
+        <item>Record attempt: set up deliberately and keep the bar path honest.</item>
+        <item>If the first rep is slow, stop the set. A grind is not worth a miss.</item>
+        <item>Take a longer rest before this one; readiness beats enthusiasm.</item>
+        <item>Breathe, brace, then move. Same technique, more weight.</item>
+        <item>New territory this set. Keep the tempo you trained with.</item>
+        <item>A PR counts only if the rep is clean. Make it clean.</item>
+        <item>Have your cue ready before you unrack.</item>
+        <item>Good day to test it. Nothing to lose by trying.</item>
     </string-array>
     <string-array name="coach_pt_idle">
         <item>Long rest detected. Refocus and continue when ready.</item>
         <item>Rest complete — maintain intensity for best results.</item>
+        <item>Rest beyond about three minutes adds little for hypertrophy work.</item>
+        <item>Long breaks cool the muscles down. Consider a light warmup rep.</item>
+        <item>Still resting? Strength work benefits from it; hypertrophy work less so.</item>
+        <item>Set a target rest time and keep it consistent between sets.</item>
+        <item>Resting this long may mean the load is too heavy for the rep target.</item>
+        <item>Session length affects adherence. Keep the pace up.</item>
+        <item>Ready to continue? The quality of the next set is what matters.</item>
+        <item>Use the rest deliberately, not accidentally.</item>
     </string-array>
     <string-array name="coach_pt_last_exercise">
         <item>Last exercise of the session. Keep quality high.</item>
+        <item>Final movement. Don\'t let form drop because you are nearly finished.</item>
+        <item>Fatigue is highest now; reduce the load rather than the standard.</item>
+        <item>Finish with the same technique you started with.</item>
+        <item>Last exercise. Stop a rep short if the form changes.</item>
+        <item>End the session in control, not in failure.</item>
+        <item>One movement left. Make the reps count, not the clock.</item>
+        <item>Accessory work still deserves attention. Finish properly.</item>
+        <item>Last exercise — then log it and let recovery begin.</item>
+        <item>Close the session deliberately; that is what you will repeat next time.</item>
     </string-array>
     <string-array name="coach_pt_session_done">
         <item>Session complete. Prioritize protein and sleep for recovery.</item>
         <item>Well executed. Recovery starts now.</item>
+        <item>Logged. Aim for 1.6 to 2.2 g of protein per kg of bodyweight today.</item>
+        <item>Good work. A short walk now helps with next-day soreness.</item>
+        <item>Done. The adaptation happens over the next 48 hours — sleep is the lever.</item>
+        <item>Session finished. Note anything that felt off while it is still fresh.</item>
+        <item>Complete. Eat a proper meal within a couple of hours.</item>
+        <item>Good session. Consistency over the next two weeks is what compounds.</item>
+        <item>That is the work done. Recovery is now the training.</item>
+        <item>Finished. Review the log later and set next session\'s targets.</item>
     </string-array>
     <string-array name="coach_pt_streak">
         <item>Consistent training weeks are the strongest predictor of progress. Keep it up.</item>
+        <item>Regular frequency beats occasional intensity over a year.</item>
+        <item>Adherence is the variable most lifters get wrong. Yours is fine.</item>
+        <item>Weekly consistency maintained. That is the hard part solved.</item>
+        <item>Keep this frequency and the loads will take care of themselves.</item>
+        <item>A sustained streak means the program fits your life. Good sign.</item>
+        <item>Missing one session is fine; missing the habit is not. Habit intact.</item>
+        <item>Steady weeks accumulate into visible change. Continue.</item>
     </string-array>
 
     <!-- Coach: Minimal -->
     <string-array name="coach_minimal_welcome_back">
         <item>Back.</item>
         <item>Resume.</item>
+        <item>Restart.</item>
+        <item>Again.</item>
+        <item>Long pause. Resume.</item>
+        <item>Continue.</item>
+        <item>Welcome back.</item>
+        <item>Reset and go.</item>
     </string-array>
     <string-array name="coach_minimal_pr_chance">
         <item>PR possible.</item>
+        <item>Record in range.</item>
+        <item>New best available.</item>
+        <item>PR set.</item>
+        <item>This one counts.</item>
+        <item>Target equals record.</item>
+        <item>Best ever, if you hit it.</item>
+        <item>Record attempt.</item>
     </string-array>
     <string-array name="coach_minimal_idle">
         <item>Continue.</item>
+        <item>Next set.</item>
+        <item>Rested.</item>
+        <item>Resume.</item>
+        <item>Still paused.</item>
+        <item>Long rest.</item>
+        <item>Ready.</item>
+        <item>Go.</item>
     </string-array>
     <string-array name="coach_minimal_last_exercise">
         <item>Last one.</item>
+        <item>Final exercise.</item>
+        <item>One left.</item>
+        <item>Last movement.</item>
+        <item>Finish.</item>
+        <item>Nearly done.</item>
+        <item>End in sight.</item>
+        <item>One exercise remaining.</item>
     </string-array>
     <string-array name="coach_minimal_session_done">
         <item>Done.</item>
+        <item>Logged.</item>
+        <item>Complete.</item>
+        <item>Finished.</item>
+        <item>Session closed.</item>
+        <item>That\'s it.</item>
+        <item>Saved.</item>
+        <item>Good.</item>
     </string-array>
     <string-array name="coach_minimal_streak">
         <item>Streak intact.</item>
+        <item>Week logged.</item>
+        <item>Consistent.</item>
+        <item>Streak continues.</item>
+        <item>Another week.</item>
+        <item>Unbroken.</item>
+        <item>Still going.</item>
+        <item>On track.</item>
     </string-array>
 </resources>

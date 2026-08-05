@@ -190,6 +190,50 @@
     <string name="discard">Släng</string>
     <string name="discard_workout">Släng passet</string>
     <string name="discard_workout_warning">Detta tar bort passet och allt som loggats i det.</string>
+    <string name="pause_timer">Pausa vilotimern</string>
+    <string name="resume_timer">Återuppta vilotimern</string>
+    <string name="stats_nothing_in_range">Inget loggat i den här perioden än. Välj en längre period, eller logga ett pass.</string>
+    <string name="history_with_count">Historik · %1$d pass</string>
+    <string name="show_more_count">Visa %1$d till</string>
+    <string name="measurements_over_time">Mått över tid</string>
+    <string name="edit_measurement">Redigera post</string>
+    <string name="delete_measurement">Ta bort posten?</string>
+    <string name="delete_measurement_confirm">Mätvärdet tas bort ur din kroppslogg.</string>
+    <string name="session_deleted">Passet borttaget</string>
+    <string name="measurement_deleted">Posten borttagen</string>
+    <string name="delete_exercise">Ta bort övningen?</string>
+    <string name="delete_exercise_confirm">%1$s och alla set som någonsin loggats för den tas bort. Det går inte att ångra.</string>
+    <string name="search_settings">Sök inställningar</string>
+    <string name="section_appearance">Utseende och språk</string>
+    <string name="section_workout">Under ett pass</string>
+    <string name="show_last_session_values">Visa förra passet på varje set</string>
+    <string name="show_last_session_values_hint">Setraden visar även vad du lyfte på samma set förra gången, så du vet vad du ska slå.</string>
+    <string name="plate_calculator">Viktskivekalkylator</string>
+    <string name="plate_calculator_hint">För skivstångsövningar visar setet du står på vilka skivor som ska sitta på varje sida.</string>
+    <string name="bar_weight">Stångens vikt (%1$s)</string>
+    <string name="warmup_generator">Generator för uppvärmningsset</string>
+    <string name="warmup_generator_hint">Lägger till \"Lägg till uppvärmningsset\" i övningsmenyn under passet, som trappar upp till ditt första arbetsset.</string>
+    <string name="warmup_set_count">Antal uppvärmningsset att skapa</string>
+    <string name="haptic_feedback">Vibrera vid slutfört set</string>
+    <string name="haptic_feedback_hint">En kort vibration när du avslutar ett set eller slår ett personbästa, så du vet att det registrerades utan att titta.</string>
+    <string name="confirm_exit_workout">Fråga innan du lämnar ett pass</string>
+    <string name="confirm_exit_workout_hint">Bakåt under ett pågående pass frågar först. Passet går aldrig förlorat oavsett.</string>
+    <string name="clear_search">Rensa sökningen</string>
+    <string name="filters">Filter</string>
+    <string name="filters_count">Filter · %1$d</string>
+    <string name="clear_filters">Rensa filter</string>
+    <string name="no_exercises_match">Inga övningar matchar sökningen.</string>
+    <string name="no_exercises_match_filters">Inga övningar matchar sökningen och filtren.</string>
+    <string name="leave_workout">Lämna passet?</string>
+    <string name="leave_workout_body">Passet ligger kvar öppet — du kan fortsätta det från fliken Pass eller från startskärmen.</string>
+    <string name="leave">Lämna</string>
+    <string name="stay">Stanna</string>
+    <string name="last_session_set">Förra: %1$s × %2$d</string>
+    <string name="plates_per_side">Per sida: %s</string>
+    <string name="plates_per_side_approx">Per sida: %s + lite till</string>
+    <string name="plates_bar_only">Bara stången</string>
+    <string name="add_warmup_sets">Lägg till uppvärmningsset</string>
+    <string name="warmup_needs_working_set">Kräver ett arbetsset med en vikt att trappa upp till.</string>
     <string name="add_set">+ Set</string>
     <string name="add_drop_set">+ Drop set</string>
     <string name="remove_set_button">− Set</string>
@@ -398,7 +442,6 @@
     <string name="body_metrics">Kroppsmått</string>
     <string name="log_body_weight">Logga kroppsvikt</string>
     <string name="body_weight">Kroppsvikt</string>
-    <string name="body_weight_over_time">Kroppsvikt över tid</string>
     <string name="waist">Midja</string>
     <string name="chest_measure">Bröstkorg</string>
     <string name="arms">Armar</string>
@@ -505,114 +548,344 @@
         <item>I dag är en perfekt dag att lyfta något tungt!</item>
         <item>Kolla, du är här igen. Älskar det!</item>
         <item>Ditt framtida jag tackar dig redan.</item>
+        <item>Redo att göra dagen värd något? Kör!</item>
+        <item>Varje rep du gör i dag är ett som ursäkterna inte får.</item>
+        <item>Du behöver inte vara perfekt — bara vara här.</item>
+        <item>Någonstans där inne finns ett set som överraskar dig.</item>
+        <item>Ingen har ångrat passet de faktiskt körde.</item>
+        <item>Stort eller litet — dagens pass räknas.</item>
+        <item>Stången har väntat på dig hela dagen!</item>
+        <item>Nu gör vi en helt okej dag till en riktigt bra.</item>
+        <item>Du har klarat svåra saker förut. Här kommer en till.</item>
+        <item>Dyk upp, värm upp — resten löser sig.</item>
+        <item>Stark byggs på dagar precis som den här.</item>
+        <item>Ingen press i dag — bara framsteg.</item>
+        <item>Vad än dagen har bjudit på är den här delen din.</item>
     </string-array>
     <string-array name="coach_bro_home">
         <item>Dags att flytta lite järn, brorsan.</item>
         <item>Gymmet saknar dig. Kör.</item>
         <item>Lätt vikt, baby. Nu kör vi.</item>
+        <item>Järnet ljuger inte, bror. Gå och kolla.</item>
+        <item>Ingen har blivit stor i soffan.</item>
+        <item>Stället ropar. Svara.</item>
+        <item>I dag matar vi maskinen, bror.</item>
+        <item>Värm upp, sen blir det allvar.</item>
+        <item>Stor dag. Tunga lyft. Nu kör vi.</item>
+        <item>Du vet vad klockan är slagen.</item>
+        <item>PWO är valfritt. Att dyka upp är det inte.</item>
+        <item>Dags att få vikterna att ångra sig.</item>
+        <item>Nu jobbar vi, bror.</item>
+        <item>Gains händer inte på parkeringen. In med dig.</item>
+        <item>Samma stång, samma du, mer vikt. Enkelt.</item>
+        <item>Varje legend började med ett pass precis som det här.</item>
     </string-array>
     <string-array name="coach_pt_home">
         <item>Kontinuitet slår intensitet. Ett bra pass i taget.</item>
         <item>Värm upp ordentligt så sköter resten sig självt.</item>
         <item>Små framsteg, upprepade, är hela grejen.</item>
+        <item>Sikta på kvalitetsreps i dag; volymen följer tekniken.</item>
+        <item>Bestäm din första arbetsvikt innan du börjar.</item>
+        <item>Ett kort pass gjort ordentligt slår ett långt som stressas igenom.</item>
+        <item>Sömn och mat sätter taket; träningen sätter riktningen.</item>
+        <item>Lämna ett par reps i tanken på de flesta set.</item>
+        <item>Progressiv överbelastning kräver att du för logg. Det gör du.</item>
+        <item>Träna planen, inte humöret.</item>
+        <item>Gör det skarpt ont — byt övning i stället för att pressa på.</item>
+        <item>Kontrollera den sänkande fasen; där finns mycket av stimulit.</item>
+        <item>Drick något innan du börjar; prestationen sjunker före törsten.</item>
+        <item>Dagens mål: slå förra passet lite, inte mycket.</item>
+        <item>Ta din tyngsta övning först, medan du är pigg.</item>
+        <item>För logg ärligt. Siffrorna är bara användbara om de stämmer.</item>
     </string-array>
     <string-array name="coach_minimal_home">
         <item>Redo när du är.</item>
         <item>Dags att träna.</item>
         <item>Nu kör vi.</item>
+        <item>Starta.</item>
+        <item>Redo.</item>
+        <item>Din tur.</item>
+        <item>Träna.</item>
+        <item>Pass väntar.</item>
+        <item>Bara du saknas.</item>
+        <item>Kör.</item>
+        <item>Börja.</item>
+        <item>Står redo.</item>
     </string-array>
     <string-array name="coach_cheerleader_welcome_back">
         <item>Välkommen tillbaka — vad kul att se dig igen! 🎉</item>
         <item>Du dök upp. Det är det svåraste — nu kör vi!</item>
         <item>Tillbaka igen! Idag blir en toppendag!</item>
+        <item>Där är du ju! Uppehållet är över.</item>
+        <item>Att komma tillbaka är svårare än att aldrig sluta. Du fixade det!</item>
+        <item>Har saknat dig! Vi tar det lugnt och njuter av det här.</item>
+        <item>En paus är inget misslyckande — det här är comebacken.</item>
+        <item>Dag ett igen, och dag ett är alltid modigt.</item>
+        <item>Välkommen tillbaka! Börja lätt, sluta stolt.</item>
+        <item>Dagens tyngsta lyft var att ta sig in genom dörren. Klart!</item>
     </string-array>
     <string-array name="coach_cheerleader_pr_chance">
         <item>Nå målet nu så är det nytt personbästa — du fixar det!</item>
         <item>PB inom räckhåll! Ge allt!</item>
+        <item>Det här är det. Ställ upp, andas, kör!</item>
+        <item>Ett rekord ligger och väntar. Ta det!</item>
+        <item>Du har byggt upp till det här setet. Äg det!</item>
+        <item>Ett bra rep från något helt nytt!</item>
+        <item>Spänn hårt, kör hårt — dags för PB!</item>
+        <item>Går den upp är den historia. Kör!</item>
+        <item>Lita på siffrorna — du är redo.</item>
+        <item>Nytt bästa på väg. Jag känner det!</item>
     </string-array>
     <string-array name="coach_cheerleader_idle">
         <item>Skaka loss — nästa set väntar på dig!</item>
         <item>Du har vilat klart — dags att glänsa!</item>
+        <item>Är du kvar? Nästa set saknar dig!</item>
+        <item>Skön vila. Nu använder vi den!</item>
+        <item>Farten gillar dig. Håll den uppe!</item>
+        <item>Djupt andetag, ta tag i stången, tillbaka till jobbet!</item>
+        <item>Det där var en ordentlig paus — hämta nästa set!</item>
+        <item>Det svåra är att börja om. Så börja!</item>
+        <item>Ett set till och du är närmare än förut.</item>
+        <item>Redo när du är — och du ser redo ut!</item>
     </string-array>
     <string-array name="coach_cheerleader_last_exercise">
         <item>Sista övningen — avsluta starkt, superstjärna!</item>
         <item>En kvar — du är fantastisk!</item>
+        <item>Upploppet! Se till att det räknas!</item>
+        <item>Sista. Lämna ett bra minne här!</item>
+        <item>Det här är delen du kommer vara stolt över sen.</item>
+        <item>Nästan klar — kvalitet före fart!</item>
+        <item>Sista övningen, bästa övningen. Kör!</item>
+        <item>Avsluta som du började: lysande.</item>
+        <item>En kvar. Du har redan vunnit dagen.</item>
+        <item>Sluta på topp — du förtjänar det!</item>
     </string-array>
     <string-array name="coach_cheerleader_session_done">
         <item>Passet klart — du är en stjärna! ⭐</item>
         <item>Grymt pass! Var stolt över dig själv!</item>
+        <item>Ännu ett i banken. Fantastiskt!</item>
+        <item>Du dök upp och levererade. Härligt!</item>
+        <item>Passet klart — njut av resten av dagen!</item>
+        <item>Klart och avklarat. Det där var bra jobbat!</item>
+        <item>Ditt framtida jag ler just nu.</item>
+        <item>Fint jobbat i dag. Vila upp dig!</item>
+        <item>Så ska det se ut! Vi ses nästa gång!</item>
+        <item>Loggat, klart, förtjänat. Snyggt!</item>
     </string-array>
     <string-array name="coach_cheerleader_streak">
         <item>Ännu en jämn vecka — sviten lever!</item>
+        <item>Vecka efter vecka dyker du upp. Otroligt!</item>
+        <item>Sviten lever och det gör du också!</item>
+        <item>Kontinuitet klär dig!</item>
+        <item>Ännu en vecka i boken — ostoppbar!</item>
+        <item>Den här sviten börjar bli en vana. Härligt!</item>
+        <item>Du bygger något på riktigt här. Fortsätt!</item>
+        <item>Fortfarande igång — sviten säger allt!</item>
     </string-array>
 
     <!-- Coach: Brorsan -->
     <string-array name="coach_bro_welcome_back">
         <item>Tja, kolla vem som är tillbaka i järntemplet!</item>
         <item>Skroten har saknat dig — nu flyttar vi vikt, bror.</item>
+        <item>Vilveckan är över, bror. Dags att äta järn.</item>
+        <item>Kolla vem som kom ihåg var gymmet låg.</item>
+        <item>Muskelminne är på riktigt, bror. Väck det.</item>
+        <item>Tillbaka från de döda. Börja lätt, bygg upp igen.</item>
+        <item>Stången rörde sig inte medan du var borta. Fixa det.</item>
+        <item>Deloaden är över. Välkommen hem, bror.</item>
+        <item>Comeback-säsong. Nu skriver vi kapitel ett.</item>
+        <item>Missade några pass, so what. I dag räknas.</item>
     </string-array>
     <string-array name="coach_bro_pr_chance">
         <item>Nå målet så är det PB, bror. Kör.</item>
         <item>PB på stången. Inget vågat, inget vunnet.</item>
+        <item>Det här setet har ditt namn på sig. Ta det.</item>
+        <item>Rekord finns för att slås, bror. Slå ditt.</item>
+        <item>Spänn hårt, tänk inget, flytta vikt.</item>
+        <item>Det här är repet du kommer berätta om.</item>
+        <item>Ta tag och kör, bror.</item>
+        <item>All gas, inga bromsar. Dags för PB.</item>
+        <item>Siffrorna säger ja. Gå och bevisa det.</item>
+        <item>Tänk inte. Lyft.</item>
     </string-array>
     <string-array name="coach_bro_idle">
         <item>Bror, vikterna lyfter inte sig själva.</item>
         <item>Mindre skrollande, mer lyftande.</item>
+        <item>Det där var lång vila, bror. Styrkelyftarvila på hypertrofivikt.</item>
+        <item>Är du kvar? Stången börjar bli kall.</item>
+        <item>Vilan är slut, bror. Tillbaka till jobbet.</item>
+        <item>Nog återhämtat. Gå och förtjäna mer.</item>
+        <item>Vilar du eller lägger du av, bror?</item>
+        <item>Ner med telefonen. Upp med stången.</item>
+        <item>Blodet svalnar, bror. Nästa set.</item>
+        <item>Fönstret är öppet. Klättra in.</item>
     </string-array>
     <string-array name="coach_bro_last_exercise">
         <item>Sista, bror — töm tanken.</item>
         <item>Sista övningen. Lämna inget kvar.</item>
+        <item>Upploppet, bror. Kör.</item>
+        <item>En kvar. Se till att det svider på rätt sätt.</item>
+        <item>Avsluta, sen är det mat.</item>
+        <item>Sista övningen. Inga halva reps, bror.</item>
+        <item>Stäng till det snyggt.</item>
+        <item>Ingenting kvar i tanken när du går ut.</item>
+        <item>Sista stoppet. Höj volymen.</item>
+        <item>En till, sen är det proteindags.</item>
     </string-array>
     <string-array name="coach_bro_session_done">
         <item>Stabilt pass, bror. Gains på väg.</item>
         <item>Klart. Ät nu.</item>
+        <item>Det där var jobbet, bror. Nu börjar återhämtningen.</item>
+        <item>Loggat och klart. Bra grejer.</item>
+        <item>Järn flyttat, ruta ikryssad. Snyggt, bror.</item>
+        <item>Ännu en insättning på gains-kontot.</item>
+        <item>Passet är klart. Proteinet är det inte.</item>
+        <item>Bra jobbat, bror. Sömn är det riktiga tillskottet.</item>
+        <item>Du dök upp och betalade priset. Respekt.</item>
+        <item>Ut ur gymmet, in i köket. Kör.</item>
     </string-array>
     <string-array name="coach_bro_streak">
         <item>Vecka efter vecka. Så ska det se ut, bror.</item>
+        <item>Kontinuitet, bror. Det är hela hemligheten.</item>
+        <item>Sviten lever. Var inte den som bryter den.</item>
+        <item>Du fortsätter dyka upp. Det är elit, bror.</item>
+        <item>Ännu en vecka avklarad. Järnet respekterar det.</item>
+        <item>Det här är den tråkiga delen som faktiskt funkar.</item>
+        <item>Sviten är intakt, bror. Fortsätt stapla veckor.</item>
+        <item>Ingen jobbar hårdare än du just nu.</item>
     </string-array>
 
     <!-- Coach: PT -->
     <string-array name="coach_pt_welcome_back">
         <item>Kul att ha dig tillbaka. Börja lätt och bygg upp gradvis.</item>
         <item>Efter ett uppehåll: teknik först — vikten kommer sen.</item>
+        <item>Räkna med 10 till 20 procent lägre vikter de första passen.</item>
+        <item>Dra ner volymen den här veckan och gå tillbaka till normalt sen. Träningsvärken lägger sig snabbare så.</item>
+        <item>Styrkan kommer tillbaka snabbt efter ett uppehåll. Ha tålamod med de första passen.</item>
+        <item>Sikta på att avsluta passet med känslan att du kunde gjort mer.</item>
+        <item>Bygg tillbaka vanan först, siffrorna sen.</item>
+        <item>Lägg till ett par uppvärmningsset i dag; lederna uppskattar förvarningen.</item>
+        <item>Ett halvt pass är en hel omstart. Ta i lagom.</item>
+        <item>Kontinuiteten härifrån betyder mer än vad du tappade.</item>
     </string-array>
     <string-array name="coach_pt_pr_chance">
         <item>Att nå målet här skulle innebära ett nytt personbästa.</item>
         <item>PB inom räckhåll detta set. Fokusera på tekniken.</item>
+        <item>Rekordförsök: ställ upp noggrant och håll stångbanan ärlig.</item>
+        <item>Går första repet segt — avbryt setet. En kamp är inte värd en miss.</item>
+        <item>Ta längre vila före det här; beredskap slår entusiasm.</item>
+        <item>Andas, spänn, lyft. Samma teknik, mer vikt.</item>
+        <item>Ny mark detta set. Håll samma tempo som du tränat in.</item>
+        <item>Ett PB räknas bara om repet är rent. Gör det rent.</item>
+        <item>Ha din tekniktanke klar innan du lyfter av.</item>
+        <item>Bra dag att testa. Inget att förlora på att försöka.</item>
     </string-array>
     <string-array name="coach_pt_idle">
         <item>Lång vila registrerad. Återfå fokus och fortsätt när du är redo.</item>
         <item>Vilan är klar — håll intensiteten uppe för bästa resultat.</item>
+        <item>Vila över cirka tre minuter ger lite extra för hypertrofiarbete.</item>
+        <item>Långa pauser kyler ner musklerna. Överväg ett lätt uppvärmningsrep.</item>
+        <item>Vilar du fortfarande? Styrkearbete mår bra av det, hypertrofi mindre.</item>
+        <item>Sätt en viltid och håll den lika mellan seten.</item>
+        <item>Vilar du så här länge kan vikten vara för tung för repmålet.</item>
+        <item>Passets längd påverkar följsamheten. Håll tempot uppe.</item>
+        <item>Redo att fortsätta? Det är nästa sets kvalitet som räknas.</item>
+        <item>Använd vilan medvetet, inte av misstag.</item>
     </string-array>
     <string-array name="coach_pt_last_exercise">
         <item>Passets sista övning. Håll kvaliteten hög.</item>
+        <item>Sista rörelsen. Låt inte tekniken falla bara för att du nästan är klar.</item>
+        <item>Tröttheten är som störst nu; sänk vikten hellre än kraven.</item>
+        <item>Avsluta med samma teknik som du började med.</item>
+        <item>Sista övningen. Sluta ett rep före om tekniken ändras.</item>
+        <item>Avsluta passet under kontroll, inte i utmattning.</item>
+        <item>En rörelse kvar. Låt repen räknas, inte klockan.</item>
+        <item>Assistansövningar förtjänar också fokus. Avsluta ordentligt.</item>
+        <item>Sista övningen — sen loggar du och låter återhämtningen börja.</item>
+        <item>Avsluta passet medvetet; det är det du upprepar nästa gång.</item>
     </string-array>
     <string-array name="coach_pt_session_done">
         <item>Passet slutfört. Prioritera protein och sömn för återhämtning.</item>
         <item>Bra genomfört. Återhämtningen börjar nu.</item>
+        <item>Loggat. Sikta på 1,6 till 2,2 g protein per kg kroppsvikt i dag.</item>
+        <item>Bra jobbat. En kort promenad nu minskar träningsvärken i morgon.</item>
+        <item>Klart. Anpassningen sker de närmaste 48 timmarna — sömnen är verktyget.</item>
+        <item>Passet är klart. Anteckna det som kändes konstigt medan det är färskt.</item>
+        <item>Slutfört. Ät ett ordentligt mål inom ett par timmar.</item>
+        <item>Bra pass. Kontinuiteten de kommande två veckorna är det som ger effekt.</item>
+        <item>Jobbet är gjort. Nu är återhämtningen träningen.</item>
+        <item>Färdigt. Läs loggen senare och sätt målen för nästa pass.</item>
     </string-array>
     <string-array name="coach_pt_streak">
         <item>Jämna träningsveckor är den starkaste indikatorn på framsteg. Fortsätt så.</item>
+        <item>Regelbunden frekvens slår enstaka intensitet över ett år.</item>
+        <item>Följsamheten är det de flesta missar. Din är i ordning.</item>
+        <item>Veckokontinuiteten är hållen. Då är det svåra löst.</item>
+        <item>Håll den här frekvensen så sköter vikterna sig själva.</item>
+        <item>En lång svit betyder att programmet passar ditt liv. Bra tecken.</item>
+        <item>Att missa ett pass är okej; att missa vanan är det inte. Vanan är intakt.</item>
+        <item>Jämna veckor blir till synlig förändring. Fortsätt.</item>
     </string-array>
 
     <!-- Coach: Minimal -->
     <string-array name="coach_minimal_welcome_back">
         <item>Tillbaka.</item>
         <item>Återuppta.</item>
+        <item>Börja om.</item>
+        <item>Igen.</item>
+        <item>Långt uppehåll. Återuppta.</item>
+        <item>Fortsätt.</item>
+        <item>Välkommen tillbaka.</item>
+        <item>Nollställ och kör.</item>
     </string-array>
     <string-array name="coach_minimal_pr_chance">
         <item>PB möjligt.</item>
+        <item>Rekord inom räckhåll.</item>
+        <item>Nytt bästa möjligt.</item>
+        <item>PB-läge.</item>
+        <item>Det här räknas.</item>
+        <item>Mål = rekord.</item>
+        <item>Bästa någonsin, om du når det.</item>
+        <item>Rekordförsök.</item>
     </string-array>
     <string-array name="coach_minimal_idle">
         <item>Fortsätt.</item>
+        <item>Nästa set.</item>
+        <item>Utvilad.</item>
+        <item>Återuppta.</item>
+        <item>Fortfarande paus.</item>
+        <item>Lång vila.</item>
+        <item>Redo.</item>
+        <item>Kör.</item>
     </string-array>
     <string-array name="coach_minimal_last_exercise">
         <item>Sista.</item>
+        <item>Sista övningen.</item>
+        <item>En kvar.</item>
+        <item>Sista rörelsen.</item>
+        <item>Avsluta.</item>
+        <item>Nästan klart.</item>
+        <item>Slutet är nära.</item>
+        <item>En övning kvar.</item>
     </string-array>
     <string-array name="coach_minimal_session_done">
         <item>Klart.</item>
+        <item>Loggat.</item>
+        <item>Slutfört.</item>
+        <item>Färdigt.</item>
+        <item>Passet stängt.</item>
+        <item>Det var det.</item>
+        <item>Sparat.</item>
+        <item>Bra.</item>
     </string-array>
     <string-array name="coach_minimal_streak">
         <item>Sviten håller.</item>
+        <item>Vecka loggad.</item>
+        <item>Jämnt.</item>
+        <item>Sviten fortsätter.</item>
+        <item>Ännu en vecka.</item>
+        <item>Obruten.</item>
+        <item>Fortfarande igång.</item>
+        <item>Enligt plan.</item>
     </string-array>
 </resources>

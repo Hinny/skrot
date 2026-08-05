@@ -2,6 +2,8 @@ package dev.hinny.skrot.ui.charts
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +32,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +45,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Chart style follows one system: a single hue per chart (identity comes from
@@ -84,7 +91,25 @@ fun LineChart(
         DateTimeFormatter.ofPattern(if (firstDate.year == lastDate.year) "d MMM" else "d MMM yyyy")
     }
 
+    // A rising line is only half an answer: tapping a point says what it was
+    // and when. Nothing selected reads out the latest point, so the row always
+    // says something and never jumps the layout around.
+    var selectedIndex by remember(sorted) { mutableStateOf<Int?>(null) }
+    val readoutIndex = selectedIndex?.coerceIn(sorted.indices) ?: sorted.lastIndex
+
     Column(modifier) {
+        val readout = sorted[readoutIndex]
+        Text(
+            text = "%s · %s".format(
+                Instant.ofEpochMilli(readout.first).atZone(zone).toLocalDate().format(dateFormat),
+                valueFormatter(readout.second),
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selectedIndex == null) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            modifier = Modifier.padding(bottom = 2.dp),
+        )
         Row(Modifier.fillMaxWidth()) {
             // Value axis: rows down the left edge, top = max, bottom = min.
             Column(
@@ -104,7 +129,18 @@ fun LineChart(
             Canvas(
                 Modifier
                     .weight(1f)
-                    .height(CHART_HEIGHT),
+                    .height(CHART_HEIGHT)
+                    .pointerInput(sorted) {
+                        detectTapGestures { tap ->
+                            val minX = sorted.first().first.toDouble()
+                            val spanX = (sorted.last().first.toDouble() - minX)
+                                .coerceAtLeast(1.0)
+                            selectedIndex = sorted.indices.minByOrNull { i ->
+                                val x = ((sorted[i].first - minX) / spanX * size.width).toFloat()
+                                abs(x - tap.x)
+                            }
+                        }
+                    },
             ) {
             val minX = sorted.first().first.toDouble()
             val maxX = sorted.last().first.toDouble()
@@ -131,6 +167,19 @@ fun LineChart(
             drawPath(path, lineColor, style = Stroke(width = 2.dp.toPx()))
             sorted.forEach { p ->
                 drawCircle(lineColor, radius = 4.dp.toPx() / 2, center = toOffset(p))
+            }
+
+            // The tapped point gets a guide line down to the axis and a ring, so
+            // it is obvious which one the readout above is talking about.
+            selectedIndex?.let { index ->
+                val marker = toOffset(sorted[index])
+                drawLine(
+                    lineColor.copy(alpha = 0.4f),
+                    Offset(marker.x, 0f),
+                    Offset(marker.x, size.height),
+                    strokeWidth = 1.dp.toPx(),
+                )
+                drawCircle(lineColor, radius = 5.dp.toPx(), center = marker, style = Stroke(2.dp.toPx()))
             }
             }
         }
@@ -200,7 +249,20 @@ fun VerticalBarChart(
     }
     val barColor = MaterialTheme.colorScheme.primary
     val max = items.maxOf { it.second }.coerceAtLeast(0.001)
+    // Same deal as the line chart: a column is meaningless until you can ask it
+    // what it stands for. Untapped, the readout names the most recent column.
+    var selectedIndex by remember(items) { mutableStateOf<Int?>(null) }
+    val readoutIndex = selectedIndex?.coerceIn(items.indices) ?: items.lastIndex
+
     Column(modifier.fillMaxWidth()) {
+        Text(
+            text = "%s · %s".format(items[readoutIndex].first, valueFormatter(items[readoutIndex].second)),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selectedIndex == null) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            modifier = Modifier.padding(bottom = 2.dp),
+        )
         Row(Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
@@ -221,14 +283,27 @@ fun VerticalBarChart(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                items.forEach { (_, value) ->
+                items.forEachIndexed { index, (_, value) ->
+                    // The clickable box is full height so a short column is
+                    // still a target you can hit with a thumb.
                     Box(
-                        Modifier
+                        modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(((value / max).toFloat()).coerceIn(0.02f, 1f))
-                            .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                            .background(barColor),
-                    )
+                            .fillMaxHeight()
+                            .clickable { selectedIndex = index },
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(((value / max).toFloat()).coerceIn(0.02f, 1f))
+                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                                .background(
+                                    if (index == selectedIndex) barColor
+                                    else barColor.copy(alpha = 0.75f)
+                                ),
+                        )
+                    }
                 }
             }
         }

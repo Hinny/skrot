@@ -1,7 +1,9 @@
 package dev.hinny.skrot.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.Badge
@@ -38,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -169,7 +173,16 @@ fun SkrotApp(container: AppContainer, settings: Settings) {
             Column(Modifier.imePadding()) {
                 // When the nav bar is hidden (during a workout) the timer bar is the
                 // bottom-most element and must clear the system navigation bar itself.
-                RestTimerBar(container, settings, applyNavInsets = hideBars)
+                RestTimerBar(
+                    container = container,
+                    settings = settings,
+                    applyNavInsets = hideBars,
+                    onOpenWorkout = { id ->
+                        if (currentRoute != "workout/$id") {
+                            navController.navigate(Routes.workout(id)) { launchSingleTop = true }
+                        }
+                    },
+                )
                 if (!hideBars) {
                     NavigationBar {
                         tabs.forEach { tab ->
@@ -254,6 +267,7 @@ private fun RestTimerBar(
     container: AppContainer,
     settings: Settings,
     applyNavInsets: Boolean,
+    onOpenWorkout: (Long) -> Unit,
 ) {
     val timerState by container.restTimer.state.collectAsStateWithLifecycle()
     val state = timerState ?: return
@@ -274,10 +288,12 @@ private fun RestTimerBar(
                         Modifier
                     }
                 )
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            // The clock is the way back into the workout it belongs to: seeing a
+            // countdown and having no way to reach the set it is counting for
+            // meant hunting through the tabs.
             Text(
                 text = "%d:%02d · %s".format(
                     state.remainingSec / 60,
@@ -285,18 +301,39 @@ private fun RestTimerBar(
                     state.exerciseName,
                 ),
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        state.sessionId
+                            ?.let { id -> Modifier.clickable { onOpenWorkout(id) } }
+                            ?: Modifier
+                    )
+                    .padding(vertical = 8.dp),
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { container.restTimer.adjust(-settings.timerAdjustStepSec) }) {
-                    Text("-${settings.timerAdjustStepSec}s")
-                }
-                TextButton(onClick = { container.restTimer.adjust(settings.timerAdjustStepSec) }) {
-                    Text("+${settings.timerAdjustStepSec}s")
-                }
-                IconButton(onClick = { container.restTimer.skip() }) {
-                    Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.skip))
-                }
+            TextButton(
+                onClick = { container.restTimer.adjust(-settings.timerAdjustStepSec) },
+                contentPadding = TIMER_BUTTON_PADDING,
+            ) { Text("-${settings.timerAdjustStepSec}s") }
+            TextButton(
+                onClick = { container.restTimer.adjust(settings.timerAdjustStepSec) },
+                contentPadding = TIMER_BUTTON_PADDING,
+            ) { Text("+${settings.timerAdjustStepSec}s") }
+            IconButton(onClick = { container.restTimer.togglePause() }) {
+                Icon(
+                    if (state.paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = stringResource(
+                        if (state.paused) R.string.resume_timer else R.string.pause_timer
+                    ),
+                )
+            }
+            IconButton(onClick = { container.restTimer.skip() }) {
+                Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.skip))
             }
         }
     }
 }
+
+/** Four controls have to share the bar with the clock, so they lose their slack. */
+private val TIMER_BUTTON_PADDING = PaddingValues(horizontal = 6.dp, vertical = 4.dp)

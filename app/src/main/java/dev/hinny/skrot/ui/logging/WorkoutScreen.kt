@@ -1,5 +1,6 @@
 package dev.hinny.skrot.ui.logging
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,13 +64,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
@@ -81,6 +85,7 @@ import dev.hinny.skrot.data.model.SessionExerciseWithDetails
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.data.model.WeightUnit
+import dev.hinny.skrot.domain.PlateCalculator
 import dev.hinny.skrot.domain.ProgressionSuggestion
 import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
@@ -98,6 +103,7 @@ import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.containerViewModel
+import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
@@ -121,11 +127,14 @@ fun WorkoutScreen(
     val plannedSets by vm.plannedSetsByPe.collectAsState()
     val suggestions by vm.suggestions.collectAsState()
     val groupOptions by vm.groupOptions.collectAsState()
+    val lastSessionSets by vm.lastSessionSets.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     var showAddExercise by remember { mutableStateOf(false) }
+    var showLeave by remember { mutableStateOf(false) }
     // Index of the block a picked exercise joins as a superset partner; null
     // means the picker (when open) adds a new block instead.
     var addToBlockIndex by remember { mutableStateOf<Int?>(null) }
@@ -149,6 +158,10 @@ fun WorkoutScreen(
         view.keepScreenOn = settings.keepScreenOn
         onDispose { view.keepScreenOn = false }
     }
+
+    // Back mid-workout does not lose anything — the session stays open — but
+    // landing on Home without meaning to is disorienting enough to ask first.
+    BackHandler(enabled = settings.confirmExitWorkout) { showLeave = true }
 
     LaunchedEffect(Unit) {
         container.observeExercises().collect { allExercises = it }
@@ -179,6 +192,9 @@ fun WorkoutScreen(
                 }
 
                 is WorkoutEvent.Pr -> {
+                    if (settings.hapticFeedback) {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
                     snackbar.showSnackbar("$prPrefix ${event.exerciseName}")
                 }
 
@@ -221,39 +237,59 @@ fun WorkoutScreen(
                     }
                 },
                 actions = {
-                    content?.let { session ->
+                    val bar = content
+                    if (bar != null) {
                         IconButton(onClick = { vm.toggleLock() }) {
                             Icon(
-                                if (session.session.locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                                if (bar.session.locked) Icons.Filled.Lock else Icons.Filled.LockOpen,
                                 contentDescription = stringResource(
-                                    if (session.session.locked) R.string.unlock_session
+                                    if (bar.session.locked) R.string.unlock_session
                                     else R.string.lock_session
                                 ),
                             )
                         }
+                    }
+                    // Always present, because Discard lives in here now: as a bare
+                    // icon it sat one thumb-width from Finish, and the two do
+                    // opposite things to the workout.
+                    IconButton(onClick = { sessionMenuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
+                    }
+                    DropdownMenu(
+                        expanded = sessionMenuOpen,
+                        onDismissRequest = { sessionMenuOpen = false },
+                    ) {
                         // Write the whole session structure back to the routine day
                         // it came from — the per-change actions further down cover
                         // one edit at a time.
-                        if (session.session.routineDayId != null && !session.session.locked) {
-                            IconButton(onClick = { sessionMenuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
-                            }
-                            DropdownMenu(
-                                expanded = sessionMenuOpen,
-                                onDismissRequest = { sessionMenuOpen = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.update_program_day)) },
-                                    onClick = {
-                                        sessionMenuOpen = false
-                                        showApplyToPlan = true
-                                    },
-                                )
-                            }
+                        if (bar?.session?.routineDayId != null && !bar.session.locked) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.update_program_day)) },
+                                onClick = {
+                                    sessionMenuOpen = false
+                                    showApplyToPlan = true
+                                },
+                            )
                         }
-                    }
-                    IconButton(onClick = { showDiscard = true }) {
-                        Icon(Icons.Filled.Delete, stringResource(R.string.discard))
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(R.string.discard_workout),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                sessionMenuOpen = false
+                                showDiscard = true
+                            },
+                        )
                     }
                     // "Finish" for the session, "Done" for a set — using the same
                     // word for both was a coin toss every time.
@@ -272,6 +308,7 @@ fun WorkoutScreen(
         val locked = session.session.locked
         val removedMsg = stringResource(R.string.exercise_removed)
         val applyLabel = stringResource(R.string.apply_future_sessions)
+        val noWorkingSetMsg = stringResource(R.string.warmup_needs_working_set)
         val blocks = session.blocks
         // The single set to do next in the whole session: the first block
         // (in order) with an incomplete set, alternating within a superset
@@ -392,6 +429,14 @@ fun WorkoutScreen(
                                 blockReorder = exerciseReorder.takeIf { block.size > 1 },
                                 indexInBlock = exerciseIndex,
                                 blockSize = block.size,
+                                lastSets = lastSessionSets[se.sessionExercise.id] ?: emptyList(),
+                                onAddWarmups = {
+                                    scope.launch {
+                                        if (vm.addWarmupSets(se) == 0) {
+                                            snackbar.showSnackbar(noWorkingSetMsg)
+                                        }
+                                    }
+                                },
                                 onRemove = { removed ->
                                     val peId = removed.sessionExercise.plannedExerciseId
                                     vm.removeExercise(removed)
@@ -473,6 +518,24 @@ fun WorkoutScreen(
                 }
             },
             onDismiss = { closePicker() },
+        )
+    }
+    if (showLeave) {
+        AlertDialog(
+            onDismissRequest = { showLeave = false },
+            title = { Text(stringResource(R.string.leave_workout)) },
+            text = { Text(stringResource(R.string.leave_workout_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeave = false
+                    nav.popBackStack()
+                }) { Text(stringResource(R.string.leave)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeave = false }) {
+                    Text(stringResource(R.string.stay))
+                }
+            },
         )
     }
     if (showDiscard) {
@@ -580,6 +643,8 @@ private fun ExerciseSection(
     blockReorder: ReorderState?,
     indexInBlock: Int,
     blockSize: Int,
+    lastSets: List<LoggedSet>,
+    onAddWarmups: () -> Unit,
     onRemove: (SessionExerciseWithDetails) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -630,6 +695,13 @@ private fun ExerciseSection(
                         text = { Text(stringResource(R.string.unlink)) },
                         enabled = !locked,
                         onClick = { menuOpen = false; vm.unlink(se) },
+                    )
+                }
+                if (settings.warmupGenerator) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.add_warmup_sets)) },
+                        enabled = !locked,
+                        onClick = { menuOpen = false; onAddWarmups() },
                     )
                 }
                 DropdownMenuItem(
@@ -702,6 +774,17 @@ private fun ExerciseSection(
         }
 
         val sets = se.sortedSets
+        // Pair each set with the same-numbered set of the same type from last
+        // time — the pairing the prefill already uses when a session is created,
+        // so the reference on screen is the number that was prefilled.
+        val previousBySetId = remember(sets, lastSets) {
+            val counters = mutableMapOf<SetType, Int>()
+            sets.associate { s ->
+                val typeIndex = counters.getOrDefault(s.setType, 0)
+                counters[s.setType] = typeIndex + 1
+                s.id to lastSets.filter { it.setType == s.setType }.getOrNull(typeIndex)
+            }
+        }
         var standardCounter = 0
         sets.forEachIndexed { setIndex, set ->
             val number = if (set.setType == SetType.STANDARD) ++standardCounter else null
@@ -710,6 +793,7 @@ private fun ExerciseSection(
                 set = set,
                 number = number,
                 planned = plannedSets.find { it.position == set.position },
+                previous = previousBySetId[set.id],
                 settings = settings,
                 vm = vm,
                 isCurrent = set.id == currentSetId,
@@ -942,7 +1026,14 @@ fun TextInputDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(value = text, onValueChange = { text = it })
+            // Without an explicit width this takes its intrinsic size and types
+            // notes through a slot narrower than the dialog around it.
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
         },
         confirmButton = {
             TextButton(onClick = { onSave(text); onDismiss() }) {
@@ -970,6 +1061,7 @@ private fun SetRow(
     set: LoggedSet,
     number: Int?,
     planned: PlannedSet?,
+    previous: LoggedSet?,
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
@@ -1031,6 +1123,7 @@ private fun SetRow(
                 set = set,
                 number = number,
                 planned = planned,
+                previous = previous,
                 settings = settings,
                 vm = vm,
                 isCurrent = isCurrent,
@@ -1070,6 +1163,7 @@ private fun SetRowContent(
     set: LoggedSet,
     number: Int?,
     planned: PlannedSet?,
+    previous: LoggedSet?,
     settings: Settings,
     vm: WorkoutViewModel,
     isCurrent: Boolean,
@@ -1085,22 +1179,23 @@ private fun SetRowContent(
     val measurement = se.exercise.measurementType
     val isLevel = measurement == MeasurementType.MACHINE_LEVEL
     val focusManager = LocalFocusManager.current
+    val haptics = LocalHapticFeedback.current
 
     // Finishing a set drops focus: leaving the cursor in a field keeps the
     // keyboard up over half the screen for no reason.
     fun finishSet() {
         focusManager.clearFocus()
+        if (settings.hapticFeedback) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         vm.completeSet(se, set, currentLoadKg(), repsText.toIntOrNull() ?: 0)
     }
 
+    Column(Modifier.padding(vertical = 4.dp, horizontal = 4.dp)) {
     // Everything but the type marker and the trailing button is weighted, so the
     // row fits any phone width instead of pushing the Done button off-screen.
     Row(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         // Set type marker; tap cycles warmup -> standard -> drop -> failure
         val typeLabel = when (set.setType) {
@@ -1218,6 +1313,79 @@ private fun SetRowContent(
             }
         }
     }
+    SetRowFooter(se, set, previous, settings, isCurrent)
+    }
+}
+
+/** Equipment that means the load is split across two ends of a bar. */
+private val BAR_EQUIPMENT = setOf(Equipment.BARBELL, Equipment.EZ_BAR, Equipment.SMITH_MACHINE)
+
+/**
+ * The small grey line under a set: what this set was last time, and — on the
+ * set you are actually about to do — what to hang on the bar for it. Renders
+ * nothing at all when both are switched off, so rows stay one line high.
+ */
+@Composable
+private fun SetRowFooter(
+    se: SessionExerciseWithDetails,
+    set: LoggedSet,
+    previous: LoggedSet?,
+    settings: Settings,
+    isCurrent: Boolean,
+) {
+    val measurement = se.exercise.measurementType
+    val previousText = previous
+        ?.takeIf { settings.showLastSessionValues }
+        ?.let {
+            stringResource(
+                R.string.last_session_set,
+                formatLoad(it.load, settings.unit, measurement),
+                it.reps,
+            )
+        }
+
+    // Plates are for the bar you are walking up to, so this only shows on the
+    // current set rather than turning every row into two lines.
+    val platesText = if (
+        settings.plateCalculator &&
+        isCurrent &&
+        measurement == MeasurementType.WEIGHT_KG &&
+        se.exercise.equipment.any { it in BAR_EQUIPMENT }
+    ) {
+        // Computed in the display unit: a lifter reading "20" wants the disc
+        // stamped 20, not its conversion.
+        val total = Units.toDisplay(set.load, settings.unit, measurement)
+        val bar = Units.toDisplay(settings.barWeightKg, settings.unit, measurement)
+        PlateCalculator.forTotal(total, bar, PlateCalculator.platesFor(settings.unit))
+            ?.let { loading ->
+                when {
+                    loading.perSide.isEmpty() -> stringResource(R.string.plates_bar_only)
+                    else -> {
+                        val discs = loading.perSideGrouped.joinToString(" + ") { (plate, count) ->
+                            if (count > 1) "${Units.formatValue(plate)}×$count"
+                            else Units.formatValue(plate)
+                        }
+                        stringResource(
+                            if (loading.isExact) R.string.plates_per_side
+                            else R.string.plates_per_side_approx,
+                            discs,
+                        )
+                    }
+                }
+            }
+    } else null
+
+    val parts = listOfNotNull(previousText, platesText)
+    if (parts.isEmpty()) return
+    Text(
+        parts.joinToString("   ·   "),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        // Indented past the set-type marker so it lines up under the numbers.
+        modifier = Modifier.padding(start = 38.dp, top = 1.dp),
+    )
 }
 
 /** Digits allowed in the load and reps fields; three is plenty for both. */
