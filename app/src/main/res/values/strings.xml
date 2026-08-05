@@ -36,7 +36,7 @@
     <string name="lock_order">Lock order</string>
     <string name="unlock_order">Unlock to reorder</string>
     <string name="lists_locked_by_default">Lock list order by default</string>
-    <string name="lists_locked_by_default_hint">Programs, gyms and workout days open locked, so a drag handle cannot shuffle them by accident. Unlock from the padlock on each list.</string>
+    <string name="lists_locked_by_default_hint">Programs, gyms, workout days and their sets open locked, so a drag handle cannot shuffle them by accident. Unlock from the padlock on each list.</string>
     <string name="icon">Icon</string>
     <string name="increase">Increase</string>
     <string name="decrease">Decrease</string>
@@ -154,6 +154,9 @@
     <string name="prefill_last_session">Last session</string>
     <string name="prefill_targets">Targets</string>
     <string name="prefill_hybrid">Hybrid</string>
+    <string name="program_default_gym">Default gym</string>
+    <string name="program_default_gym_hint">Preselected when you start a workout from this program. Any other gym is still one tap away.</string>
+    <string name="default_gym_global">Use my default</string>
     <string name="tags_hint">Tags (e.g. rebuild)</string>
     <string name="workout_days">Workout days</string>
     <string name="add_day">Add day</string>
@@ -501,7 +504,7 @@
     <string name="frequency_medium">Medium</string>
     <string name="frequency_high">High</string>
     <string name="default_gym_setting">Gyms &amp; default gym</string>
-    <string name="library_edits_section">Library edits</string>
+    <string name="library_section">Library</string>
     <string name="confirm_library_edits">Confirm changes to library items</string>
     <string name="confirm_library_edits_hint">On: edits to custom exercises, programs, workout days and gyms wait for Apply or Cancel. Off: changes stick immediately, like before. Built-in exercises are always locked either way.</string>
     <string name="sessions_locked_by_default">New sessions start locked</string>

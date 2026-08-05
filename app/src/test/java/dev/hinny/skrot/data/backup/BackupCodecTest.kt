@@ -45,7 +45,7 @@ class BackupCodecTest {
             Routine(
                 id = 1, name = "PPL", description = "push pull legs",
                 prefillMode = PrefillMode.HYBRID, isActive = true,
-                tags = listOf("rebuild"), nextDayIndex = 1,
+                tags = listOf("rebuild"), nextDayIndex = 1, defaultGymId = 1,
             )
         ),
         days = listOf(RoutineDay(id = 1, routineId = 1, name = "Push", weekdays = listOf(1, 4))),
@@ -89,6 +89,18 @@ class BackupCodecTest {
         val text = BackupCodec.encode(sampleBackup())
             .replaceFirst("{", "{\"someFutureField\":42,")
         assertEquals(sampleBackup(), BackupCodec.decode(text))
+    }
+
+    /**
+     * A backup taken before programs could name a gym has no `defaultGymId` at
+     * all; it has to restore as "no gym chosen" rather than fail to parse.
+     */
+    @Test
+    fun `a routine written without a default gym decodes as none`() {
+        val text = BackupCodec.encode(sampleBackup()).replace(",\"defaultGymId\":1", "")
+        val routine = BackupCodec.decode(text).routines.single()
+        assertEquals(null, routine.defaultGymId)
+        assertEquals("PPL", routine.name)
     }
 
     @Test

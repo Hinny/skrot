@@ -242,6 +242,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 
     fun delete(gym: Gym) {
         viewModelScope.launch {
+            db.routineDao().clearDefaultGym(gym.id)
             db.gymDao().delete(gym)
             if (editingGymId.value == gym.id) editingGymId.value = null
         }

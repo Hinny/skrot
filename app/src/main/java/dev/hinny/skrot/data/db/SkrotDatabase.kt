@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -121,9 +121,20 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v7 -> v8: a program can name the gym it is normally done at. Existing
+         * programs keep falling back to the globally default gym (null).
+         */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE routines ADD COLUMN defaultGymId INTEGER")
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+            MIGRATION_7_8,
         )
 
         fun build(context: Context): SkrotDatabase =

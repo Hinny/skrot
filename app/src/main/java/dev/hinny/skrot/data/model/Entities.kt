@@ -100,6 +100,15 @@ data class Routine(
     /** Index into the ordered day list of the next day to perform (rotating mode). */
     val nextDayIndex: Int = 0,
     val position: Int = 0,
+    /**
+     * Gym preselected when a workout is started from this program; null falls
+     * back to the globally default gym. Deliberately not a foreign key: it is a
+     * preference, not a relationship, and a gym that has gone missing (deleted
+     * on another device, absent from a restored backup) should quietly fall
+     * back rather than block the insert. [dev.hinny.skrot.data.db.RoutineDao
+     * .clearDefaultGym] keeps it tidy when a gym is deleted here.
+     */
+    val defaultGymId: Long? = null,
 )
 
 @Serializable
