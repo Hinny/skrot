@@ -92,9 +92,6 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercise_groups ORDER BY nameEn")
     fun observeGroups(): Flow<List<ExerciseGroup>>
 
-    @Query("SELECT * FROM exercise_groups")
-    suspend fun getGroups(): List<ExerciseGroup>
-
     @Insert
     suspend fun insertGroup(group: ExerciseGroup): Long
 
@@ -106,9 +103,6 @@ interface ExerciseDao {
 
     @Delete
     suspend fun deleteGroup(group: ExerciseGroup)
-
-    @Query("SELECT * FROM exercises WHERE groupId = :groupId")
-    suspend fun byGroup(groupId: Long): List<Exercise>
 }
 
 @Dao
@@ -124,10 +118,6 @@ interface RoutineDao {
     @Transaction
     @Query("SELECT * FROM routines WHERE id = :id")
     suspend fun withDays(id: Long): RoutineWithDays?
-
-    @Transaction
-    @Query("SELECT * FROM routines WHERE isActive = 1 LIMIT 1")
-    fun observeActiveWithDays(): Flow<RoutineWithDays?>
 
     @Query("SELECT * FROM routines WHERE id = :id")
     suspend fun byId(id: Long): Routine?
@@ -355,9 +345,6 @@ interface SessionDao {
     @Delete
     suspend fun deleteSessionExercise(se: SessionExercise)
 
-    @Query("SELECT * FROM session_exercises WHERE id = :id")
-    suspend fun sessionExerciseById(id: Long): SessionExercise?
-
     @Insert
     suspend fun insertLoggedSet(set: LoggedSet): Long
 
@@ -366,9 +353,6 @@ interface SessionDao {
 
     @Delete
     suspend fun deleteLoggedSet(set: LoggedSet)
-
-    @Query("SELECT * FROM logged_sets WHERE id = :id")
-    suspend fun loggedSetById(id: Long): LoggedSet?
 
     /**
      * The most recent finished session (before [before]) that contains [exerciseId],
@@ -504,9 +488,6 @@ interface GymDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setOverride(override: GymOverride)
-
-    @Query("DELETE FROM gym_overrides WHERE gymId = :gymId AND plannedExerciseId = :plannedExerciseId")
-    suspend fun removeOverride(gymId: Long, plannedExerciseId: Long)
 }
 
 @Dao

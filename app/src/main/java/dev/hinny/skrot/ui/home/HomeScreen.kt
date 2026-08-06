@@ -14,15 +14,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
@@ -44,27 +39,15 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.BodyMetric
 import dev.hinny.skrot.data.model.Exercise
-import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.Gym
-import dev.hinny.skrot.data.model.GymExercise
-import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.OneRepMaxRange
 import dev.hinny.skrot.data.model.SetType
-import dev.hinny.skrot.data.model.LoggedSet
-import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.PlannedExerciseWithDetails
-import dev.hinny.skrot.data.model.PrefillMode
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
-import dev.hinny.skrot.data.model.SessionExercise
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.domain.CoachTrigger
-import dev.hinny.skrot.domain.GymResolution
-import dev.hinny.skrot.domain.GymResolver
 import dev.hinny.skrot.domain.OneRepMax
-import dev.hinny.skrot.domain.PrefillEngine
 import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.Units
@@ -73,16 +56,17 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.common.vector
-import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
+import dev.hinny.skrot.ui.session.NextWorkoutCard
+import dev.hinny.skrot.ui.session.NoActiveProgramCard
+import dev.hinny.skrot.ui.session.OpenSessionCard
 import dev.hinny.skrot.ui.session.RecoveryStartCard
+import dev.hinny.skrot.ui.session.StartSessionViewModel
 import dev.hinny.skrot.ui.session.StartFlowHost
 import dev.hinny.skrot.ui.session.WorkoutPickerDialog
 import dev.hinny.skrot.data.prefs.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -125,27 +109,6 @@ data class LastSessionSummary(
     val completedSets: Int,
     val volumeKg: Double,
     val sessionId: Long,
-)
-
-/** One planned exercise checked against the selected gym. */
-data class StartItem(
-    val planned: PlannedExerciseWithDetails,
-    val resolution: GymResolution,
-    /** Options shown in the picker (group equivalents). */
-    val options: List<Exercise>,
-)
-
-data class PendingStart(
-    val routineId: Long?,
-    val dayId: Long?,
-    val gymId: Long?,
-    val temporaryVisit: Boolean,
-    val prefillMode: PrefillMode,
-    val items: List<StartItem>,
-    /** The whole library, so any exercise can be swapped in from the dialog. */
-    val allExercises: List<Exercise> = emptyList(),
-    /** Marked as available at the chosen gym; empty for a temporary visit. */
-    val availableExerciseIds: Set<Long> = emptySet(),
 )
 
 class HomeViewModel(private val container: AppContainer) : ViewModel() {
@@ -289,233 +252,18 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val content = db.sessionDao().sessionWithContent(session.id) ?: return null
         val bodyweight = db.bodyMetricDao().latestWeightAtOrBefore(session.startedAt)
             ?.weightKg ?: bodyweightFallbackKg
-        var volume = 0.0
-        var setCount = 0
-        for (se in content.exercises) {
-            val completed = se.sets.filter { it.completed }
-            setCount += completed.size
-            for (set in completed) {
-                VolumeCalculator.setVolumeKg(
-                    se.exercise.measurementType,
-                    set.load,
-                    set.reps,
-                    bodyweight,
-                    se.exercise.bodyweightFactor,
-                )?.let { volume += it }
-            }
-        }
         val dayName = session.routineDayId?.let { db.routineDao().dayWithContent(it)?.day?.name }
         return LastSessionSummary(
             startedAt = session.startedAt,
             title = dayName.orEmpty(),
             durationMs = (session.endedAt ?: session.startedAt) - session.startedAt,
             exerciseCount = content.exercises.size,
-            completedSets = setCount,
-            volumeKg = volume,
+            completedSets = VolumeCalculator.completedSetCount(content),
+            volumeKg = VolumeCalculator.sessionVolumeKg(content, bodyweight),
             sessionId = session.id,
         )
     }
 
-    /** Checks each planned exercise against the gym; the UI asks the user where needed. */
-    suspend fun prepareStart(
-        routineId: Long?,
-        dayId: Long?,
-        gymId: Long?,
-        temporaryVisit: Boolean,
-    ): PendingStart {
-        val routine = routineId?.let { db.routineDao().byId(it) }
-        val prefillMode = routine?.prefillMode ?: PrefillMode.LAST_SESSION
-        val content = dayId?.let { db.routineDao().dayWithContent(it) }
-        val plannedList = content?.blocks?.flatten() ?: emptyList()
-        val library = container.exercisesNow()
-        val allExercises = library.associateBy { it.id }
-        // Hoisted out of the loop: these were being re-queried per exercise.
-        val availableIds =
-            if (gymId == null || temporaryVisit) emptySet()
-            else db.gymDao().exerciseIdsAt(gymId).toSet()
-        val overrides =
-            if (gymId == null || temporaryVisit) emptyList() else db.gymDao().overridesAt(gymId)
-
-        val items = plannedList.map { planned ->
-            val exercise = planned.exercise
-            val groupMembers = exercise.groupId
-                ?.let { gid -> allExercises.values.filter { it.groupId == gid } }
-                ?: listOf(exercise)
-
-            if (temporaryVisit) {
-                // Somewhere unfamiliar: assume nothing is there. Every exercise
-                // gets confirmed, even when it has no group to swap within.
-                val options = groupMembers.filter { it.id != exercise.id }
-                StartItem(
-                    planned = planned,
-                    resolution = GymResolution.Choice(options),
-                    options = options,
-                )
-            } else if (gymId == null) {
-                StartItem(planned, GymResolution.Available, emptyList())
-            } else {
-                val override = overrides
-                    .find { it.plannedExerciseId == planned.planned.id }
-                    ?.let { allExercises[it.exerciseId] }
-                val resolution =
-                    GymResolver.resolve(exercise, availableIds, override, groupMembers)
-                val options = when (resolution) {
-                    is GymResolution.Choice -> resolution.options
-                    is GymResolution.AutoSwapped -> listOf(resolution.to)
-                    else -> emptyList()
-                }
-                StartItem(planned, resolution, options)
-            }
-        }
-        return PendingStart(
-            routineId = routineId,
-            dayId = dayId,
-            gymId = gymId,
-            temporaryVisit = temporaryVisit,
-            prefillMode = prefillMode,
-            items = items,
-            allExercises = library,
-            availableExerciseIds = availableIds,
-        )
-    }
-
-    /**
-     * Records [picked] as interchangeable with [original], so a gym without the
-     * original offers it automatically next time. Joins the original's group, or
-     * starts one named after it.
-     *
-     * Grouping is a statement about your own training, not an edit to the
-     * library's definition of an exercise, so this is allowed for built-in
-     * exercises too — unlike renaming one.
-     */
-    /** Marks [exerciseId] as available at [gymId], as the gym editor would. */
-    fun addExerciseToGym(gymId: Long, exerciseId: Long) {
-        viewModelScope.launch {
-            db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = exerciseId))
-        }
-    }
-
-    fun linkAsEquivalent(original: Exercise, picked: Exercise) {
-        viewModelScope.launch {
-            val groupId = original.groupId ?: db.exerciseDao().insertGroup(
-                ExerciseGroup(
-                    nameEn = original.nameEn,
-                    nameSv = original.nameSv,
-                    isCustom = true,
-                )
-            ).also { newGroup ->
-                db.exerciseDao().update(original.copy(groupId = newGroup))
-            }
-            db.exerciseDao().update(picked.copy(groupId = groupId))
-        }
-    }
-
-    /**
-     * Creates the session with resolved exercises and pre-filled sets.
-     *
-     * @param picks plannedExerciseId -> chosen exercise id (null = skip the exercise)
-     * @param alwaysUse plannedExerciseIds whose pick should persist as a per-gym override
-     */
-    suspend fun startSession(
-        pending: PendingStart,
-        picks: Map<Long, Long?>,
-        alwaysUse: Set<Long>,
-    ): Long {
-        val now = System.currentTimeMillis()
-        val settings = container.settings.settings.first()
-        val sessionId = db.sessionDao().insertSession(
-            WorkoutSession(
-                startedAt = now,
-                routineId = pending.routineId,
-                routineDayId = pending.dayId,
-                gymId = pending.gymId,
-                lastActivityAt = now,
-                temporaryVisit = pending.temporaryVisit,
-                locked = settings.sessionsLockedByDefault,
-            )
-        )
-
-        for (item in pending.items) {
-            val plannedId = item.planned.planned.id
-            val chosenId: Long? = when {
-                picks.containsKey(plannedId) -> picks[plannedId]
-                item.resolution is GymResolution.AutoSwapped ->
-                    (item.resolution as GymResolution.AutoSwapped).to.id
-
-                else -> item.planned.exercise.id
-            }
-            if (chosenId == null) continue // skipped
-            val exercise = db.exerciseDao().byId(chosenId) ?: continue
-
-            if (chosenId != item.planned.exercise.id &&
-                plannedId in alwaysUse && pending.gymId != null && !pending.temporaryVisit
-            ) {
-                db.gymDao().setOverride(GymOverride(pending.gymId, plannedId, chosenId))
-            }
-
-            val seId = db.sessionDao().insertSessionExercise(
-                SessionExercise(
-                    sessionId = sessionId,
-                    exerciseId = chosenId,
-                    plannedExerciseId = plannedId,
-                    blockPos = item.planned.planned.blockPos,
-                    inBlockPos = item.planned.planned.inBlockPos,
-                )
-            )
-
-            // Machine levels aren't comparable across gyms: last-session lookup is per-gym.
-            val historyGym =
-                if (exercise.measurementType == MeasurementType.MACHINE_LEVEL) pending.gymId
-                else null
-            val lastSessionId =
-                db.sessionDao().lastSessionIdWithExercise(chosenId, now, historyGym)
-            val lastSets = lastSessionId
-                ?.let { db.sessionDao().completedSetsInSession(it, chosenId) }
-                ?: emptyList()
-
-            val plannedSets = item.planned.sortedSets
-            val typeCounters = mutableMapOf<dev.hinny.skrot.data.model.SetType, Int>()
-            for ((index, plannedSet) in plannedSets.withIndex()) {
-                val typeIndex = typeCounters.getOrDefault(plannedSet.setType, 0)
-                typeCounters[plannedSet.setType] = typeIndex + 1
-                val prefill = PrefillEngine.prefill(
-                    pending.prefillMode, plannedSet, lastSets, typeIndex, plannedSet.setType,
-                )
-                db.sessionDao().insertLoggedSet(
-                    LoggedSet(
-                        sessionExerciseId = seId,
-                        position = index,
-                        setType = plannedSet.setType,
-                        load = prefill.load ?: 0.0,
-                        reps = prefill.reps ?: 0,
-                        completed = false,
-                        restSec = plannedSet.restSec,
-                    )
-                )
-            }
-            if (plannedSets.isEmpty()) {
-                db.sessionDao().insertLoggedSet(
-                    LoggedSet(sessionExerciseId = seId, restSec = settings.defaultRestSec)
-                )
-            }
-        }
-        return sessionId
-    }
-
-    /** Creates a gym inline from the start dialog and hands back its id. */
-    fun createGym(name: String, onCreated: (Long) -> Unit) {
-        viewModelScope.launch {
-            onCreated(db.gymDao().insert(Gym(name = name)))
-        }
-    }
-
-    suspend fun startEmptySession(gymId: Long?): Long {
-        val now = System.currentTimeMillis()
-        val locked = container.settings.settings.first().sessionsLockedByDefault
-        return db.sessionDao().insertSession(
-            WorkoutSession(startedAt = now, gymId = gymId, lastActivityAt = now, locked = locked)
-        )
-    }
 }
 
 /**
@@ -631,7 +379,6 @@ private fun OneRepMaxCard(
     range: OneRepMaxRange,
     settings: Settings,
 ) {
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -643,12 +390,7 @@ private fun OneRepMaxCard(
                     Text(entry.exercise.displayName(), modifier = Modifier.weight(1f))
                     val estimate = entry.estimateKg
                     Text(
-                        if (estimate == null) "—" else {
-                            val display =
-                                if (settings.unit == WeightUnit.KG) estimate
-                                else Units.kgToLbs(estimate)
-                            "${Units.formatValue(display)} $unitLabel"
-                        },
+                        estimate?.let { Units.formatWeight(it, settings.unit) } ?: "—",
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -678,16 +420,12 @@ private fun LastSessionCard(
                 summary.title.ifBlank { stringResource(R.string.workout) },
                 style = MaterialTheme.typography.titleMedium,
             )
-            val volume =
-                if (settings.unit == WeightUnit.KG) summary.volumeKg
-                else Units.kgToLbs(summary.volumeKg)
             Text(
                 listOf(
                     lastPerformedText(summary.startedAt),
                     stringResource(R.string.minutes_short, summary.durationMs / 60_000),
                     stringResource(R.string.sets_count, summary.completedSets),
-                    "${Units.formatValue(volume)} " +
-                        if (settings.unit == WeightUnit.KG) "kg" else "lbs",
+                    Units.formatWeight(summary.volumeKg, settings.unit),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -704,8 +442,6 @@ private fun LastMetricCard(
     onOpen: () -> Unit,
 ) {
     val weightKg = metric.weightKg ?: return
-    val display = if (settings.unit == WeightUnit.KG) weightKg else Units.kgToLbs(weightKg)
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
     val deltaKg = previous?.weightKg?.let { weightKg - it }
 
     Card(
@@ -720,16 +456,14 @@ private fun LastMetricCard(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "${Units.formatValue(display)} $unitLabel",
+                    Units.formatWeight(weightKg, settings.unit),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (deltaKg != null && deltaKg != 0.0) {
-                    val deltaDisplay =
-                        if (settings.unit == WeightUnit.KG) deltaKg else Units.kgToLbs(deltaKg)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         (if (deltaKg > 0) "+" else "") +
-                            "${Units.formatValue(deltaDisplay)} $unitLabel",
+                            Units.formatWeight(deltaKg, settings.unit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -746,6 +480,7 @@ private fun LastMetricCard(
 @Composable
 fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
+    val startVm = containerViewModel(container) { c, _ -> StartSessionViewModel(c) }
     val state by vm.uiState.collectAsState()
     var startTarget by remember { mutableStateOf<Pair<RoutineWithDays?, RoutineDay?>?>(null) }
     var showPicker by remember { mutableStateOf(false) }
@@ -766,22 +501,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         }
 
         state.openSession?.let { open ->
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { nav.navigate(Routes.workout(open.id)) },
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.workout_in_progress),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(stringResource(R.string.tap_to_resume))
-                }
-            }
+            OpenSessionCard(onResume = { nav.navigate(Routes.workout(open.id)) })
         }
 
         if (state.backupOverdue && shows(HomeSection.BACKUP_REMINDER)) {
@@ -821,53 +541,20 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         }
 
         val active = state.activeRoutine
-        if (!shows(HomeSection.NEXT_WORKOUT)) {
-            // nothing: the next-workout card is switched off
-        } else if (active != null && state.openSession == null) {
-            val nextDay = state.nextDay
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        active.routine.icon.vectorOrNull()?.let { Icon(it, null) }
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                stringResource(R.string.next_workout),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                nextDay?.name ?: stringResource(R.string.no_days_defined),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            Text(
-                                "${active.routine.name} · " +
-                                    lastPerformedText(nextDay?.let { state.lastByDay[it.id] }),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { if (nextDay != null) startTarget = active to nextDay },
-                            enabled = nextDay != null,
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, null)
-                            Text(stringResource(R.string.start))
-                        }
-                        OutlinedButton(onClick = { showPicker = true }) {
-                            Text(stringResource(R.string.choose_other_workout))
-                        }
-                    }
-                }
-            }
-        } else if (state.openSession == null) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.no_active_program))
-                    TextButton(onClick = { nav.navigate(Routes.PROGRAMS) }) {
-                        Text(stringResource(R.string.go_to_programs))
-                    }
-                }
+        if (shows(HomeSection.NEXT_WORKOUT) && state.openSession == null) {
+            if (active != null) {
+                NextWorkoutCard(
+                    routine = active,
+                    nextDay = state.nextDay,
+                    lastPerformed = state.nextDay?.let { state.lastByDay[it.id] },
+                    onStart = { r, day -> startTarget = r to day },
+                    onChooseOther = { showPicker = true },
+                )
+            } else {
+                NoActiveProgramCard(
+                    onGoToPrograms = { nav.navigate(Routes.PROGRAMS) },
+                    onChooseWorkout = { showPicker = true },
+                )
             }
         }
 
@@ -911,6 +598,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
     if (showPicker) {
         WorkoutPickerDialog(
             routines = state.allRoutines,
+            lastByDay = state.lastByDay,
             onDismiss = { showPicker = false },
             onPick = { r, day ->
                 showPicker = false
@@ -921,7 +609,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
 
     // Gym + temporary-visit selection, then resolution
     StartFlowHost(
-        vm = vm,
+        vm = startVm,
         nav = nav,
         settings = settings,
         gyms = state.gyms,

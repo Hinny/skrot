@@ -3,12 +3,24 @@ package dev.hinny.skrot.data.model
 import androidx.room.Embedded
 import androidx.room.Relation
 
+/*
+ * The derived views below (sorted lists, superset blocks) are computed once per
+ * instance rather than on every read. These objects are immutable snapshots
+ * emitted by Room, and the logging screen recomposes every second from its
+ * elapsed clock while touching them repeatedly per frame -- as `get()` they
+ * re-sorted the whole session each time.
+ *
+ * `by lazy` is not part of a data class's equals/hashCode (only constructor
+ * parameters are), so the editors that compare a draft against a baseline are
+ * unaffected.
+ */
+
 data class RoutineWithDays(
     @Embedded val routine: Routine,
     @Relation(parentColumn = "id", entityColumn = "routineId")
     val days: List<RoutineDay>,
 ) {
-    val sortedDays: List<RoutineDay> get() = days.sortedBy { it.position }
+    val sortedDays: List<RoutineDay> by lazy { days.sortedBy { it.position } }
 }
 
 data class PlannedExerciseWithDetails(
@@ -18,7 +30,7 @@ data class PlannedExerciseWithDetails(
     @Relation(parentColumn = "id", entityColumn = "plannedExerciseId")
     val sets: List<PlannedSet>,
 ) {
-    val sortedSets: List<PlannedSet> get() = sets.sortedBy { it.position }
+    val sortedSets: List<PlannedSet> by lazy { sets.sortedBy { it.position } }
 }
 
 data class DayWithContent(
@@ -27,13 +39,14 @@ data class DayWithContent(
     val exercises: List<PlannedExerciseWithDetails>,
 ) {
     /** Exercises ordered and grouped into blocks; a block of 2+ is a superset. */
-    val blocks: List<List<PlannedExerciseWithDetails>>
-        get() = exercises
+    val blocks: List<List<PlannedExerciseWithDetails>> by lazy {
+        exercises
             .sortedWith(compareBy({ it.planned.blockPos }, { it.planned.inBlockPos }))
             .groupBy { it.planned.blockPos }
             .toSortedMap()
             .values
             .toList()
+    }
 }
 
 data class SessionExerciseWithDetails(
@@ -43,7 +56,7 @@ data class SessionExerciseWithDetails(
     @Relation(parentColumn = "id", entityColumn = "sessionExerciseId")
     val sets: List<LoggedSet>,
 ) {
-    val sortedSets: List<LoggedSet> get() = sets.sortedBy { it.position }
+    val sortedSets: List<LoggedSet> by lazy { sets.sortedBy { it.position } }
 }
 
 data class SessionWithContent(
@@ -51,13 +64,14 @@ data class SessionWithContent(
     @Relation(entity = SessionExercise::class, parentColumn = "id", entityColumn = "sessionId")
     val exercises: List<SessionExerciseWithDetails>,
 ) {
-    val blocks: List<List<SessionExerciseWithDetails>>
-        get() = exercises
+    val blocks: List<List<SessionExerciseWithDetails>> by lazy {
+        exercises
             .sortedWith(compareBy({ it.sessionExercise.blockPos }, { it.sessionExercise.inBlockPos }))
             .groupBy { it.sessionExercise.blockPos }
             .toSortedMap()
             .values
             .toList()
+    }
 }
 
 /** A logged set joined with its session metadata, for history/stats/PR queries. */

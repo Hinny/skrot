@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,8 +66,6 @@ import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.SearchField
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -121,7 +120,7 @@ private fun TimerSoundSetting(uri: String, onPicked: (String) -> Unit) {
 
 @Composable
 fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
     val repo = container.settings
     var showDeleteData by remember { mutableStateOf(false) }
     // One section open at a time. Thirty-odd controls behind eight titles beats
@@ -129,7 +128,7 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
     var openSection by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val unitLabel = Units.unitLabel(settings.unit)
 
     Column(
         modifier = Modifier

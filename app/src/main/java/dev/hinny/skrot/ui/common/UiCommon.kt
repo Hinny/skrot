@@ -1,6 +1,5 @@
 package dev.hinny.skrot.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.MeasurementType
+import dev.hinny.skrot.data.model.WeightUnit
+import dev.hinny.skrot.domain.Units
 import java.util.Locale
 
 /**
@@ -59,6 +61,34 @@ fun Exercise.displayName(): String = when (LocalExerciseNameLanguage.current) {
     AppLanguage.ENGLISH -> nameEn
     AppLanguage.SWEDISH -> nameSv
     AppLanguage.SYSTEM -> if (Locale.getDefault().language == "sv") nameSv else nameEn
+}
+
+/**
+ * Label for a load input field: the unit you type in, which depends on the
+ * exercise as much as on the setting. Machine levels are unit-less and say so;
+ * bodyweight loads are an addition to your own weight, hence the leading "+".
+ *
+ * Distinct from [dev.hinny.skrot.domain.Units.formatLoad], which renders a
+ * value that has already been entered.
+ */
+@Composable
+fun loadFieldLabel(measurement: MeasurementType, unit: WeightUnit): String =
+    when (measurement) {
+        MeasurementType.MACHINE_LEVEL -> stringResource(R.string.level)
+        MeasurementType.BODYWEIGHT -> "+${Units.unitLabel(unit)}"
+        MeasurementType.WEIGHT_KG -> Units.unitLabel(unit)
+    }
+
+/**
+ * A session length in words: "45min", "1h 20min". Every summary of how long a
+ * workout took reads the same way. The logging screen's live clock is a
+ * different thing — it ticks — and keeps its own H:MM:SS shape.
+ */
+fun formatDuration(ms: Long): String {
+    val totalMin = ms / 60_000
+    val h = totalMin / 60
+    val m = totalMin % 60
+    return if (h > 0) "${h}h ${m}min" else "${m}min"
 }
 
 /** "Today" / "yesterday" / "N days ago" / "never". */
@@ -146,7 +176,7 @@ fun StepperNumberField(
 
 fun formatNumber(value: Double, integerOnly: Boolean): String =
     if (integerOnly) value.toLong().toString()
-    else dev.hinny.skrot.domain.Units.formatValue(value)
+    else Units.formatValue(value)
 
 /** Height of the input box in [CompactNumberField] and [CompactValueButton]. */
 private val CompactFieldHeight = 40.dp

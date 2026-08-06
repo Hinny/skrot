@@ -62,6 +62,7 @@ import dev.hinny.skrot.ui.common.ReorderLockButton
 import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
+import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.common.vectorOrNull
@@ -75,23 +76,25 @@ class ProgramEditorViewModel(
 ) : ViewModel() {
     val routine = MutableStateFlow<RoutineWithDays?>(null)
     val gyms = MutableStateFlow<List<Gym>>(emptyList())
-    val confirmEdits = MutableStateFlow(true)
-    val hasPendingChanges = MutableStateFlow(false)
-    val canUndo = MutableStateFlow(false)
-    val canRedo = MutableStateFlow(false)
 
-    /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
-    private var baseline: RoutineWithDays? = null
-
-    private val undoStack = ArrayDeque<RoutineWithDays>()
-    private val redoStack = ArrayDeque<RoutineWithDays>()
+    /**
+     * Mutations below write straight to the database; the history tracks
+     * whether the live state has drifted from the last-confirmed one and puts
+     * snapshots back via [restoreSnapshot].
+     */
+    val edits = EditHistory<RoutineWithDays>()
+    val confirmEdits = edits.confirmEdits
+    val hasPendingChanges = edits.hasPendingChanges
+    val canUndo = edits.canUndo
+    val canRedo = edits.canRedo
+    val revision = edits.revision
 
     init {
         viewModelScope.launch {
             container.db.routineDao().observeWithDays(routineId).collect { r ->
                 routine.value = r
-                if (baseline == null) baseline = r
-                recomputePending()
+                edits.baselineIfUnset(r)
+                edits.refresh(r)
             }
         }
         viewModelScope.launch {
@@ -99,36 +102,17 @@ class ProgramEditorViewModel(
         }
         viewModelScope.launch {
             container.settings.settings.collect {
-                confirmEdits.value = it.confirmLibraryEdits
-                recomputePending()
+                edits.confirmEdits.value = it.confirmLibraryEdits
+                edits.refresh(routine.value)
             }
         }
     }
 
-    /**
-     * Every mutation below writes straight to the database as before (add day,
-     * reorder, field edits, ...); this just tracks whether the live state has
-     * drifted from the last-confirmed [baseline] so the UI can show an
-     * Apply/Cancel bar. In auto-apply mode every change re-baselines
-     * immediately, so no bar ever appears.
-     */
-    private fun recomputePending() {
-        if (!confirmEdits.value) {
-            baseline = routine.value
-            hasPendingChanges.value = false
-        } else {
-            hasPendingChanges.value = routine.value != baseline
-        }
-    }
+    fun applyChanges() = edits.rebaseline(routine.value)
 
     /** Reverts routine fields and the day list back to the last Apply point. */
-    fun applyChanges() {
-        baseline = routine.value
-        hasPendingChanges.value = false
-    }
-
     fun cancelChanges() {
-        viewModelScope.launch { restoreSnapshot(baseline ?: return@launch) }
+        viewModelScope.launch { restoreSnapshot(edits.baseline ?: return@launch) }
     }
 
     private suspend fun restoreSnapshot(snap: RoutineWithDays) {
@@ -144,39 +128,18 @@ class ProgramEditorViewModel(
 
     /** Records the pre-change snapshot so [undo] can revert this step. */
     private fun pushUndo() {
-        val r = routine.value ?: return
-        undoStack.addLast(r)
-        redoStack.clear()
-        updateUndoRedoFlags()
-    }
-
-    /**
-     * Bumped by undo and redo. Text fields keep their own state while you type,
-     * so without this they would go on showing what you typed after the value
-     * behind them was rolled back — undo appeared to do nothing to them.
-     */
-    val revision = MutableStateFlow(0)
-
-    private fun updateUndoRedoFlags() {
-        canUndo.value = undoStack.isNotEmpty()
-        canRedo.value = redoStack.isNotEmpty()
+        routine.value?.let { edits.push(it) }
     }
 
     fun undo() {
         val current = routine.value ?: return
-        val previous = undoStack.removeLastOrNull() ?: return
-        redoStack.addLast(current)
-        updateUndoRedoFlags()
-        revision.value++
+        val previous = edits.undo(current) ?: return
         viewModelScope.launch { restoreSnapshot(previous) }
     }
 
     fun redo() {
         val current = routine.value ?: return
-        val next = redoStack.removeLastOrNull() ?: return
-        undoStack.addLast(current)
-        updateUndoRedoFlags()
-        revision.value++
+        val next = edits.redo(current) ?: return
         viewModelScope.launch { restoreSnapshot(next) }
     }
 

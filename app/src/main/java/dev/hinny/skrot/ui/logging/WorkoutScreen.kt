@@ -84,10 +84,8 @@ import dev.hinny.skrot.data.model.PlannedSet
 import dev.hinny.skrot.data.model.SessionExerciseWithDetails
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.prefs.Settings
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.domain.PlateCalculator
 import dev.hinny.skrot.domain.ProgressionSuggestion
-import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
@@ -102,10 +100,10 @@ import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
-import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -579,26 +577,17 @@ fun WorkoutScreen(
             },
             text = if (settings.celebrateWorkoutFinish && session != null) {
                 {
-                    val completed = session.exercises.sumOf { se -> se.sets.count { it.completed } }
-                    val volumeKg = session.exercises.sumOf { se ->
-                        se.sets.filter { it.completed }.sumOf { set ->
-                            VolumeCalculator.setVolumeKg(
-                                se.exercise.measurementType,
-                                set.load,
-                                set.reps,
-                                settings.bodyweightFallbackKg,
-                                se.exercise.bodyweightFactor,
-                            ) ?: 0.0
-                        }
-                    }
-                    val volume =
-                        if (settings.unit == WeightUnit.KG) volumeKg else Units.kgToLbs(volumeKg)
                     Text(
                         stringResource(
                             R.string.workout_completed_body,
-                            completed,
-                            "${Units.formatValue(volume)} " +
-                                if (settings.unit == WeightUnit.KG) "kg" else "lbs",
+                            VolumeCalculator.completedSetCount(session),
+                            Units.formatWeight(
+                                VolumeCalculator.sessionVolumeKg(
+                                    session,
+                                    settings.bodyweightFallbackKg,
+                                ),
+                                settings.unit,
+                            ),
                             formatElapsed(elapsed),
                         )
                     )
@@ -752,7 +741,7 @@ private fun ExerciseSection(
                         when (suggestion) {
                             is ProgressionSuggestion.IncreaseLoad -> stringResource(
                                 R.string.suggestion_increase,
-                                formatLoad(suggestion.toLoad, settings.unit, se.exercise.measurementType),
+                                Units.formatLoad(suggestion.toLoad, settings.unit, se.exercise.measurementType),
                             )
 
                             is ProgressionSuggestion.AddRep -> stringResource(
@@ -992,7 +981,7 @@ private fun RemoveSetDialog(
                     val summary = buildString {
                         append(labels[index])
                         append("  ")
-                        append(formatLoad(set.load, settings.unit, se.exercise.measurementType))
+                        append(Units.formatLoad(set.load, settings.unit, se.exercise.measurementType))
                         append(" × ")
                         append(set.reps)
                         if (set.completed) append("  ($completedNote)")
@@ -1045,15 +1034,6 @@ fun TextInputDialog(
         },
     )
 }
-
-private fun formatLoad(load: Double, unit: WeightUnit, measurement: MeasurementType): String =
-    when (measurement) {
-        MeasurementType.MACHINE_LEVEL -> load.toInt().toString()
-        else -> {
-            val display = Units.toDisplay(load, unit, measurement)
-            "${Units.formatValue(display)} ${if (unit == WeightUnit.KG) "kg" else "lbs"}"
-        }
-    }
 
 @Composable
 private fun SetRow(
@@ -1218,14 +1198,7 @@ private fun SetRowContent(
             },
         )
 
-        val loadLabel = when (measurement) {
-            MeasurementType.WEIGHT_KG ->
-                if (settings.unit == WeightUnit.KG) "kg" else "lbs"
-
-            MeasurementType.MACHINE_LEVEL -> stringResource(R.string.level)
-            MeasurementType.BODYWEIGHT ->
-                if (settings.unit == WeightUnit.KG) "+kg" else "+lbs"
-        }
+        val loadLabel = loadFieldLabel(measurement, settings.unit)
         CompactNumberField(
             value = loadText,
             onValueChange = {
@@ -1339,7 +1312,7 @@ private fun SetRowFooter(
         ?.let {
             stringResource(
                 R.string.last_session_set,
-                formatLoad(it.load, settings.unit, measurement),
+                Units.formatLoad(it.load, settings.unit, measurement),
                 it.reps,
             )
         }

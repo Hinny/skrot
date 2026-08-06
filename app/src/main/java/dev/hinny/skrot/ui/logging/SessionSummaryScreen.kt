@@ -23,8 +23,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
-import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.PrDetector
 import dev.hinny.skrot.domain.PrType
@@ -32,9 +30,9 @@ import dev.hinny.skrot.domain.SetRecord
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
+import dev.hinny.skrot.ui.common.formatDuration
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class SummaryUiState(
@@ -54,26 +52,16 @@ class SummaryViewModel(container: AppContainer, private val sessionId: Long) : V
         viewModelScope.launch {
             val content = db.sessionDao().sessionWithContent(sessionId) ?: return@launch
             val session = content.session
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val bodyweight = db.bodyMetricDao().latestWeightAtOrBefore(session.startedAt)
                 ?.weightKg ?: settings.bodyweightFallbackKg
 
-            var volume = 0.0
-            var setCount = 0
+            val volume = VolumeCalculator.sessionVolumeKg(content, bodyweight)
+            val setCount = VolumeCalculator.completedSetCount(content)
             val prs = mutableListOf<Pair<String, PrType>>()
 
             for (se in content.exercises) {
                 val completed = se.sortedSets.filter { it.completed }
-                setCount += completed.size
-                for (set in completed) {
-                    VolumeCalculator.setVolumeKg(
-                        se.exercise.measurementType,
-                        set.load,
-                        set.reps,
-                        bodyweight,
-                        se.exercise.bodyweightFactor,
-                    )?.let { volume += it }
-                }
 
                 // Recompute PRs: each completed set against everything logged before it.
                 val allHistory = db.sessionDao().setsForExercise(se.exercise.id)
@@ -147,12 +135,9 @@ fun SessionSummaryScreen(
                 )
                 SummaryRow(stringResource(R.string.exercises), state.exerciseCount.toString())
                 SummaryRow(stringResource(R.string.sets), state.completedSets.toString())
-                val volume =
-                    if (settings.unit == WeightUnit.KG) state.totalVolumeKg
-                    else Units.kgToLbs(state.totalVolumeKg)
                 SummaryRow(
                     stringResource(R.string.total_volume),
-                    "${Units.formatValue(volume)} ${if (settings.unit == WeightUnit.KG) "kg" else "lbs"}",
+                    Units.formatWeight(state.totalVolumeKg, settings.unit),
                 )
             }
         }
@@ -187,9 +172,3 @@ private fun SummaryRow(label: String, value: String) {
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val totalMin = ms / 60_000
-    val h = totalMin / 60
-    val m = totalMin % 60
-    return if (h > 0) "${h}h ${m}min" else "${m}min"
-}

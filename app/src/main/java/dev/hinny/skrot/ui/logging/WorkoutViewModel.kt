@@ -22,10 +22,10 @@ import dev.hinny.skrot.domain.ProgressionEngine
 import dev.hinny.skrot.domain.ProgressionSuggestion
 import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
+import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.WarmupGenerator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -74,13 +74,13 @@ class WorkoutViewModel(
     }
 
     private suspend fun coachEngine(): CoachEngine? {
-        val settings = container.settings.settings.first()
+        val settings = container.settingsNow()
         if (!settings.coachEnabled) return null
         return coach ?: CoachEngine(settings.coachFrequency).also { coach = it }
     }
 
     private suspend fun checkWelcomeBack(content: SessionWithContent) {
-        val settings = container.settings.settings.first()
+        val settings = container.settingsNow()
         val previous = db.sessionDao().lastFinishedSessionDate() ?: return
         val days = (content.session.startedAt - previous) / 86_400_000L
         if (days >= settings.comebackDays) {
@@ -94,7 +94,7 @@ class WorkoutViewModel(
 
     /** Loads planned targets, progression suggestions, and swap options. */
     private suspend fun refreshAuxiliary(content: SessionWithContent) {
-        val settings = container.settings.settings.first()
+        val settings = container.settingsNow()
         // Ordered by the exercise-order setting, so the swap options a session
         // offers match every other exercise list in the app.
         val allExercises = container.exercisesNow()
@@ -172,9 +172,7 @@ class WorkoutViewModel(
 
             // PR detection (warmups excluded; machine levels scoped to this gym)
             val gymId = session.value?.session?.gymId
-            val history = db.sessionDao().setsForExercise(se.exercise.id)
-                .filter { it.sessionId != sessionId }
-                .map { SetRecord(it.set.load, it.set.reps, it.set.setType, it.sessionGymId) }
+            val history = historyFor(se.exercise.id)
             val prs = PrDetector.detect(
                 se.exercise.measurementType,
                 SetRecord(load, reps, set.setType, gymId),
@@ -185,11 +183,28 @@ class WorkoutViewModel(
                 events.emit(WorkoutEvent.Pr(se.exercise.nameEn, prs))
             }
 
-            checkCoachAfterCompletion(se)
+            checkCoachAfterCompletion(se, history)
         }
     }
 
-    private suspend fun checkCoachAfterCompletion(se: SessionExerciseWithDetails) {
+    /**
+     * Everything this exercise has been lifted for before, outside this
+     * session — the yardstick PR detection measures against.
+     */
+    private suspend fun historyFor(exerciseId: Long): List<SetRecord> =
+        db.sessionDao().setsForExercise(exerciseId)
+            .filter { it.sessionId != sessionId }
+            .map { SetRecord(it.set.load, it.set.reps, it.set.setType, it.sessionGymId) }
+
+    /**
+     * @param history the same records the just-completed set was measured
+     *   against; the next set is judged against the same yardstick, so it is
+     *   passed in rather than queried a second time.
+     */
+    private suspend fun checkCoachAfterCompletion(
+        se: SessionExerciseWithDetails,
+        history: List<SetRecord>,
+    ) {
         val engine = coachEngine() ?: return
         val content = session.value ?: return
         val lastBlock = content.blocks.lastOrNull() ?: return
@@ -208,9 +223,6 @@ class WorkoutViewModel(
                 ?.find { it.position == nextSet.position }
                 ?.targetRepsMin
             val gymId = content.session.gymId
-            val history = db.sessionDao().setsForExercise(se.exercise.id)
-                .filter { it.sessionId != sessionId }
-                .map { SetRecord(it.set.load, it.set.reps, it.set.setType, it.sessionGymId) }
             val wouldBePr = PrDetector.detect(
                 se.exercise.measurementType,
                 SetRecord(nextSet.load, target ?: nextSet.reps, nextSet.setType, gymId),
@@ -221,26 +233,17 @@ class WorkoutViewModel(
         }
     }
 
-    /** A streak of consecutive training weeks (including this one) triggers praise at finish. */
+    /**
+     * A streak of consecutive training weeks (including this one) triggers
+     * praise at finish. The streak is the same one Home and Stats show — same
+     * calculator, same per-week quota — so all three agree on what a week
+     * counts for.
+     */
     private suspend fun checkStreak() {
         val engine = coachEngine() ?: return
         val dates = db.sessionDao().observeSessionDates(0).first()
-        if (dates.isEmpty()) return
-        val zone = java.time.ZoneId.systemDefault()
-        val weekFields = java.time.temporal.WeekFields.ISO
-        val weeks = dates.map {
-            val d = java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-            d.get(weekFields.weekBasedYear()) * 100 + d.get(weekFields.weekOfWeekBasedYear())
-        }.toSet()
-        val today = java.time.LocalDate.now()
-        var streak = 0
-        var cursor = today
-        while (cursor.get(weekFields.weekBasedYear()) * 100 +
-            cursor.get(weekFields.weekOfWeekBasedYear()) in weeks
-        ) {
-            streak++
-            cursor = cursor.minusWeeks(1)
-        }
+        val minPerWeek = container.settingsNow().streakMinPerWeek
+        val streak = StreakCalculator.weeks(dates, minPerWeek)
         if (streak >= STREAK_WEEKS && engine.offer(CoachTrigger.STREAK)) emit(CoachTrigger.STREAK)
     }
 
@@ -260,7 +263,7 @@ class WorkoutViewModel(
 
     fun addSet(se: SessionExerciseWithDetails, type: SetType = SetType.STANDARD, afterSet: LoggedSet? = null) {
         viewModelScope.launch {
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val sets = se.sortedSets
             val template = afterSet ?: sets.lastOrNull()
             val position = (afterSet?.position ?: sets.lastOrNull()?.position ?: -1) + 1
@@ -290,7 +293,7 @@ class WorkoutViewModel(
      * @return how many sets were created; 0 means there was nothing to ramp to
      */
     suspend fun addWarmupSets(se: SessionExerciseWithDetails): Int {
-        val settings = container.settings.settings.first()
+        val settings = container.settingsNow()
         val sets = se.sortedSets
         val working = sets.firstOrNull { it.setType != SetType.WARMUP } ?: return 0
         val rounding = when (se.exercise.measurementType) {
@@ -644,7 +647,7 @@ class WorkoutViewModel(
      */
     fun addExercise(exercise: Exercise, intoBlockIndex: Int? = null) {
         viewModelScope.launch {
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val content = session.value
             val blockPos: Int
             val inBlockPos: Int
@@ -756,7 +759,7 @@ class WorkoutViewModel(
                 if (routineWithDays != null &&
                     routineWithDays.routine.scheduleMode == ScheduleMode.ROTATING
                 ) {
-                    val settings = container.settings.settings.first()
+                    val settings = container.settingsNow()
                     val newIndex = ScheduleEngine.indexAfterCompletion(
                         routineWithDays.routine,
                         routineWithDays.days,

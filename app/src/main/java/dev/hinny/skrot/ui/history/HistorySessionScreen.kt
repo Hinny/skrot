@@ -48,13 +48,14 @@ import dev.hinny.skrot.data.model.SessionExercise
 import dev.hinny.skrot.data.model.SessionExerciseWithDetails
 import dev.hinny.skrot.data.model.SessionWithContent
 import dev.hinny.skrot.data.model.SetType
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
+import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,37 +78,30 @@ class HistorySessionViewModel(
     private val db = container.db
 
     val draft = MutableStateFlow<SessionWithContent?>(null)
-    val confirmEdits = MutableStateFlow(true)
-        /**
-     * Bumped by undo and redo, so text fields holding their own state while you
-     * type adopt the rolled-back value instead of going on showing what you
-     * typed.
-     */
-    val revision = MutableStateFlow(0)
-
-    val canUndo = MutableStateFlow(false)
-    val canRedo = MutableStateFlow(false)
     val allExercises = MutableStateFlow<List<Exercise>>(emptyList())
     val dayName = MutableStateFlow<String?>(null)
     val gymName = MutableStateFlow<String?>(null)
 
-    /** What the database currently holds; Cancel goes back to this. */
-    private var baseline: SessionWithContent? = null
-
-    private val undoStack = ArrayDeque<SessionWithContent>()
-    private val redoStack = ArrayDeque<SessionWithContent>()
+    /**
+     * Edits go to [draft] and reach the database only on Apply; the baseline is
+     * what the database currently holds, so Cancel goes back to that.
+     */
+    val edits = EditHistory<SessionWithContent>()
+    val confirmEdits = edits.confirmEdits
+    val revision = edits.revision
+    val canUndo = edits.canUndo
+    val canRedo = edits.canRedo
+    val hasPendingChanges = edits.hasPendingChanges
 
     /** Ids for rows that exist only in the draft so far; always negative. */
     private var nextTempId = -1L
-
-    val hasPendingChanges = MutableStateFlow(false)
 
     init {
         viewModelScope.launch { reload() }
         viewModelScope.launch {
             container.settings.settings.collect {
-                confirmEdits.value = it.confirmLibraryEdits
-                recomputePending()
+                edits.confirmEdits.value = it.confirmLibraryEdits
+                edits.refresh(draft.value)
             }
         }
         viewModelScope.launch {
@@ -117,24 +111,12 @@ class HistorySessionViewModel(
 
     private suspend fun reload() {
         val fresh = db.sessionDao().sessionWithContent(sessionId)
-        baseline = fresh
         draft.value = fresh
-        undoStack.clear()
-        redoStack.clear()
-        updateUndoRedoFlags()
-        recomputePending()
+        edits.rebaseline(fresh)
+        edits.clearHistory()
         val dayId = fresh?.session?.routineDayId
         dayName.value = dayId?.let { db.routineDao().dayById(it)?.name }
         gymName.value = fresh?.session?.gymId?.let { db.gymDao().byId(it)?.name }
-    }
-
-    private fun recomputePending() {
-        hasPendingChanges.value = confirmEdits.value && draft.value != baseline
-    }
-
-    private fun updateUndoRedoFlags() {
-        canUndo.value = undoStack.isNotEmpty()
-        canRedo.value = redoStack.isNotEmpty()
     }
 
     /** Applies [transform] to the draft, recording one undo step. */
@@ -142,11 +124,9 @@ class HistorySessionViewModel(
         val current = draft.value ?: return
         val updated = transform(current)
         if (updated == current) return
-        undoStack.addLast(current)
-        redoStack.clear()
+        edits.push(current)
         draft.value = updated
-        updateUndoRedoFlags()
-        recomputePending()
+        edits.refresh(updated)
         if (!confirmEdits.value) applyChanges()
     }
 
@@ -204,37 +184,29 @@ class HistorySessionViewModel(
     fun setNote(note: String) = edit { it.copy(session = it.session.copy(note = note)) }
 
     fun undo() {
-        revision.value++
         val current = draft.value ?: return
-        val previous = undoStack.removeLastOrNull() ?: return
-        redoStack.addLast(current)
+        val previous = edits.undo(current) ?: return
         draft.value = previous
-        updateUndoRedoFlags()
-        recomputePending()
+        edits.refresh(previous)
         if (!confirmEdits.value) applyChanges()
     }
 
     fun redo() {
-        revision.value++
         val current = draft.value ?: return
-        val next = redoStack.removeLastOrNull() ?: return
-        undoStack.addLast(current)
+        val next = edits.redo(current) ?: return
         draft.value = next
-        updateUndoRedoFlags()
-        recomputePending()
+        edits.refresh(next)
         if (!confirmEdits.value) applyChanges()
     }
 
     fun cancelChanges() {
-        draft.value = baseline
-        undoStack.clear()
-        redoStack.clear()
-        updateUndoRedoFlags()
-        recomputePending()
+        draft.value = edits.baseline
+        edits.clearHistory()
+        edits.refresh(edits.baseline)
     }
 
     /**
-     * Writes the draft to the database as a diff against [baseline]: rows the
+     * Writes the draft to the database as a diff against the baseline: rows the
      * draft dropped are deleted, rows it invented (negative ids) are inserted,
      * the rest are updated. Then everything is re-read so ids are real again.
      */
@@ -245,12 +217,12 @@ class HistorySessionViewModel(
         // every keystroke, and reloading under the cursor loses input).
         val hasNewRows = content.exercises.any { se ->
             se.sessionExercise.id <= 0 || se.sets.any { it.id <= 0 }
-        } || (baseline?.exercises?.size ?: 0) != content.exercises.size
+        } || (edits.baseline?.exercises?.size ?: 0) != content.exercises.size
         viewModelScope.launch {
             val dao = db.sessionDao()
             dao.updateSession(content.session)
 
-            val old = baseline?.exercises ?: emptyList()
+            val old = edits.baseline?.exercises ?: emptyList()
             for (gone in old) {
                 if (content.exercises.none { it.sessionExercise.id == gone.sessionExercise.id }) {
                     // Cascades to the exercise's logged sets.
@@ -278,8 +250,7 @@ class HistorySessionViewModel(
             if (hasNewRows) {
                 reload()
             } else {
-                baseline = content
-                recomputePending()
+                edits.rebaseline(content)
             }
         }
     }
@@ -464,10 +435,7 @@ private fun HistorySetRow(
         mutableStateOf(Units.formatValue(Units.toDisplay(set.load, settings.unit, measurement)))
     }
     var repsText by remember(set.id, revision) { mutableStateOf(set.reps.toString()) }
-    val unitLabel = when (measurement) {
-        MeasurementType.MACHINE_LEVEL -> stringResource(R.string.measurement_level)
-        else -> if (settings.unit == WeightUnit.KG) "kg" else "lbs"
-    }
+    val unitLabel = loadFieldLabel(measurement, settings.unit)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
