@@ -15,6 +15,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -58,6 +60,7 @@ import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.NewExercise
+import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.common.displayName
@@ -79,18 +82,25 @@ class DayEditorViewModel(
     private val db = container.db
     val day = MutableStateFlow<DayWithContent?>(null)
     val allExercises = MutableStateFlow<List<Exercise>>(emptyList())
-    val confirmEdits = MutableStateFlow(true)
-    val hasPendingChanges = MutableStateFlow(false)
 
-    /** Last-confirmed state; only meaningful while [confirmEdits] is on. */
-    private var baseline: DayWithContent? = null
+    /**
+     * Mutations below write straight to the database; the history tracks
+     * whether the live state has drifted from the last-confirmed one and puts
+     * snapshots back via [restoreSnapshot].
+     */
+    val edits = EditHistory<DayWithContent>()
+    val confirmEdits = edits.confirmEdits
+    val hasPendingChanges = edits.hasPendingChanges
+    val canUndo = edits.canUndo
+    val canRedo = edits.canRedo
+    val revision = edits.revision
 
     init {
         viewModelScope.launch {
             db.routineDao().observeDayWithContent(dayId).collect { d ->
                 day.value = d
-                if (baseline == null) baseline = d
-                recomputePending()
+                edits.baselineIfUnset(d)
+                edits.refresh(d)
             }
         }
         viewModelScope.launch {
@@ -98,63 +108,64 @@ class DayEditorViewModel(
         }
         viewModelScope.launch {
             container.settings.settings.collect {
-                confirmEdits.value = it.confirmLibraryEdits
-                recomputePending()
+                edits.confirmEdits.value = it.confirmLibraryEdits
+                edits.refresh(day.value)
             }
         }
     }
 
-    /**
-     * Every mutation below writes straight to the database as before (add/move
-     * a block, edit a set, ...); this just tracks whether the live state has
-     * drifted from the last-confirmed [baseline] so the UI can show an
-     * Apply/Cancel bar. In auto-apply mode every change re-baselines
-     * immediately, so no bar ever appears.
-     */
-    private fun recomputePending() {
-        if (!confirmEdits.value) {
-            baseline = day.value
-            hasPendingChanges.value = false
-        } else {
-            hasPendingChanges.value = day.value != baseline
-        }
-    }
-
-    fun applyChanges() {
-        baseline = day.value
-        hasPendingChanges.value = false
-    }
+    fun applyChanges() = edits.rebaseline(day.value)
 
     /** Reverts day fields, blocks/exercises and their sets to the last Apply point. */
     fun cancelChanges() {
-        viewModelScope.launch {
-            val snap = baseline ?: return@launch
-            val dao = db.routineDao()
-            val backupDao = db.backupDao()
+        val snap = edits.baseline ?: return
+        viewModelScope.launch { restoreSnapshot(snap) }
+    }
 
-            dao.updateDay(snap.day)
+    /** Records the pre-change snapshot so [undo] can revert this step. */
+    private fun pushUndo() {
+        day.value?.let { edits.push(it) }
+    }
 
-            val currentPeIds = day.value?.exercises?.map { it.planned.id }?.toSet() ?: emptySet()
-            val snapPeIds = snap.exercises.map { it.planned.id }.toSet()
-            for (peId in currentPeIds - snapPeIds) {
-                dao.plannedExerciseById(peId)?.let { dao.deletePlannedExercise(it) }
-            }
-            // REPLACE-insert restores field values on survivors (including
-            // blockPos/inBlockPos, so reordering/link/unlink undoes too) and
-            // recreates anything deleted during this editing session, under
-            // its original id.
-            backupDao.insertPlannedExercises(snap.exercises.map { it.planned })
+    fun undo() {
+        val current = day.value ?: return
+        val previous = edits.undo(current) ?: return
+        viewModelScope.launch { restoreSnapshot(previous) }
+    }
 
-            for (pe in snap.exercises) {
-                val currentSets = dao.plannedSets(pe.planned.id)
-                val snapSetIds = pe.sets.map { it.id }.toSet()
-                for (s in currentSets) if (s.id !in snapSetIds) dao.deletePlannedSet(s)
-            }
-            backupDao.insertPlannedSets(snap.exercises.flatMap { it.sets })
+    fun redo() {
+        val current = day.value ?: return
+        val next = edits.redo(current) ?: return
+        viewModelScope.launch { restoreSnapshot(next) }
+    }
+
+    private suspend fun restoreSnapshot(snap: DayWithContent) {
+        val dao = db.routineDao()
+        val backupDao = db.backupDao()
+
+        dao.updateDay(snap.day)
+
+        val currentPeIds = day.value?.exercises?.map { it.planned.id }?.toSet() ?: emptySet()
+        val snapPeIds = snap.exercises.map { it.planned.id }.toSet()
+        for (peId in currentPeIds - snapPeIds) {
+            dao.plannedExerciseById(peId)?.let { dao.deletePlannedExercise(it) }
         }
+        // REPLACE-insert restores field values on survivors (including
+        // blockPos/inBlockPos, so reordering/link/unlink undoes too) and
+        // recreates anything deleted during this editing session, under
+        // its original id.
+        backupDao.insertPlannedExercises(snap.exercises.map { it.planned })
+
+        for (pe in snap.exercises) {
+            val currentSets = dao.plannedSets(pe.planned.id)
+            val snapSetIds = pe.sets.map { it.id }.toSet()
+            for (s in currentSets) if (s.id !in snapSetIds) dao.deletePlannedSet(s)
+        }
+        backupDao.insertPlannedSets(snap.exercises.flatMap { it.sets })
     }
 
     fun updateDayFields(name: String? = null, description: String? = null) {
+        pushUndo()
         viewModelScope.launch {
             val current = day.value?.day ?: return@launch
             db.routineDao().updateDay(
@@ -167,6 +178,7 @@ class DayEditorViewModel(
     }
 
     fun updateIcon(icon: dev.hinny.skrot.data.model.ProgramIcon) {
+        pushUndo()
         viewModelScope.launch {
             val current = day.value?.day ?: return@launch
             db.routineDao().updateDay(current.copy(icon = icon))
@@ -175,6 +187,7 @@ class DayEditorViewModel(
 
     /** Adds an exercise as a new block, or into an existing block (superset). */
     fun addExercise(exercise: Exercise, intoBlockPos: Int? = null) {
+        pushUndo()
         viewModelScope.launch {
             val settings = container.settingsNow()
             val content = day.value ?: return@launch
@@ -211,10 +224,12 @@ class DayEditorViewModel(
     }
 
     fun removeExercise(pe: PlannedExerciseWithDetails) {
+        pushUndo()
         viewModelScope.launch { db.routineDao().deletePlannedExercise(pe.planned) }
     }
 
     fun moveBlock(from: Int, to: Int) {
+        pushUndo()
         viewModelScope.launch {
             val content = day.value ?: return@launch
             val blocks = content.blocks
@@ -233,6 +248,7 @@ class DayEditorViewModel(
 
     /** Merges this block into the previous one (creates/extends a superset). */
     fun linkWithPrevious(blockPos: Int) {
+        pushUndo()
         viewModelScope.launch {
             val content = day.value ?: return@launch
             val blocks = content.blocks
@@ -253,6 +269,7 @@ class DayEditorViewModel(
 
     /** Splits an exercise out of its superset into its own block. */
     fun unlink(pe: PlannedExerciseWithDetails) {
+        pushUndo()
         viewModelScope.launch {
             val content = day.value ?: return@launch
             val maxBlock = content.exercises.maxOfOrNull { it.planned.blockPos } ?: 0
@@ -263,6 +280,7 @@ class DayEditorViewModel(
     }
 
     fun addSet(pe: PlannedExerciseWithDetails) {
+        pushUndo()
         viewModelScope.launch {
             val settings = container.settingsNow()
             val last = pe.sortedSets.lastOrNull()
@@ -279,6 +297,7 @@ class DayEditorViewModel(
     }
 
     fun updateSet(set: PlannedSet) {
+        pushUndo()
         viewModelScope.launch { db.routineDao().updatePlannedSet(set) }
     }
 
@@ -289,6 +308,7 @@ class DayEditorViewModel(
      * list it is reordering.
      */
     fun moveSet(plannedExerciseId: Long, from: Int, to: Int) {
+        pushUndo()
         viewModelScope.launch {
             val sets = day.value?.exercises
                 ?.find { it.planned.id == plannedExerciseId }
@@ -306,6 +326,7 @@ class DayEditorViewModel(
     }
 
     fun removeSet(set: PlannedSet) {
+        pushUndo()
         viewModelScope.launch { db.routineDao().deletePlannedSet(set) }
     }
 
@@ -339,11 +360,16 @@ fun DayEditorScreen(
     val content by vm.day.collectAsState()
     val exercises by vm.allExercises.collectAsState()
     val hasPendingChanges by vm.hasPendingChanges.collectAsState()
+    val canUndo by vm.canUndo.collectAsState()
+    val canRedo by vm.canRedo.collectAsState()
+    val revision by vm.revision.collectAsState()
     val d = content ?: return
     var pickerTarget by remember { mutableStateOf<Int?>(-1) } // -1 closed, null new block, else block
     var showIconPicker by remember { mutableStateOf(false) }
-    var name by remember(d.day.id) { mutableStateOf(d.day.name) }
-    var description by remember(d.day.id) { mutableStateOf(d.day.description) }
+    // Keyed on the revision too, so a field adopts the rolled-back value
+    // instead of going on showing what was typed before an undo.
+    var name by remember(d.day.id, revision) { mutableStateOf(d.day.name) }
+    var description by remember(d.day.id, revision) { mutableStateOf(d.day.description) }
     val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
     val orderLocked = rememberReorderLock(settings.listsLockedByDefault)
 
@@ -357,6 +383,12 @@ fun DayEditorScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = { vm.undo() }, enabled = canUndo) {
+                    Icon(Icons.Filled.Undo, stringResource(R.string.undo))
+                }
+                IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                    Icon(Icons.Filled.Redo, stringResource(R.string.redo))
+                }
                 ReorderLockButton(orderLocked)
                 TextButton(onClick = { nav.popBackStack() }) {
                     Text(stringResource(R.string.done))

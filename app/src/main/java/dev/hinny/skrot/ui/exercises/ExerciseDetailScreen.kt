@@ -62,6 +62,7 @@ import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.ConfirmDialog
+import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
@@ -87,22 +88,20 @@ class ExerciseDetailViewModel(
 
     /** Working copy shown in the UI; may hold unsaved edits when confirm mode is on. */
     val draft = MutableStateFlow<Exercise?>(null)
-    val confirmEdits = MutableStateFlow(true)
     val sets = MutableStateFlow<List<SetWithContext>>(emptyList())
     val groups = MutableStateFlow<List<ExerciseGroup>>(emptyList())
     val gyms = MutableStateFlow<Map<Long, String>>(emptyMap())
-        /**
-     * Bumped by undo and redo, so text fields holding their own state while you
-     * type adopt the rolled-back value instead of going on showing what you
-     * typed.
+
+    /**
+     * Edits go to [draft] and reach the database only on Apply, so a
+     * half-renamed exercise is never persisted. The screen derives its own
+     * pending flag from draft vs [exercise], which is the same comparison.
      */
-    val revision = MutableStateFlow(0)
-
-    val canUndo = MutableStateFlow(false)
-    val canRedo = MutableStateFlow(false)
-
-    private val undoStack = ArrayDeque<Exercise>()
-    private val redoStack = ArrayDeque<Exercise>()
+    val edits = EditHistory<Exercise>()
+    val confirmEdits = edits.confirmEdits
+    val revision = edits.revision
+    val canUndo = edits.canUndo
+    val canRedo = edits.canRedo
 
     init {
         viewModelScope.launch {
@@ -110,14 +109,12 @@ class ExerciseDetailViewModel(
                 exercise.value = e
                 if (draft.value?.id != e?.id) {
                     draft.value = e
-                    undoStack.clear()
-                    redoStack.clear()
-                    updateUndoRedoFlags()
+                    edits.clearHistory()
                 }
             }
         }
         viewModelScope.launch {
-            container.settings.settings.collect { confirmEdits.value = it.confirmLibraryEdits }
+            container.settings.settings.collect { edits.confirmEdits.value = it.confirmLibraryEdits }
         }
         viewModelScope.launch {
             db.sessionDao().observeSetsForExercise(exerciseId).collect { sets.value = it }
@@ -140,30 +137,22 @@ class ExerciseDetailViewModel(
         val current = draft.value ?: return
         val updated = transform(current)
         if (updated == current) return
-        undoStack.addLast(current)
-        redoStack.clear()
+        edits.push(current)
         draft.value = updated
-        updateUndoRedoFlags()
         if (!confirmEdits.value) persist(updated)
     }
 
     fun undo() {
-        revision.value++
         val current = draft.value ?: return
-        val previous = undoStack.removeLastOrNull() ?: return
-        redoStack.addLast(current)
+        val previous = edits.undo(current) ?: return
         draft.value = previous
-        updateUndoRedoFlags()
         if (!confirmEdits.value) persist(previous)
     }
 
     fun redo() {
-        revision.value++
         val current = draft.value ?: return
-        val next = redoStack.removeLastOrNull() ?: return
-        undoStack.addLast(current)
+        val next = edits.redo(current) ?: return
         draft.value = next
-        updateUndoRedoFlags()
         if (!confirmEdits.value) persist(next)
     }
 
@@ -173,14 +162,7 @@ class ExerciseDetailViewModel(
 
     fun cancelChanges() {
         draft.value = exercise.value
-        undoStack.clear()
-        redoStack.clear()
-        updateUndoRedoFlags()
-    }
-
-    private fun updateUndoRedoFlags() {
-        canUndo.value = undoStack.isNotEmpty()
-        canRedo.value = redoStack.isNotEmpty()
+        edits.clearHistory()
     }
 
     private fun persist(e: Exercise) {

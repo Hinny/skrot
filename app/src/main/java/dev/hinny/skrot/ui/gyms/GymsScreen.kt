@@ -51,6 +51,7 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.data.prefs.Settings
+import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
 import dev.hinny.skrot.ui.common.ReorderHandle
 import dev.hinny.skrot.ui.common.ReorderLockButton
@@ -77,24 +78,20 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     private val editingGymId = MutableStateFlow<Long?>(null)
     val editingGym = MutableStateFlow<Gym?>(null)
     val editingAvailable = MutableStateFlow<Set<Long>>(emptySet())
-    val confirmEdits = MutableStateFlow(true)
-    val hasPendingChanges = MutableStateFlow(false)
-        /**
-     * Bumped by undo and redo, so text fields holding their own state while you
-     * type adopt the rolled-back value instead of going on showing what you
-     * typed.
+    /**
+     * A gym's editable state is its own row plus the set of exercises marked
+     * available there, so both travel together as one undoable snapshot.
      */
-    val revision = MutableStateFlow(0)
+    val edits = EditHistory<Pair<Gym, Set<Long>>>()
+    val confirmEdits = edits.confirmEdits
+    val hasPendingChanges = edits.hasPendingChanges
+    val canUndo = edits.canUndo
+    val canRedo = edits.canRedo
+    val revision = edits.revision
 
-    val canUndo = MutableStateFlow(false)
-    val canRedo = MutableStateFlow(false)
-
-    /** Last-confirmed state for the gym being edited; only meaningful while [confirmEdits] is on. */
-    private var baselineGym: Gym? = null
-    private var baselineAvailable: Set<Long> = emptySet()
-
-    private val undoStack = ArrayDeque<Pair<Gym, Set<Long>>>()
-    private val redoStack = ArrayDeque<Pair<Gym, Set<Long>>>()
+    /** The live state as one value, for comparing against the baseline. */
+    private fun snapshot(): Pair<Gym, Set<Long>>? =
+        editingGym.value?.let { it to editingAvailable.value }
 
     init {
         viewModelScope.launch { db.gymDao().observeAll().collect { gyms.value = it } }
@@ -110,61 +107,38 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
                     ) { gym, ids -> gym to ids.toSet() }
                 }
             }.collect { (gym, available) ->
-                val switchedGym = gym != null && baselineGym?.id != gym.id
+                val switchedGym = gym != null && edits.baseline?.first?.id != gym.id
                 editingGym.value = gym
                 editingAvailable.value = available
                 if (gym == null) {
-                    baselineGym = null
-                    baselineAvailable = emptySet()
+                    edits.rebaseline(null)
                 } else if (switchedGym) {
-                    baselineGym = gym
-                    baselineAvailable = available
-                    undoStack.clear()
-                    redoStack.clear()
-                    updateUndoRedoFlags()
+                    edits.rebaseline(gym to available)
+                    edits.clearHistory()
                 }
-                recomputePending()
+                edits.refresh(snapshot())
             }
         }
         viewModelScope.launch {
             container.settings.settings.collect {
-                confirmEdits.value = it.confirmLibraryEdits
-                recomputePending()
+                edits.confirmEdits.value = it.confirmLibraryEdits
+                edits.refresh(snapshot())
             }
         }
     }
 
     /**
      * Every mutation below (rename, toggle an exercise, bulk-add, ...) writes
-     * straight to the database as before; this just tracks whether the live
-     * state has drifted from the last-confirmed baseline so the UI can show
-     * an Apply/Cancel bar. In auto-apply mode every change re-baselines
-     * immediately, so no bar ever appears.
+     * straight to the database; [edits] tracks whether the live state has
+     * drifted from the last-confirmed baseline so the UI can show an
+     * Apply/Cancel bar.
      */
-    private fun recomputePending() {
-        val gym = editingGym.value
-        if (gym == null) {
-            hasPendingChanges.value = false
-            return
-        }
-        if (!confirmEdits.value) {
-            baselineGym = gym
-            baselineAvailable = editingAvailable.value
-            hasPendingChanges.value = false
-        } else {
-            hasPendingChanges.value = gym != baselineGym || editingAvailable.value != baselineAvailable
-        }
-    }
-
-    fun applyChanges() {
-        baselineGym = editingGym.value
-        baselineAvailable = editingAvailable.value
-        hasPendingChanges.value = false
-    }
+    fun applyChanges() = edits.rebaseline(snapshot())
 
     /** Reverts the edited gym's name and available-exercise list to the last Apply point. */
     fun cancelChanges() {
-        viewModelScope.launch { restoreSnapshot(baselineGym ?: return@launch, baselineAvailable) }
+        val (gym, available) = edits.baseline ?: return
+        viewModelScope.launch { restoreSnapshot(gym, available) }
     }
 
     private suspend fun restoreSnapshot(gym: Gym, available: Set<Long>) {
@@ -177,15 +151,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
 
     /** Records the pre-change snapshot so [undo] can revert this step. */
     private fun pushUndo() {
-        val gym = editingGym.value ?: return
-        undoStack.addLast(gym to editingAvailable.value)
-        redoStack.clear()
-        updateUndoRedoFlags()
-    }
-
-    private fun updateUndoRedoFlags() {
-        canUndo.value = undoStack.isNotEmpty()
-        canRedo.value = redoStack.isNotEmpty()
+        snapshot()?.let { edits.push(it) }
     }
 
     /** Reorders gyms; the list is presented in [Gym.position] order. */
@@ -202,21 +168,13 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun undo() {
-        revision.value++
-        val current = editingGym.value ?: return
-        val previous = undoStack.removeLastOrNull() ?: return
-        redoStack.addLast(current to editingAvailable.value)
-        updateUndoRedoFlags()
-        viewModelScope.launch { restoreSnapshot(previous.first, previous.second) }
+        val (gym, available) = edits.undo(snapshot() ?: return) ?: return
+        viewModelScope.launch { restoreSnapshot(gym, available) }
     }
 
     fun redo() {
-        revision.value++
-        val current = editingGym.value ?: return
-        val next = redoStack.removeLastOrNull() ?: return
-        undoStack.addLast(current to editingAvailable.value)
-        updateUndoRedoFlags()
-        viewModelScope.launch { restoreSnapshot(next.first, next.second) }
+        val (gym, available) = edits.redo(snapshot() ?: return) ?: return
+        viewModelScope.launch { restoreSnapshot(gym, available) }
     }
 
     fun enterEditing(gymId: Long) {
