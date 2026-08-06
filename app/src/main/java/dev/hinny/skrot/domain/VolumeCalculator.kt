@@ -1,7 +1,7 @@
 package dev.hinny.skrot.domain
 
 import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.SetType
+import dev.hinny.skrot.data.model.SessionWithContent
 
 object VolumeCalculator {
     /** Used when no body weight has ever been logged (configurable in settings). */
@@ -28,6 +28,29 @@ object VolumeCalculator {
         MeasurementType.MACHINE_LEVEL -> null
     }
 
-    /** Warmup sets count toward volume; this helper exists for stats that exclude them. */
-    fun countsForProgression(setType: SetType): Boolean = setType != SetType.WARMUP
+    /**
+     * Total kg volume of every completed set in a session. Machine levels
+     * contribute nothing (they aren't kilograms); bodyweight work is priced
+     * against [bodyweightKg].
+     *
+     * The home recap, the finish dialog and the session summary all show "the
+     * volume of this workout", so they all count it here rather than each
+     * walking the session themselves.
+     */
+    fun sessionVolumeKg(content: SessionWithContent, bodyweightKg: Double): Double =
+        content.exercises.sumOf { se ->
+            se.sets.filter { it.completed }.sumOf { set ->
+                setVolumeKg(
+                    se.exercise.measurementType,
+                    set.load,
+                    set.reps,
+                    bodyweightKg,
+                    se.exercise.bodyweightFactor,
+                ) ?: 0.0
+            }
+        }
+
+    /** Completed sets in a session, the count shown alongside [sessionVolumeKg]. */
+    fun completedSetCount(content: SessionWithContent): Int =
+        content.exercises.sumOf { se -> se.sets.count { it.completed } }
 }

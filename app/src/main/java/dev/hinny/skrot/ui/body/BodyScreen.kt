@@ -129,7 +129,7 @@ fun BodyScreen(container: AppContainer, settings: Settings) {
     var editing by remember { mutableStateOf<BodyMetric?>(null) }
     var chartKind by remember { mutableStateOf(BodyMetricKind.WEIGHT) }
     val zone = remember { ZoneId.systemDefault() }
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val unitLabel = Units.unitLabel(settings.unit)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val deletedMsg = stringResource(R.string.measurement_deleted)
@@ -410,7 +410,7 @@ fun BodyMetricDialog(
                     label = {
                         Text(
                             stringResource(R.string.body_weight) +
-                                " (${if (unit == WeightUnit.KG) "kg" else "lbs"})"
+                                " (${Units.unitLabel(unit)})"
                         )
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

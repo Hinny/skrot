@@ -55,6 +55,7 @@ import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.ExerciseMeta
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.PendingChangesBar
+import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -464,10 +465,7 @@ private fun HistorySetRow(
         mutableStateOf(Units.formatValue(Units.toDisplay(set.load, settings.unit, measurement)))
     }
     var repsText by remember(set.id, revision) { mutableStateOf(set.reps.toString()) }
-    val unitLabel = when (measurement) {
-        MeasurementType.MACHINE_LEVEL -> stringResource(R.string.measurement_level)
-        else -> if (settings.unit == WeightUnit.KG) "kg" else "lbs"
-    }
+    val unitLabel = loadFieldLabel(measurement, settings.unit)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

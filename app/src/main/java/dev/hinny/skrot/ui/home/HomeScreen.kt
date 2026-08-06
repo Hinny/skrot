@@ -289,29 +289,14 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val content = db.sessionDao().sessionWithContent(session.id) ?: return null
         val bodyweight = db.bodyMetricDao().latestWeightAtOrBefore(session.startedAt)
             ?.weightKg ?: bodyweightFallbackKg
-        var volume = 0.0
-        var setCount = 0
-        for (se in content.exercises) {
-            val completed = se.sets.filter { it.completed }
-            setCount += completed.size
-            for (set in completed) {
-                VolumeCalculator.setVolumeKg(
-                    se.exercise.measurementType,
-                    set.load,
-                    set.reps,
-                    bodyweight,
-                    se.exercise.bodyweightFactor,
-                )?.let { volume += it }
-            }
-        }
         val dayName = session.routineDayId?.let { db.routineDao().dayWithContent(it)?.day?.name }
         return LastSessionSummary(
             startedAt = session.startedAt,
             title = dayName.orEmpty(),
             durationMs = (session.endedAt ?: session.startedAt) - session.startedAt,
             exerciseCount = content.exercises.size,
-            completedSets = setCount,
-            volumeKg = volume,
+            completedSets = VolumeCalculator.completedSetCount(content),
+            volumeKg = VolumeCalculator.sessionVolumeKg(content, bodyweight),
             sessionId = session.id,
         )
     }
@@ -631,7 +616,6 @@ private fun OneRepMaxCard(
     range: OneRepMaxRange,
     settings: Settings,
 ) {
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -643,12 +627,7 @@ private fun OneRepMaxCard(
                     Text(entry.exercise.displayName(), modifier = Modifier.weight(1f))
                     val estimate = entry.estimateKg
                     Text(
-                        if (estimate == null) "—" else {
-                            val display =
-                                if (settings.unit == WeightUnit.KG) estimate
-                                else Units.kgToLbs(estimate)
-                            "${Units.formatValue(display)} $unitLabel"
-                        },
+                        estimate?.let { Units.formatWeight(it, settings.unit) } ?: "—",
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -678,16 +657,12 @@ private fun LastSessionCard(
                 summary.title.ifBlank { stringResource(R.string.workout) },
                 style = MaterialTheme.typography.titleMedium,
             )
-            val volume =
-                if (settings.unit == WeightUnit.KG) summary.volumeKg
-                else Units.kgToLbs(summary.volumeKg)
             Text(
                 listOf(
                     lastPerformedText(summary.startedAt),
                     stringResource(R.string.minutes_short, summary.durationMs / 60_000),
                     stringResource(R.string.sets_count, summary.completedSets),
-                    "${Units.formatValue(volume)} " +
-                        if (settings.unit == WeightUnit.KG) "kg" else "lbs",
+                    Units.formatWeight(summary.volumeKg, settings.unit),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -704,8 +679,6 @@ private fun LastMetricCard(
     onOpen: () -> Unit,
 ) {
     val weightKg = metric.weightKg ?: return
-    val display = if (settings.unit == WeightUnit.KG) weightKg else Units.kgToLbs(weightKg)
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
     val deltaKg = previous?.weightKg?.let { weightKg - it }
 
     Card(
@@ -720,16 +693,14 @@ private fun LastMetricCard(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "${Units.formatValue(display)} $unitLabel",
+                    Units.formatWeight(weightKg, settings.unit),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (deltaKg != null && deltaKg != 0.0) {
-                    val deltaDisplay =
-                        if (settings.unit == WeightUnit.KG) deltaKg else Units.kgToLbs(deltaKg)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         (if (deltaKg > 0) "+" else "") +
-                            "${Units.formatValue(deltaDisplay)} $unitLabel",
+                            Units.formatWeight(deltaKg, settings.unit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

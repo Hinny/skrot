@@ -129,7 +129,7 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
     var openSection by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val unitLabel = Units.unitLabel(settings.unit)
 
     Column(
         modifier = Modifier

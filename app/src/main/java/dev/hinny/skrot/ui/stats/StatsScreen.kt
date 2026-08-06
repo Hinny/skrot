@@ -60,6 +60,7 @@ import dev.hinny.skrot.ui.charts.VerticalBarChart
 import dev.hinny.skrot.ui.charts.WeekCalendarHeatmap
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.formatDuration
 import dev.hinny.skrot.ui.common.muscleLabel
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -673,8 +674,3 @@ private fun setVolumeKg(set: SetWithContext, exercises: Map<Long, Exercise>): Do
     } else {
         0.0
     }
-
-private fun formatDuration(ms: Long): String {
-    val minutes = ms / 60_000
-    return if (minutes >= 60) "%dh %02dm".format(minutes / 60, minutes % 60) else "%dm".format(minutes)
-}

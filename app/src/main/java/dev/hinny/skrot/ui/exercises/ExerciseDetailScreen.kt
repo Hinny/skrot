@@ -244,7 +244,7 @@ fun ExerciseDetailScreen(
         else nonWarmup
     val zone = ZoneId.systemDefault()
     val dateFormat = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
-    val unitLabel = if (settings.unit == WeightUnit.KG) "kg" else "lbs"
+    val unitLabel = Units.unitLabel(settings.unit)
     val hasPendingChanges = confirmEdits && draft != saved
 
     Column(Modifier.fillMaxSize()) {
@@ -691,8 +691,6 @@ private fun formatSet(
             "$sign${Units.formatValue(display)} × ${s.set.reps}"
         } else "${s.set.reps} reps"
 
-    MeasurementType.WEIGHT_KG -> {
-        val display = Units.toDisplay(s.set.load, unit, measurement)
-        "${Units.formatValue(display)} ${if (unit == WeightUnit.KG) "kg" else "lbs"} × ${s.set.reps}"
-    }
+    MeasurementType.WEIGHT_KG ->
+        "${Units.formatLoad(s.set.load, unit, measurement)} × ${s.set.reps}"
 }

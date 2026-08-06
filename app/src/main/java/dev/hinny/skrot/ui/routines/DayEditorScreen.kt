@@ -61,6 +61,7 @@ import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.NewExercise
 import dev.hinny.skrot.ui.common.PendingChangesBar
+import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
@@ -619,11 +620,7 @@ private fun PlannedSetRow(
             },
             label = {
                 Text(
-                    when (measurement) {
-                        MeasurementType.MACHINE_LEVEL -> stringResource(R.string.level)
-                        MeasurementType.BODYWEIGHT -> "+"
-                        else -> if (settings.unit == WeightUnit.KG) "kg" else "lbs"
-                    },
+                    loadFieldLabel(measurement, settings.unit),
                     style = MaterialTheme.typography.labelSmall,
                 )
             },
