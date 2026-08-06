@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -27,15 +28,13 @@ import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.Sex
 import dev.hinny.skrot.data.prefs.Settings
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** Offline profile: every field optional, nothing ever leaves the device. */
 @Composable
 fun ProfileScreen(container: AppContainer, settings: Settings) {
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
     val repo = container.settings
     var name by remember { mutableStateOf(settings.profileName) }
     var birthYear by remember {

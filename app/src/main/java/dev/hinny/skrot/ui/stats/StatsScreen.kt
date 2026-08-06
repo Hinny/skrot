@@ -44,7 +44,6 @@ import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.model.SetWithContext
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.data.db.MuscleGroupSets
 import dev.hinny.skrot.data.prefs.Settings

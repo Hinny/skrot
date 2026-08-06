@@ -48,7 +48,6 @@ import dev.hinny.skrot.data.model.SessionExercise
 import dev.hinny.skrot.data.model.SessionExerciseWithDetails
 import dev.hinny.skrot.data.model.SessionWithContent
 import dev.hinny.skrot.data.model.SetType
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.ConfirmDialog

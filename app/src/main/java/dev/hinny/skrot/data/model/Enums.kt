@@ -297,14 +297,6 @@ enum class ProgramIcon {
             EM_PILL, EM_PLASTER, EM_STETHOSCOPE, EM_ICE, EM_BONE, EM_DNA, EM_TEST_TUBE,
             EM_LOTION,
         )
-
-        /**
-         * Everything else is retired — the hand-drawn equipment and muscle
-         * glyphs, plus a batch of other-sport and weather icons that had
-         * nothing to do with strength training. They stay in the enum because
-         * the value is persisted by name, but are never offered again.
-         */
-        val retired: List<ProgramIcon> = entries.filterNot { it in pickable }
     }
 }
 

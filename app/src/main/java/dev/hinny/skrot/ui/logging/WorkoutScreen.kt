@@ -84,10 +84,8 @@ import dev.hinny.skrot.data.model.PlannedSet
 import dev.hinny.skrot.data.model.SessionExerciseWithDetails
 import dev.hinny.skrot.data.model.SetType
 import dev.hinny.skrot.data.prefs.Settings
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.domain.PlateCalculator
 import dev.hinny.skrot.domain.ProgressionSuggestion
-import dev.hinny.skrot.domain.PrType
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.domain.VolumeCalculator
 import dev.hinny.skrot.ui.Routes
@@ -106,7 +104,6 @@ import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.data.model.Equipment
 import dev.hinny.skrot.data.model.Exercise
-import dev.hinny.skrot.data.model.MuscleGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull

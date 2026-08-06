@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
@@ -58,7 +56,6 @@ import dev.hinny.skrot.data.model.PrefillMode
 import dev.hinny.skrot.data.model.RoutineDay
 import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.model.SessionExercise
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.domain.CoachTrigger
 import dev.hinny.skrot.domain.GymResolution
@@ -73,7 +70,6 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.ui.session.RecoveryStartCard
@@ -364,6 +360,13 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         )
     }
 
+    /** Marks [exerciseId] as available at [gymId], as the gym editor would. */
+    fun addExerciseToGym(gymId: Long, exerciseId: Long) {
+        viewModelScope.launch {
+            db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = exerciseId))
+        }
+    }
+
     /**
      * Records [picked] as interchangeable with [original], so a gym without the
      * original offers it automatically next time. Joins the original's group, or
@@ -373,13 +376,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
      * library's definition of an exercise, so this is allowed for built-in
      * exercises too — unlike renaming one.
      */
-    /** Marks [exerciseId] as available at [gymId], as the gym editor would. */
-    fun addExerciseToGym(gymId: Long, exerciseId: Long) {
-        viewModelScope.launch {
-            db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = exerciseId))
-        }
-    }
-
     fun linkAsEquivalent(original: Exercise, picked: Exercise) {
         viewModelScope.launch {
             val groupId = original.groupId ?: db.exerciseDao().insertGroup(
@@ -882,6 +878,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
     if (showPicker) {
         WorkoutPickerDialog(
             routines = state.allRoutines,
+            lastByDay = state.lastByDay,
             onDismiss = { showPicker = false },
             onPick = { r, day ->
                 showPicker = false

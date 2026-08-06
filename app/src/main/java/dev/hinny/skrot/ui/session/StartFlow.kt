@@ -46,6 +46,7 @@ import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
+import dev.hinny.skrot.ui.common.lastPerformedText
 import dev.hinny.skrot.ui.home.HomeViewModel
 import dev.hinny.skrot.ui.home.PendingStart
 import dev.hinny.skrot.ui.home.StartItem
@@ -169,6 +170,7 @@ private fun ResolutionStatus(resolution: GymResolution) {
 @Composable
 fun WorkoutPickerDialog(
     routines: List<RoutineWithDays>,
+    lastByDay: Map<Long, Long>,
     onDismiss: () -> Unit,
     onPick: (RoutineWithDays, RoutineDay) -> Unit,
 ) {
@@ -194,7 +196,7 @@ fun WorkoutPickerDialog(
                         ) {
                             Text(day.name, style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "${r.routine.name} · ",
+                                "${r.routine.name} · ${lastPerformedText(lastByDay[day.id])}",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }

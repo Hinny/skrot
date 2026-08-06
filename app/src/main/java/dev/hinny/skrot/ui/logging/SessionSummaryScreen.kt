@@ -23,8 +23,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.R
-import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.PrDetector
 import dev.hinny.skrot.domain.PrType

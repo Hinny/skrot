@@ -39,7 +39,6 @@ import dev.hinny.skrot.data.model.RoutineWithDays
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import dev.hinny.skrot.ui.home.HomeViewModel
@@ -158,6 +157,7 @@ fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostContr
     if (showPicker) {
         WorkoutPickerDialog(
             routines = state.allRoutines,
+            lastByDay = state.lastByDay,
             onDismiss = { showPicker = false },
             onPick = { r, day ->
                 showPicker = false

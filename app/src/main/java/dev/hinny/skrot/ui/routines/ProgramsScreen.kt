@@ -49,7 +49,6 @@ import dev.hinny.skrot.ui.common.rememberReorderLock
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

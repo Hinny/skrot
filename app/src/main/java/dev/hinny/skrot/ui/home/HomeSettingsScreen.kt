@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +41,6 @@ import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.StepperNumberField
 import dev.hinny.skrot.ui.common.displayName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
@@ -93,7 +92,7 @@ fun HomeSettingsScreen(
 ) {
     val vm = containerViewModel(container) { c, _ -> HomeSettingsViewModel(c) }
     val allExercises by vm.exercises.collectAsState()
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
     val repo = container.settings
     var addingExercise by remember { mutableStateOf(false) }
 

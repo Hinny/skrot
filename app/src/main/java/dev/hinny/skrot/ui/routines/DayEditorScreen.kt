@@ -44,12 +44,10 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.DayWithContent
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.MeasurementType
-import dev.hinny.skrot.data.model.MuscleGroup
 import dev.hinny.skrot.data.model.PlannedExercise
 import dev.hinny.skrot.data.model.PlannedExerciseWithDetails
 import dev.hinny.skrot.data.model.PlannedSet
 import dev.hinny.skrot.data.model.SetType
-import dev.hinny.skrot.data.model.WeightUnit
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
