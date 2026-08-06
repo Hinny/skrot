@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.ktlint)
 }
 
 android {
@@ -57,6 +58,28 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    lint {
+        // Warnings are advisory; a genuine Android correctness error should
+        // stop the build rather than land.
+        abortOnError = true
+        warningsAsErrors = false
+    }
+}
+
+/**
+ * ktlint is here for one job the compiler and Android Lint both leave alone:
+ * imports that no longer refer to anything. Twenty-two of them had accumulated
+ * before this was added. Formatting rules stay off — reformatting 18k lines of
+ * working code is not what this gate is for; see .editorconfig.
+ */
+ktlint {
+    version.set("1.3.1")
+    android.set(true)
+    ignoreFailures.set(false)
+    filter {
+        // Generated sources are not ours to lint.
+        exclude { it.file.path.contains("/build/") }
     }
 }
 
