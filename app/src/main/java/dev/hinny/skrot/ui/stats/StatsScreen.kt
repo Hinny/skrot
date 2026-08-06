@@ -49,6 +49,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
 import dev.hinny.skrot.data.db.MuscleGroupSets
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.OneRepMax
+import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.body.BodyMetricDialog
@@ -259,7 +260,11 @@ fun StatsScreen(container: AppContainer, settings: Settings, nav: NavHostControl
                     )
                     StatTile(
                         stringResource(R.string.stat_streak),
-                        weekStreak(finished.map { it.startedAt }, zone).toString(),
+                        StreakCalculator.weeks(
+                            finished.map { it.startedAt },
+                            settings.streakMinPerWeek,
+                            zone,
+                        ).toString(),
                         Modifier.weight(1f),
                     )
                 }
@@ -668,23 +673,6 @@ private fun setVolumeKg(set: SetWithContext, exercises: Map<Long, Exercise>): Do
     } else {
         0.0
     }
-
-/** Consecutive weeks up to and including this one that contain a session. */
-private fun weekStreak(sessionDates: List<Long>, zone: ZoneId): Int {
-    if (sessionDates.isEmpty()) return 0
-    val weeks = sessionDates
-        .map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().with(DayOfWeek.MONDAY) }
-        .toSet()
-    var monday = LocalDate.now(zone).with(DayOfWeek.MONDAY)
-    // A week that isn't over yet shouldn't break the streak.
-    if (monday !in weeks) monday = monday.minusWeeks(1)
-    var streak = 0
-    while (monday in weeks) {
-        streak++
-        monday = monday.minusWeeks(1)
-    }
-    return streak
-}
 
 private fun formatDuration(ms: Long): String {
     val minutes = ms / 60_000

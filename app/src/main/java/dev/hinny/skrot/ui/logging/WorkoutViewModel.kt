@@ -22,6 +22,7 @@ import dev.hinny.skrot.domain.ProgressionEngine
 import dev.hinny.skrot.domain.ProgressionSuggestion
 import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
+import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.WarmupGenerator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -221,26 +222,17 @@ class WorkoutViewModel(
         }
     }
 
-    /** A streak of consecutive training weeks (including this one) triggers praise at finish. */
+    /**
+     * A streak of consecutive training weeks (including this one) triggers
+     * praise at finish. The streak is the same one Home and Stats show — same
+     * calculator, same per-week quota — so all three agree on what a week
+     * counts for.
+     */
     private suspend fun checkStreak() {
         val engine = coachEngine() ?: return
         val dates = db.sessionDao().observeSessionDates(0).first()
-        if (dates.isEmpty()) return
-        val zone = java.time.ZoneId.systemDefault()
-        val weekFields = java.time.temporal.WeekFields.ISO
-        val weeks = dates.map {
-            val d = java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-            d.get(weekFields.weekBasedYear()) * 100 + d.get(weekFields.weekOfWeekBasedYear())
-        }.toSet()
-        val today = java.time.LocalDate.now()
-        var streak = 0
-        var cursor = today
-        while (cursor.get(weekFields.weekBasedYear()) * 100 +
-            cursor.get(weekFields.weekOfWeekBasedYear()) in weeks
-        ) {
-            streak++
-            cursor = cursor.minusWeeks(1)
-        }
+        val minPerWeek = container.settings.settings.first().streakMinPerWeek
+        val streak = StreakCalculator.weeks(dates, minPerWeek)
         if (streak >= STREAK_WEEKS && engine.offer(CoachTrigger.STREAK)) emit(CoachTrigger.STREAK)
     }
 
