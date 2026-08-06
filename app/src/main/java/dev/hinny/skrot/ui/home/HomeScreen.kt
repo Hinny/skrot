@@ -14,14 +14,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,8 +67,10 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.CoachMessages
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.common.vectorOrNull
 import dev.hinny.skrot.ui.containerViewModel
+import dev.hinny.skrot.ui.session.NextWorkoutCard
+import dev.hinny.skrot.ui.session.NoActiveProgramCard
+import dev.hinny.skrot.ui.session.OpenSessionCard
 import dev.hinny.skrot.ui.session.RecoveryStartCard
 import dev.hinny.skrot.ui.session.StartFlowHost
 import dev.hinny.skrot.ui.session.WorkoutPickerDialog
@@ -732,22 +731,7 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         }
 
         state.openSession?.let { open ->
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { nav.navigate(Routes.workout(open.id)) },
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.workout_in_progress),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(stringResource(R.string.tap_to_resume))
-                }
-            }
+            OpenSessionCard(onResume = { nav.navigate(Routes.workout(open.id)) })
         }
 
         if (state.backupOverdue && shows(HomeSection.BACKUP_REMINDER)) {
@@ -787,53 +771,20 @@ fun HomeScreen(container: AppContainer, settings: Settings, nav: NavHostControll
         }
 
         val active = state.activeRoutine
-        if (!shows(HomeSection.NEXT_WORKOUT)) {
-            // nothing: the next-workout card is switched off
-        } else if (active != null && state.openSession == null) {
-            val nextDay = state.nextDay
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        active.routine.icon.vectorOrNull()?.let { Icon(it, null) }
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                stringResource(R.string.next_workout),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                nextDay?.name ?: stringResource(R.string.no_days_defined),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            Text(
-                                "${active.routine.name} · " +
-                                    lastPerformedText(nextDay?.let { state.lastByDay[it.id] }),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { if (nextDay != null) startTarget = active to nextDay },
-                            enabled = nextDay != null,
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, null)
-                            Text(stringResource(R.string.start))
-                        }
-                        OutlinedButton(onClick = { showPicker = true }) {
-                            Text(stringResource(R.string.choose_other_workout))
-                        }
-                    }
-                }
-            }
-        } else if (state.openSession == null) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.no_active_program))
-                    TextButton(onClick = { nav.navigate(Routes.PROGRAMS) }) {
-                        Text(stringResource(R.string.go_to_programs))
-                    }
-                }
+        if (shows(HomeSection.NEXT_WORKOUT) && state.openSession == null) {
+            if (active != null) {
+                NextWorkoutCard(
+                    routine = active,
+                    nextDay = state.nextDay,
+                    lastPerformed = state.nextDay?.let { state.lastByDay[it.id] },
+                    onStart = { r, day -> startTarget = r to day },
+                    onChooseOther = { showPicker = true },
+                )
+            } else {
+                NoActiveProgramCard(
+                    onGoToPrograms = { nav.navigate(Routes.PROGRAMS) },
+                    onChooseWorkout = { showPicker = true },
+                )
             }
         }
 
