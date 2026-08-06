@@ -47,9 +47,6 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
-import dev.hinny.skrot.ui.home.HomeViewModel
-import dev.hinny.skrot.ui.home.PendingStart
-import dev.hinny.skrot.ui.home.StartItem
 import kotlinx.coroutines.launch
 
 /**
@@ -62,7 +59,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun StartFlowHost(
-    vm: HomeViewModel,
+    vm: StartSessionViewModel,
     nav: NavHostController,
     settings: Settings,
     gyms: List<Gym>,

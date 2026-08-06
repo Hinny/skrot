@@ -36,6 +36,7 @@ import dev.hinny.skrot.ui.home.RecoverySection
 @Composable
 fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostController) {
     val vm = containerViewModel(container) { c, _ -> HomeViewModel(c) }
+    val startVm = containerViewModel(container) { c, _ -> StartSessionViewModel(c) }
     val state by vm.uiState.collectAsState()
     var startTarget by remember { mutableStateOf<Pair<RoutineWithDays?, RoutineDay?>?>(null) }
     var showPicker by remember { mutableStateOf(false) }
@@ -98,7 +99,7 @@ fun SessionScreen(container: AppContainer, settings: Settings, nav: NavHostContr
     }
 
     StartFlowHost(
-        vm = vm,
+        vm = startVm,
         nav = nav,
         settings = settings,
         gyms = state.gyms,
