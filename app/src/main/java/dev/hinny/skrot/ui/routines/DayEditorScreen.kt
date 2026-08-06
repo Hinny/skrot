@@ -64,7 +64,6 @@ import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.vector
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -177,7 +176,7 @@ class DayEditorViewModel(
     /** Adds an exercise as a new block, or into an existing block (superset). */
     fun addExercise(exercise: Exercise, intoBlockPos: Int? = null) {
         viewModelScope.launch {
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val content = day.value ?: return@launch
             val blockPos: Int
             val inBlockPos: Int
@@ -265,7 +264,7 @@ class DayEditorViewModel(
 
     fun addSet(pe: PlannedExerciseWithDetails) {
         viewModelScope.launch {
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val last = pe.sortedSets.lastOrNull()
             db.routineDao().insertPlannedSet(
                 last?.copy(id = 0, position = last.position + 1)

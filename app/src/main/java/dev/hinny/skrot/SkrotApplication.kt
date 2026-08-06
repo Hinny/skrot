@@ -7,6 +7,7 @@ import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.db.SkrotDatabase
 import dev.hinny.skrot.data.model.Exercise
 import dev.hinny.skrot.data.model.ExerciseSort
+import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.data.prefs.SettingsRepository
 import dev.hinny.skrot.timer.RestTimerController
 import kotlinx.coroutines.CoroutineScope
@@ -14,10 +15,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -31,6 +35,22 @@ class AppContainer(app: Application) {
     val restTimer = RestTimerController(app, scope, settings)
     val backupManager = BackupManager(db, BuildConfig.VERSION_NAME)
     val jefitImporter = JefitImporter(db)
+
+    /**
+     * The settings kept warm for the life of the process, so the many places
+     * that need one value mid-action read it instead of collecting the
+     * DataStore flow again. Null until the first read lands — a window of
+     * milliseconds at startup that [settingsNow] closes by waiting.
+     */
+    private val settingsCache: StateFlow<Settings?> =
+        settings.settings.stateIn(scope, SharingStarted.Eagerly, null)
+
+    /**
+     * The current settings. Cheap once the process is warm; falls back to a
+     * real read for the brief window before [settingsCache] has a value, so
+     * callers never see the defaults standing in for a stored preference.
+     */
+    suspend fun settingsNow(): Settings = settingsCache.value ?: settings.settings.first()
 
     /**
      * The exercise library in the order the user asked for — alphabetical, or
@@ -55,7 +75,7 @@ class AppContainer(app: Application) {
      * that ignored it would be the odd one out.
      */
     suspend fun exercisesNow(): List<Exercise> =
-        when (settings.settings.first().exerciseSort) {
+        when (settingsNow().exerciseSort) {
             ExerciseSort.MOST_USED -> db.exerciseDao().getAllByUsage()
             ExerciseSort.NAME -> db.exerciseDao().getAll()
         }
@@ -65,7 +85,7 @@ class AppContainer(app: Application) {
      * threshold is marked finished with its end time set to the last activity.
      */
     suspend fun autoFinishStaleSessions() {
-        val thresholdMs = settings.settings.first().autoFinishMinutes * 60_000L
+        val thresholdMs = settingsNow().autoFinishMinutes * 60_000L
         val now = System.currentTimeMillis()
         for (session in db.sessionDao().openSessions()) {
             if (now - session.lastActivityAt >= thresholdMs) {

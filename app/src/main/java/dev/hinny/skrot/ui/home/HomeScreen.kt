@@ -78,7 +78,6 @@ import dev.hinny.skrot.ui.session.WorkoutPickerDialog
 import dev.hinny.skrot.data.prefs.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -403,7 +402,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         alwaysUse: Set<Long>,
     ): Long {
         val now = System.currentTimeMillis()
-        val settings = container.settings.settings.first()
+        val settings = container.settingsNow()
         val sessionId = db.sessionDao().insertSession(
             WorkoutSession(
                 startedAt = now,
@@ -492,7 +491,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     suspend fun startEmptySession(gymId: Long?): Long {
         val now = System.currentTimeMillis()
-        val locked = container.settings.settings.first().sessionsLockedByDefault
+        val locked = container.settingsNow().sessionsLockedByDefault
         return db.sessionDao().insertSession(
             WorkoutSession(startedAt = now, gymId = gymId, lastActivityAt = now, locked = locked)
         )

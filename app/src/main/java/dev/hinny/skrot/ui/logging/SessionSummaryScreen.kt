@@ -33,7 +33,6 @@ import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.formatDuration
 import dev.hinny.skrot.ui.containerViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class SummaryUiState(
@@ -53,7 +52,7 @@ class SummaryViewModel(container: AppContainer, private val sessionId: Long) : V
         viewModelScope.launch {
             val content = db.sessionDao().sessionWithContent(sessionId) ?: return@launch
             val session = content.session
-            val settings = container.settings.settings.first()
+            val settings = container.settingsNow()
             val bodyweight = db.bodyMetricDao().latestWeightAtOrBefore(session.startedAt)
                 ?.weightKg ?: settings.bodyweightFallbackKg
 
