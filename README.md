@@ -13,7 +13,8 @@ so it is provably offline.
 ## Features
 
 - **Fast workout logging** — sets pre-fill from your last session, routine targets, or a
-  hybrid of both (per program); most sets are a single tap to confirm. The set you're on
+  hybrid of the two (last session's weight, the plan's target reps), chosen per program;
+  most sets are a single tap to confirm. The set you're on
   is boxed in the accent colour, and confirming it scrolls the next one into view.
 - **Programs with named days**, supersets/circuits, drag-to-reorder, program/day icons and
   descriptions, free-form tags.

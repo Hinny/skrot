@@ -432,6 +432,18 @@ fun ProgramEditorScreen(
                     label = { Text(stringResource(R.string.prefill_hybrid)) },
                 )
             }
+            // Three one-word labels say nothing about what they do, so the
+            // chosen one always explains itself right below the chips.
+            Text(
+                stringResource(
+                    when (r.routine.prefillMode) {
+                        PrefillMode.LAST_SESSION -> R.string.prefill_last_session_hint
+                        PrefillMode.TARGETS -> R.string.prefill_targets_hint
+                        PrefillMode.HYBRID -> R.string.prefill_hybrid_hint
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
         // Nothing to choose between until there is more than one gym, and the
         // whole idea is meaningless with none.

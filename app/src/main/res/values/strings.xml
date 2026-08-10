@@ -96,7 +96,7 @@
     <string name="guide_measurements_t">Weight, machine levels and bodyweight</string>
     <string name="guide_measurements_b">An exercise measures load as free weight, as a machine level, or as bodyweight with optional added weight. Machine levels aren\'t comparable between gyms, so history and charts for machine exercises are kept per gym. Bodyweight exercises use your logged body weight and a per-exercise factor when volume is estimated.</string>
     <string name="guide_prefill_t">Prefill and progression</string>
-    <string name="guide_prefill_b">When you start a planned day, the sets are prefilled - from your last session or from the plan\'s targets, depending on the program\'s prefill mode. A set\'s target is the reps you need to reach for it to count: hit the target on every standard set at the same load, and the next session suggests more weight. The increment settings decide how big that step is, globally and per exercise.</string>
+    <string name="guide_prefill_b">When you start a planned day, the sets come prefilled, so most of them are a single tap to confirm. The program\'s prefill mode picks where the numbers come from: Last session repeats the weight and reps you actually did, Targets uses the weight and reps written in the plan, and Hybrid takes one of each - last session\'s weight with the plan\'s target reps, so you keep the load you have proved while the reps you are chasing stay in front of you. Whatever a mode is missing, such as a set you have never done or a plan without a target, is filled in from the other source. A set\'s target is the reps you need to reach for it to count: hit the target on every standard set at the same load, and the next session suggests more weight. The increment settings decide how big that step is, globally and per exercise.</string>
     <string name="guide_recovery_t">Recovery programs</string>
     <string name="guide_recovery_b">Mark a gentler program as a recovery program in its editor. After a long break it is offered on Home and the Session tab, on the day of your choosing rather than always the first. Finish a recovery workout and the next one is offered straight away, continuing through that program, until you log an ordinary session again. The Session tab can keep the option permanently on hand.</string>
     <string name="guide_home_t">Making Home yours</string>
@@ -154,6 +154,9 @@
     <string name="prefill_last_session">Last session</string>
     <string name="prefill_targets">Targets</string>
     <string name="prefill_hybrid">Hybrid</string>
+    <string name="prefill_last_session_hint">New sets start at the weight and reps you actually did last time. Sets with no history use the plan\'s targets instead.</string>
+    <string name="prefill_targets_hint">New sets start at the weight and reps written in the plan, whatever you lifted last time.</string>
+    <string name="prefill_hybrid_hint">One of each: new sets start at last session\'s weight, but with the plan\'s target reps. You keep the load you have proved and see the reps you are chasing. Missing either half falls back to the other source.</string>
     <string name="program_default_gym">Default gym</string>
     <string name="program_default_gym_hint">Preselected when you start a workout from this program. Any other gym is still one tap away.</string>
     <string name="default_gym_global">Use my default</string>
