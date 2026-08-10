@@ -18,7 +18,7 @@ class EditHistoryTest {
     @Test
     fun `nothing is pending before anything changes`() {
         val h = history()
-        h.baselineIfUnset("a")
+        h.rebaseline("a")
         h.refresh("a")
         assertFalse(h.hasPendingChanges.value)
         assertFalse(h.canUndo.value)
@@ -28,7 +28,7 @@ class EditHistoryTest {
     @Test
     fun `drifting from the baseline is pending`() {
         val h = history()
-        h.baselineIfUnset("a")
+        h.rebaseline("a")
         h.refresh("b")
         assertTrue(h.hasPendingChanges.value)
     }
@@ -36,7 +36,7 @@ class EditHistoryTest {
     @Test
     fun `apply makes the current state the new baseline`() {
         val h = history()
-        h.baselineIfUnset("a")
+        h.rebaseline("a")
         h.refresh("b")
         h.rebaseline("b")
         assertEquals("b", h.baseline)
@@ -46,18 +46,18 @@ class EditHistoryTest {
     @Test
     fun `with confirmation off every change re-baselines and nothing is pending`() {
         val h = history(confirm = false)
-        h.baselineIfUnset("a")
+        h.rebaseline("a")
         h.refresh("b")
         assertEquals("b", h.baseline)
         assertFalse(h.hasPendingChanges.value)
     }
 
     @Test
-    fun `the baseline is only taken once`() {
+    fun `re-baselining moves the point Cancel returns to`() {
         val h = history()
-        h.baselineIfUnset("a")
-        h.baselineIfUnset("b")
-        assertEquals("a", h.baseline)
+        h.rebaseline("a")
+        h.rebaseline("b")
+        assertEquals("b", h.baseline)
     }
 
     @Test

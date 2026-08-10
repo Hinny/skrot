@@ -8,22 +8,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * The exercise, program, day, gym and finished-session editors all offer the
  * same bargain: with "confirm library edits" on, changes are provisional until
  * Apply and Cancel goes back to the last confirmed state; with it off, every
- * change stands immediately and no bar appears. Each editor used to carry its
- * own copy of the stacks, flags and counters that implement it — five copies
- * that had already drifted apart (the day editor never grew undo at all).
+ * change stands immediately and no bar appears.
  *
- * What stays with each editor is what genuinely differs: **how a snapshot is
- * put back**. Two strategies are in use, and both are deliberate:
+ * All five hold their edits as an **in-memory draft** and write only on Apply.
+ * The database is the baseline, never the working copy. That has three
+ * consequences worth stating, because the app used to do it the other way for
+ * three of the five:
  *
- *  - The program, day and gym editors write each change straight to the
- *    database and restore a snapshot by writing it back — a REPLACE-insert
- *    that resurrects rows deleted during the session under their original ids.
- *    Editing a program is long and fiddly, and this way a crash mid-edit costs
- *    nothing.
- *  - The exercise and finished-session editors keep an in-memory draft and
- *    write only on Apply. Both edit a single object whose invalid intermediate
- *    states (a half-renamed exercise, a set with no reps yet) have no business
- *    reaching the database.
+ *  - Cancel cannot fail. It drops the draft; nothing was written, so there is
+ *    nothing to put back.
+ *  - Deletes cannot half-happen. A removal that cascades — a routine day taking
+ *    its planned exercises with it, a planned exercise taking its per-gym
+ *    overrides — only reaches the database once you have confirmed it. The old
+ *    write-through editors deleted first and tried to reconstruct the fallout
+ *    from a snapshot that structurally could not contain it, which lost data in
+ *    both of those cases.
+ *  - The rest of the app never sees a half-finished edit. A partly typed
+ *    exercise name does not appear in every picker while you type it.
+ *
+ * The cost is that new rows need placeholder ids until Apply gives them real
+ * ones. Each editor mints its own negative ids and reconciles them by diffing
+ * the draft against the baseline when it writes.
  *
  * [T] is whatever the editor treats as one undoable state: an entity, a
  * relation object, or a pair of them.
@@ -88,11 +93,6 @@ class EditHistory<T : Any> {
     fun rebaseline(current: T?) {
         baseline = current
         hasPendingChanges.value = false
-    }
-
-    /** Takes the first state the editor sees as the baseline, once. */
-    fun baselineIfUnset(current: T?) {
-        if (baseline == null) baseline = current
     }
 
     /**

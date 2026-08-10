@@ -75,6 +75,9 @@ import kotlinx.coroutines.launch
  */
 private const val DEFAULT_TARGET_REPS = 8
 
+/** Sets a freshly added exercise starts with. */
+private const val NEW_EXERCISE_SETS = 3
+
 class DayEditorViewModel(
     private val container: AppContainer,
     private val dayId: Long,
@@ -84,9 +87,10 @@ class DayEditorViewModel(
     val allExercises = MutableStateFlow<List<Exercise>>(emptyList())
 
     /**
-     * Mutations below write straight to the database; the history tracks
-     * whether the live state has drifted from the last-confirmed one and puts
-     * snapshots back via [restoreSnapshot].
+     * Edits go to a draft and reach the database only on Apply. Nothing is
+     * written while you rearrange a day, which is what makes Cancel free and
+     * -- more to the point -- keeps a removed exercise from cascading its
+     * per-gym overrides away before you have decided to keep the removal.
      */
     val edits = EditHistory<DayWithContent>()
     val confirmEdits = edits.confirmEdits
@@ -95,12 +99,21 @@ class DayEditorViewModel(
     val canRedo = edits.canRedo
     val revision = edits.revision
 
+    /** Ids for rows that exist only in the draft so far; always negative. */
+    private var nextTempId = -1L
+
     init {
         viewModelScope.launch {
-            db.routineDao().observeDayWithContent(dayId).collect { d ->
-                day.value = d
-                edits.baselineIfUnset(d)
-                edits.refresh(d)
+            db.routineDao().observeDayWithContent(dayId).collect { fresh ->
+                // The database is the baseline. Its emissions are adopted into
+                // the draft only until the first edit; after that the draft is
+                // what the screen shows, and the writes Apply makes would
+                // otherwise bounce back and clobber later edits.
+                edits.rebaseline(fresh)
+                if (!edits.hasPendingChanges.value && !edits.canUndo.value) {
+                    day.value = fresh
+                }
+                edits.refresh(day.value)
             }
         }
         viewModelScope.launch {
@@ -109,225 +122,257 @@ class DayEditorViewModel(
         viewModelScope.launch {
             container.settings.settings.collect {
                 edits.confirmEdits.value = it.confirmLibraryEdits
+                if (!it.confirmLibraryEdits) applyChanges()
                 edits.refresh(day.value)
             }
         }
     }
 
-    fun applyChanges() = edits.rebaseline(day.value)
-
-    /** Reverts day fields, blocks/exercises and their sets to the last Apply point. */
-    fun cancelChanges() {
-        val snap = edits.baseline ?: return
-        viewModelScope.launch { restoreSnapshot(snap) }
+    /** Applies [transform] to the draft, recording one undo step. */
+    private fun edit(transform: (DayWithContent) -> DayWithContent) {
+        val current = day.value ?: return
+        val updated = transform(current)
+        if (updated == current) return
+        edits.push(current)
+        day.value = updated
+        edits.refresh(updated)
+        if (!confirmEdits.value) applyChanges()
     }
 
-    /** Records the pre-change snapshot so [undo] can revert this step. */
-    private fun pushUndo() {
-        day.value?.let { edits.push(it) }
+    private fun editExercise(
+        peId: Long,
+        transform: (PlannedExerciseWithDetails) -> PlannedExerciseWithDetails,
+    ) = edit { content ->
+        content.copy(
+            exercises = content.exercises.map {
+                if (it.planned.id == peId) transform(it) else it
+            }
+        )
+    }
+
+    /** Throws the draft away. Nothing was written, so there is nothing to undo. */
+    fun cancelChanges() {
+        day.value = edits.baseline
+        edits.clearHistory()
+        edits.refresh(edits.baseline)
     }
 
     fun undo() {
         val current = day.value ?: return
         val previous = edits.undo(current) ?: return
-        viewModelScope.launch { restoreSnapshot(previous) }
+        day.value = previous
+        edits.refresh(previous)
+        if (!confirmEdits.value) applyChanges()
     }
 
     fun redo() {
         val current = day.value ?: return
         val next = edits.redo(current) ?: return
-        viewModelScope.launch { restoreSnapshot(next) }
+        day.value = next
+        edits.refresh(next)
+        if (!confirmEdits.value) applyChanges()
     }
 
-    private suspend fun restoreSnapshot(snap: DayWithContent) {
-        val dao = db.routineDao()
-        val backupDao = db.backupDao()
-
-        dao.updateDay(snap.day)
-
-        val currentPeIds = day.value?.exercises?.map { it.planned.id }?.toSet() ?: emptySet()
-        val snapPeIds = snap.exercises.map { it.planned.id }.toSet()
-        for (peId in currentPeIds - snapPeIds) {
-            dao.plannedExerciseById(peId)?.let { dao.deletePlannedExercise(it) }
-        }
-        // REPLACE-insert restores field values on survivors (including
-        // blockPos/inBlockPos, so reordering/link/unlink undoes too) and
-        // recreates anything deleted during this editing session, under
-        // its original id.
-        backupDao.insertPlannedExercises(snap.exercises.map { it.planned })
-
-        for (pe in snap.exercises) {
-            val currentSets = dao.plannedSets(pe.planned.id)
-            val snapSetIds = pe.sets.map { it.id }.toSet()
-            for (s in currentSets) if (s.id !in snapSetIds) dao.deletePlannedSet(s)
-        }
-        backupDao.insertPlannedSets(snap.exercises.flatMap { it.sets })
-    }
-
-    fun updateDayFields(name: String? = null, description: String? = null) {
-        pushUndo()
+    /**
+     * Writes the draft as a diff against the baseline: planned exercises and
+     * sets the draft dropped are deleted, the ones it invented (negative ids)
+     * are inserted, the rest updated. Deletion happens here and only here, so
+     * a removal you cancel never cascades.
+     */
+    fun applyChanges() {
+        val content = day.value ?: return
+        val baseline = edits.baseline
+        if (content == baseline) return
+        // Only rows the draft invented need their real ids read back; a plain
+        // field edit must not re-read the day (auto-apply mode writes on every
+        // keystroke, and reloading under the cursor loses input).
+        val hasNewRows = content.exercises.any { pe ->
+            pe.planned.id <= 0 || pe.sets.any { it.id <= 0 }
+        } || (baseline?.exercises?.size ?: 0) != content.exercises.size
         viewModelScope.launch {
-            val current = day.value?.day ?: return@launch
-            db.routineDao().updateDay(
-                current.copy(
-                    name = name ?: current.name,
-                    description = description ?: current.description,
-                )
+            val dao = db.routineDao()
+            dao.updateDay(content.day)
+
+            val old = baseline?.exercises ?: emptyList()
+            for (gone in old) {
+                if (content.exercises.none { it.planned.id == gone.planned.id }) {
+                    dao.plannedExerciseById(gone.planned.id)
+                        ?.let { dao.deletePlannedExercise(it) }
+                }
+            }
+            for (pe in content.exercises) {
+                val realId = if (pe.planned.id > 0) {
+                    dao.updatePlannedExercise(pe.planned)
+                    pe.planned.id
+                } else {
+                    dao.insertPlannedExercise(pe.planned.copy(id = 0, dayId = dayId))
+                }
+                val oldSets = old.find { it.planned.id == pe.planned.id }?.sets ?: emptyList()
+                for (goneSet in oldSets) {
+                    if (pe.sets.none { it.id == goneSet.id }) dao.deletePlannedSet(goneSet)
+                }
+                pe.sortedSets.forEachIndexed { position, set ->
+                    val row = set.copy(plannedExerciseId = realId, position = position)
+                    if (row.id > 0) dao.updatePlannedSet(row) else dao.insertPlannedSet(row.copy(id = 0))
+                }
+            }
+            if (hasNewRows) {
+                val fresh = dao.dayWithContent(dayId)
+                day.value = fresh
+                edits.rebaseline(fresh)
+                edits.clearHistory()
+            } else {
+                edits.rebaseline(content)
+            }
+        }
+    }
+
+    fun updateDayFields(name: String? = null, description: String? = null) = edit { content ->
+        content.copy(
+            day = content.day.copy(
+                name = name ?: content.day.name,
+                description = description ?: content.day.description,
             )
-        }
+        )
     }
 
-    fun updateIcon(icon: dev.hinny.skrot.data.model.ProgramIcon) {
-        pushUndo()
-        viewModelScope.launch {
-            val current = day.value?.day ?: return@launch
-            db.routineDao().updateDay(current.copy(icon = icon))
-        }
+    fun updateIcon(icon: dev.hinny.skrot.data.model.ProgramIcon) = edit { content ->
+        content.copy(day = content.day.copy(icon = icon))
     }
 
     /** Adds an exercise as a new block, or into an existing block (superset). */
     fun addExercise(exercise: Exercise, intoBlockPos: Int? = null) {
-        pushUndo()
         viewModelScope.launch {
-            val settings = container.settingsNow()
-            val content = day.value ?: return@launch
-            val blockPos: Int
-            val inBlockPos: Int
-            if (intoBlockPos != null) {
-                blockPos = intoBlockPos
-                inBlockPos = (content.exercises
-                    .filter { it.planned.blockPos == intoBlockPos }
-                    .maxOfOrNull { it.planned.inBlockPos } ?: -1) + 1
-            } else {
-                blockPos = (content.exercises.maxOfOrNull { it.planned.blockPos } ?: -1) + 1
-                inBlockPos = 0
-            }
-            val peId = db.routineDao().insertPlannedExercise(
-                PlannedExercise(
-                    dayId = dayId,
-                    exerciseId = exercise.id,
-                    blockPos = blockPos,
-                    inBlockPos = inBlockPos,
-                )
-            )
-            repeat(3) { i ->
-                db.routineDao().insertPlannedSet(
-                    PlannedSet(
-                        plannedExerciseId = peId,
-                        position = i,
-                        targetRepsMin = DEFAULT_TARGET_REPS,
-                        restSec = settings.defaultRestSec,
+            val restSec = container.settingsNow().defaultRestSec
+            edit { content ->
+                val blockPos: Int
+                val inBlockPos: Int
+                if (intoBlockPos != null) {
+                    blockPos = intoBlockPos
+                    inBlockPos = (content.exercises
+                        .filter { it.planned.blockPos == intoBlockPos }
+                        .maxOfOrNull { it.planned.inBlockPos } ?: -1) + 1
+                } else {
+                    blockPos = (content.exercises.maxOfOrNull { it.planned.blockPos } ?: -1) + 1
+                    inBlockPos = 0
+                }
+                val peId = nextTempId--
+                content.copy(
+                    exercises = content.exercises + PlannedExerciseWithDetails(
+                        planned = PlannedExercise(
+                            id = peId,
+                            dayId = dayId,
+                            exerciseId = exercise.id,
+                            blockPos = blockPos,
+                            inBlockPos = inBlockPos,
+                        ),
+                        exercise = exercise,
+                        sets = (0 until NEW_EXERCISE_SETS).map { i ->
+                            PlannedSet(
+                                id = nextTempId--,
+                                plannedExerciseId = peId,
+                                position = i,
+                                targetRepsMin = DEFAULT_TARGET_REPS,
+                                restSec = restSec,
+                            )
+                        },
                     )
                 )
             }
         }
     }
 
-    fun removeExercise(pe: PlannedExerciseWithDetails) {
-        pushUndo()
-        viewModelScope.launch { db.routineDao().deletePlannedExercise(pe.planned) }
+    fun removeExercise(pe: PlannedExerciseWithDetails) = edit { content ->
+        content.copy(exercises = content.exercises.filterNot { it.planned.id == pe.planned.id })
     }
 
-    fun moveBlock(from: Int, to: Int) {
-        pushUndo()
-        viewModelScope.launch {
-            val content = day.value ?: return@launch
-            val blocks = content.blocks
-            if (from !in blocks.indices || to !in blocks.indices || from == to) return@launch
-            val reordered = blocks.toMutableList()
-            reordered.add(to, reordered.removeAt(from))
-            reordered.forEachIndexed { newPos, block ->
-                block.forEach { pe ->
-                    if (pe.planned.blockPos != newPos) {
-                        db.routineDao().updatePlannedExercise(pe.planned.copy(blockPos = newPos))
-                    }
-                }
-            }
+    fun moveBlock(from: Int, to: Int) = edit { content ->
+        val blocks = content.blocks
+        if (from !in blocks.indices || to !in blocks.indices || from == to) return@edit content
+        val reordered = blocks.toMutableList()
+        reordered.add(to, reordered.removeAt(from))
+        val moved = reordered.flatMapIndexed { newPos: Int, block: List<PlannedExerciseWithDetails> ->
+            block.map { it.copy(planned = it.planned.copy(blockPos = newPos)) }
         }
+        content.copy(exercises = moved)
     }
 
     /** Merges this block into the previous one (creates/extends a superset). */
-    fun linkWithPrevious(blockPos: Int) {
-        pushUndo()
-        viewModelScope.launch {
-            val content = day.value ?: return@launch
-            val blocks = content.blocks
-            val index = blocks.indexOfFirst { it.first().planned.blockPos == blockPos }
-            if (index <= 0) return@launch
-            val previous = blocks[index - 1]
-            val startInBlock = (previous.maxOfOrNull { it.planned.inBlockPos } ?: -1) + 1
-            blocks[index].forEachIndexed { i, pe ->
-                db.routineDao().updatePlannedExercise(
-                    pe.planned.copy(
-                        blockPos = previous.first().planned.blockPos,
+    fun linkWithPrevious(blockPos: Int) = edit { content ->
+        val blocks = content.blocks
+        val index = blocks.indexOfFirst { it.first().planned.blockPos == blockPos }
+        if (index <= 0) return@edit content
+        val previous = blocks[index - 1]
+        val targetBlock = previous.first().planned.blockPos
+        val startInBlock = (previous.maxOfOrNull { it.planned.inBlockPos } ?: -1) + 1
+        val movedIds = blocks[index].map { it.planned.id }
+        content.copy(
+            exercises = content.exercises.map { pe ->
+                val i = movedIds.indexOf(pe.planned.id)
+                if (i < 0) pe
+                else pe.copy(
+                    planned = pe.planned.copy(
+                        blockPos = targetBlock,
                         inBlockPos = startInBlock + i,
                     )
                 )
             }
-        }
+        )
     }
 
     /** Splits an exercise out of its superset into its own block. */
-    fun unlink(pe: PlannedExerciseWithDetails) {
-        pushUndo()
-        viewModelScope.launch {
-            val content = day.value ?: return@launch
-            val maxBlock = content.exercises.maxOfOrNull { it.planned.blockPos } ?: 0
-            db.routineDao().updatePlannedExercise(
-                pe.planned.copy(blockPos = maxBlock + 1, inBlockPos = 0)
-            )
-        }
+    fun unlink(pe: PlannedExerciseWithDetails) = edit { content ->
+        val maxBlock = content.exercises.maxOfOrNull { it.planned.blockPos } ?: 0
+        content.copy(
+            exercises = content.exercises.map {
+                if (it.planned.id == pe.planned.id) {
+                    it.copy(planned = it.planned.copy(blockPos = maxBlock + 1, inBlockPos = 0))
+                } else {
+                    it
+                }
+            }
+        )
     }
 
     fun addSet(pe: PlannedExerciseWithDetails) {
-        pushUndo()
         viewModelScope.launch {
-            val settings = container.settingsNow()
-            val last = pe.sortedSets.lastOrNull()
-            db.routineDao().insertPlannedSet(
-                last?.copy(id = 0, position = last.position + 1)
+            val restSec = container.settingsNow().defaultRestSec
+            editExercise(pe.planned.id) { current ->
+                val last = current.sortedSets.lastOrNull()
+                val new = last?.copy(id = nextTempId--, position = last.position + 1)
                     ?: PlannedSet(
-                        plannedExerciseId = pe.planned.id,
+                        id = nextTempId--,
+                        plannedExerciseId = current.planned.id,
                         position = 0,
                         targetRepsMin = DEFAULT_TARGET_REPS,
-                        restSec = settings.defaultRestSec,
+                        restSec = restSec,
                     )
-            )
-        }
-    }
-
-    fun updateSet(set: PlannedSet) {
-        pushUndo()
-        viewModelScope.launch { db.routineDao().updatePlannedSet(set) }
-    }
-
-    /**
-     * Reorders a set within its exercise. Takes the exercise by id and re-reads
-     * it from the current day rather than trusting a captured snapshot, the same
-     * way [moveBlock] does — the drag state outlives several emissions of the
-     * list it is reordering.
-     */
-    fun moveSet(plannedExerciseId: Long, from: Int, to: Int) {
-        pushUndo()
-        viewModelScope.launch {
-            val sets = day.value?.exercises
-                ?.find { it.planned.id == plannedExerciseId }
-                ?.sortedSets
-                ?: return@launch
-            if (from !in sets.indices || to !in sets.indices || from == to) return@launch
-            val reordered = sets.toMutableList()
-            reordered.add(to, reordered.removeAt(from))
-            reordered.forEachIndexed { newPos, s ->
-                if (s.position != newPos) {
-                    db.routineDao().updatePlannedSet(s.copy(position = newPos))
-                }
+                current.copy(sets = current.sets + new)
             }
         }
     }
 
-    fun removeSet(set: PlannedSet) {
-        pushUndo()
-        viewModelScope.launch { db.routineDao().deletePlannedSet(set) }
+    fun updateSet(set: PlannedSet) = editExercise(set.plannedExerciseId) { pe ->
+        pe.copy(sets = pe.sets.map { if (it.id == set.id) set else it })
+    }
+
+    /**
+     * Reorders a set within its exercise. Takes the exercise by id and re-reads
+     * it from the current draft rather than trusting a captured snapshot, the
+     * same way [moveBlock] does — the drag state outlives several emissions of
+     * the list it is reordering.
+     */
+    fun moveSet(plannedExerciseId: Long, from: Int, to: Int) =
+        editExercise(plannedExerciseId) { pe ->
+            val sets = pe.sortedSets
+            if (from !in sets.indices || to !in sets.indices || from == to) return@editExercise pe
+            val reordered = sets.toMutableList()
+            reordered.add(to, reordered.removeAt(from))
+            pe.copy(sets = reordered.mapIndexed { newPos, s -> s.copy(position = newPos) })
+        }
+
+    fun removeSet(set: PlannedSet) = editExercise(set.plannedExerciseId) { pe ->
+        pe.copy(sets = pe.sets.filterNot { it.id == set.id })
     }
 
     fun createCustomExercise(new: NewExercise, onCreated: (Exercise) -> Unit) {
