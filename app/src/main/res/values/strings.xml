@@ -154,6 +154,9 @@
     <string name="prefill_last_session">Last session</string>
     <string name="prefill_targets">Targets</string>
     <string name="prefill_hybrid">Hybrid</string>
+    <string name="prefill_last_session_hint">New sets start at the weight and reps you actually did last time. Sets with no history use the plan\'s targets instead.</string>
+    <string name="prefill_targets_hint">New sets start at the weight and reps written in the plan, whatever you lifted last time.</string>
+    <string name="prefill_hybrid_hint">One of each: new sets start at last session\'s weight, but with the plan\'s target reps. You keep the load you have proved and see the reps you are chasing. Missing either half falls back to the other source.</string>
     <string name="program_default_gym">Default gym</string>
     <string name="program_default_gym_hint">Preselected when you start a workout from this program. Any other gym is still one tap away.</string>
     <string name="default_gym_global">Use my default</string>

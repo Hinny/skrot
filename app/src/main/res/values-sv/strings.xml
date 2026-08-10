@@ -152,6 +152,9 @@
     <string name="prefill_last_session">Senaste passet</string>
     <string name="prefill_targets">Mål</string>
     <string name="prefill_hybrid">Hybrid</string>
+    <string name="prefill_last_session_hint">Nya set börjar på vikten och repsen du faktiskt gjorde förra gången. Set utan historik utgår från planens mål i stället.</string>
+    <string name="prefill_targets_hint">Nya set börjar på vikten och repsen som står i planen, oavsett vad du lyfte förra gången.</string>
+    <string name="prefill_hybrid_hint">En av varje: nya set börjar på förra passets vikt, men med planens målreps. Du behåller vikten du klarat och ser repsen du siktar på. Saknas den ena halvan används den andra källan.</string>
     <string name="program_default_gym">Standardgym</string>
     <string name="program_default_gym_hint">Förvalt när du startar ett pass från det här programmet. Alla andra gym är fortfarande ett tryck bort.</string>
     <string name="default_gym_global">Använd mitt standardgym</string>
