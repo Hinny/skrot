@@ -52,12 +52,22 @@ jobs:
       # account's 0.5 GB Actions storage: 38 builds at ~19 MB, none of which
       # had expired because the default retention is 90 days. Minutes were
       # never the constraint -- public repositories don't consume them.
-      # Need a build to sideload? Run this workflow manually from the Actions
-      # tab and the APK is attached to that run.
+      #
+      # The APK is still *built* on every run, by ./gradlew verify above; this
+      # only decides whether it is kept. Released APKs are unaffected either
+      # way: release.yml publishes them as GitHub Release assets, which are a
+      # separate store that never expires.
+      #
+      # Need a build to sideload? Actions -> CI -> "Run workflow". Note that
+      # "Re-run jobs" on an existing PR run will NOT produce one: a re-run
+      # keeps its original event, so this condition stays false. It has to be
+      # a fresh manual run (gh workflow run ci.yml --ref <branch>).
       - name: Upload debug APK
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: skrot-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
+          # Long enough to install it off the run that built it. Miss the
+          # window and it is one click to build another.
+          retention-days: 1
