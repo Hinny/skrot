@@ -48,7 +48,14 @@ jobs:
       - name: Verify
         run: ./gradlew verify
 
+      # Only when asked for. Uploading an APK on every run is what filled the
+      # account's 0.5 GB Actions storage: 38 builds at ~19 MB, none of which
+      # had expired because the default retention is 90 days. Minutes were
+      # never the constraint -- public repositories don't consume them.
+      # Need a build to sideload? Run this workflow manually from the Actions
+      # tab and the APK is attached to that run.
       - name: Upload debug APK
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: skrot-debug-apk
