@@ -78,9 +78,10 @@ class ProgramEditorViewModel(
     val gyms = MutableStateFlow<List<Gym>>(emptyList())
 
     /**
-     * Mutations below write straight to the database; the history tracks
-     * whether the live state has drifted from the last-confirmed one and puts
-     * snapshots back via [restoreSnapshot].
+     * Edits go to a draft and reach the database only on Apply. Deleting a day
+     * cascades to everything planned into it, so nothing is deleted until the
+     * deletion is confirmed — under write-through, Cancel could only put the
+     * day row back, never its contents.
      */
     val edits = EditHistory<RoutineWithDays>()
     val confirmEdits = edits.confirmEdits
@@ -89,12 +90,21 @@ class ProgramEditorViewModel(
     val canRedo = edits.canRedo
     val revision = edits.revision
 
+    /** Ids for days that exist only in the draft so far; always negative. */
+    private var nextTempId = -1L
+
     init {
         viewModelScope.launch {
-            container.db.routineDao().observeWithDays(routineId).collect { r ->
-                routine.value = r
-                edits.baselineIfUnset(r)
-                edits.refresh(r)
+            container.db.routineDao().observeWithDays(routineId).collect { fresh ->
+                // The database is the baseline. Its emissions are adopted into
+                // the draft only until the first edit; after that the draft is
+                // what the screen shows, and the writes Apply makes would
+                // otherwise bounce back and clobber later edits.
+                edits.rebaseline(fresh)
+                if (!edits.hasPendingChanges.value && !edits.canUndo.value) {
+                    routine.value = fresh
+                }
+                edits.refresh(routine.value)
             }
         }
         viewModelScope.launch {
@@ -103,87 +113,138 @@ class ProgramEditorViewModel(
         viewModelScope.launch {
             container.settings.settings.collect {
                 edits.confirmEdits.value = it.confirmLibraryEdits
+                if (!it.confirmLibraryEdits) applyChanges()
                 edits.refresh(routine.value)
             }
         }
     }
 
-    fun applyChanges() = edits.rebaseline(routine.value)
+    /** Applies [transform] to the draft, recording one undo step. */
+    private fun edit(transform: (RoutineWithDays) -> RoutineWithDays) {
+        val current = routine.value ?: return
+        val updated = transform(current)
+        if (updated == current) return
+        edits.push(current)
+        routine.value = updated
+        edits.refresh(updated)
+        if (!confirmEdits.value) applyChanges()
+    }
 
-    /** Reverts routine fields and the day list back to the last Apply point. */
+    /** Throws the draft away. Nothing was written, so there is nothing to undo. */
     fun cancelChanges() {
-        viewModelScope.launch { restoreSnapshot(edits.baseline ?: return@launch) }
-    }
-
-    private suspend fun restoreSnapshot(snap: RoutineWithDays) {
-        val dao = container.db.routineDao()
-        dao.update(snap.routine)
-        val currentDays = routine.value?.days ?: emptyList()
-        val snapDayIds = snap.days.map { it.id }.toSet()
-        for (d in currentDays) if (d.id !in snapDayIds) dao.deleteDay(d)
-        // REPLACE-insert restores field values on survivors and recreates
-        // any day deleted during this editing session, under its original id.
-        container.db.backupDao().insertDays(snap.days)
-    }
-
-    /** Records the pre-change snapshot so [undo] can revert this step. */
-    private fun pushUndo() {
-        routine.value?.let { edits.push(it) }
+        routine.value = edits.baseline
+        edits.clearHistory()
+        edits.refresh(edits.baseline)
     }
 
     fun undo() {
         val current = routine.value ?: return
         val previous = edits.undo(current) ?: return
-        viewModelScope.launch { restoreSnapshot(previous) }
+        routine.value = previous
+        edits.refresh(previous)
+        if (!confirmEdits.value) applyChanges()
     }
 
     fun redo() {
         val current = routine.value ?: return
         val next = edits.redo(current) ?: return
-        viewModelScope.launch { restoreSnapshot(next) }
+        routine.value = next
+        edits.refresh(next)
+        if (!confirmEdits.value) applyChanges()
     }
 
-    fun update(transform: (Routine) -> Routine) {
-        pushUndo()
-        viewModelScope.launch {
-            routine.value?.let { container.db.routineDao().update(transform(it.routine)) }
+    /**
+     * Writes the draft as a diff against the baseline: days the draft dropped
+     * are deleted, the ones it invented (negative ids) are inserted, the rest
+     * updated. Deletion happens here and only here, so a day you remove and
+     * then cancel never loses the exercises planned into it.
+     *
+     * @param onWritten runs once the draft is on disk and ids are real
+     */
+    fun applyChanges(onWritten: () -> Unit = {}) {
+        val content = routine.value ?: return
+        val baseline = edits.baseline
+        if (content == baseline) {
+            onWritten()
+            return
         }
-    }
-
-    fun addDay(name: String) {
-        pushUndo()
+        val hasNewRows = content.days.any { it.id <= 0 } ||
+            (baseline?.days?.size ?: 0) != content.days.size
         viewModelScope.launch {
-            val position = (routine.value?.days?.maxOfOrNull { it.position } ?: -1) + 1
-            container.db.routineDao().insertDay(
-                RoutineDay(routineId = routineId, name = name, position = position)
-            )
-        }
-    }
+            val dao = container.db.routineDao()
+            dao.update(content.routine)
 
-    fun updateDay(day: RoutineDay) {
-        pushUndo()
-        viewModelScope.launch { container.db.routineDao().updateDay(day) }
-    }
-
-    fun deleteDay(day: RoutineDay) {
-        pushUndo()
-        viewModelScope.launch { container.db.routineDao().deleteDay(day) }
-    }
-
-    fun moveDay(from: Int, to: Int) {
-        val days = routine.value?.sortedDays ?: return
-        if (from !in days.indices || to !in days.indices || from == to) return
-        pushUndo()
-        viewModelScope.launch {
-            val reordered = days.toMutableList()
-            reordered.add(to, reordered.removeAt(from))
-            reordered.forEachIndexed { i, d ->
-                if (d.position != i) container.db.routineDao().updateDay(d.copy(position = i))
+            val old = baseline?.days ?: emptyList()
+            for (gone in old) {
+                if (content.days.none { it.id == gone.id }) dao.deleteDay(gone)
             }
+            for (day in content.days) {
+                if (day.id > 0) dao.updateDay(day) else dao.insertDay(day.copy(id = 0))
+            }
+            if (hasNewRows) {
+                val fresh = dao.withDays(routineId)
+                routine.value = fresh
+                edits.rebaseline(fresh)
+                edits.clearHistory()
+            } else {
+                edits.rebaseline(content)
+            }
+            onWritten()
         }
     }
 
-    /** Deep-copies this program (days, exercises, sets) into a new one. */
+    /**
+     * A day's own contents are edited on their own screen, which loads the day
+     * by id — an id a drafted day does not have yet. Opening one therefore
+     * commits the program-level draft first: you are going deeper into what you
+     * are editing, not leaving it.
+     */
+    fun applyThenOpenDay(dayId: Long, open: (Long) -> Unit) {
+        if (dayId > 0 && !hasPendingChanges.value) {
+            open(dayId)
+            return
+        }
+        val position = routine.value?.sortedDays?.indexOfFirst { it.id == dayId } ?: -1
+        applyChanges {
+            // A drafted day has no real id until Apply; find it again by the
+            // position it settled into.
+            val real = routine.value?.sortedDays?.getOrNull(position)?.id
+            if (real != null && real > 0) open(real)
+        }
+    }
+
+    fun update(transform: (Routine) -> Routine) = edit { content ->
+        content.copy(routine = transform(content.routine))
+    }
+
+    fun addDay(name: String) = edit { content ->
+        val position = (content.days.maxOfOrNull { it.position } ?: -1) + 1
+        content.copy(
+            days = content.days + RoutineDay(
+                id = nextTempId--,
+                routineId = routineId,
+                name = name,
+                position = position,
+            )
+        )
+    }
+
+    fun updateDay(day: RoutineDay) = edit { content ->
+        content.copy(days = content.days.map { if (it.id == day.id) day else it })
+    }
+
+    fun deleteDay(day: RoutineDay) = edit { content ->
+        content.copy(days = content.days.filterNot { it.id == day.id })
+    }
+
+    fun moveDay(from: Int, to: Int) = edit { content ->
+        val days = content.sortedDays
+        if (from !in days.indices || to !in days.indices || from == to) return@edit content
+        val reordered = days.toMutableList()
+        reordered.add(to, reordered.removeAt(from))
+        content.copy(days = reordered.mapIndexed { i, d -> d.copy(position = i) })
+    }
+
     fun copy(nameSuffix: String, onDone: (Long) -> Unit) {
         viewModelScope.launch {
             val current = routine.value ?: return@launch
@@ -431,7 +492,11 @@ fun ProgramEditorScreen(
                         Column(
                             Modifier
                                 .weight(1f)
-                                .clickable { nav.navigate(Routes.day(day.id)) },
+                                .clickable {
+                                    vm.applyThenOpenDay(day.id) { id ->
+                                        nav.navigate(Routes.day(id))
+                                    }
+                                },
                         ) {
                             Text(day.name, style = MaterialTheme.typography.titleSmall)
                             if (day.description.isNotBlank()) {

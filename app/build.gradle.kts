@@ -87,6 +87,20 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+/**
+ * Everything CI runs, in one command: `./gradlew verify`.
+ *
+ * CI invokes exactly this task and nothing else, so "it passed locally" and
+ * "it passed in CI" cannot mean different things. Add a check here and both
+ * pick it up; add one only to the workflow and you have two definitions of
+ * done.
+ */
+tasks.register("verify") {
+    group = "verification"
+    description = "Runs the full CI check: ktlint, Android Lint, unit tests, debug APK."
+    dependsOn("ktlintCheck", "lintDebug", "test", "assembleDebug")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

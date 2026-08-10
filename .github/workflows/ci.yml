@@ -1,12 +1,35 @@
 name: CI
 
 on:
+  pull_request:
+    # A draft PR is work in progress; it starts running checks when you mark it
+    # ready for review. Push as often as you like until then.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/ISSUE_TEMPLATE/**'
+  # Main is validated through the PR that merges into it; this is here so a
+  # direct push (or a merge that skipped review) still gets checked.
   push:
     branches: [main]
-  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+  workflow_dispatch:
+
+# A second push supersedes the first: cancel the run that is now out of date
+# rather than paying for both.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
+    # Draft PRs are exempt; ready_for_review is what starts them checking.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,20 +43,21 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Check code style
-        run: ./gradlew ktlintCheck
+      # The same task you run locally: ./gradlew verify. Keeping CI to one
+      # invocation is what guarantees the two cannot drift apart.
+      - name: Verify
+        run: ./gradlew verify
 
-      - name: Run Android Lint
-        run: ./gradlew lintDebug
-
-      - name: Run unit tests
-        run: ./gradlew test
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
-
+      # Only when asked for. Uploading an APK on every run is what filled the
+      # account's 0.5 GB Actions storage: 38 builds at ~19 MB, none of which
+      # had expired because the default retention is 90 days. Minutes were
+      # never the constraint -- public repositories don't consume them.
+      # Need a build to sideload? Run this workflow manually from the Actions
+      # tab and the APK is attached to that run.
       - name: Upload debug APK
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: skrot-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

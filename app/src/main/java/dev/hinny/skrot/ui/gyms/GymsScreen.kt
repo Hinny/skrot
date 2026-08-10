@@ -76,8 +76,14 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     val exercises = MutableStateFlow<List<Exercise>>(emptyList())
 
     private val editingGymId = MutableStateFlow<Long?>(null)
+
+    /**
+     * The gym being edited, as a working copy. Edits stay here until Apply, so
+     * a half-typed name never reaches the pickers that read the gym list.
+     */
     val editingGym = MutableStateFlow<Gym?>(null)
     val editingAvailable = MutableStateFlow<Set<Long>>(emptySet())
+
     /**
      * A gym's editable state is its own row plus the set of exercises marked
      * available there, so both travel together as one undoable snapshot.
@@ -89,7 +95,7 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     val canRedo = edits.canRedo
     val revision = edits.revision
 
-    /** The live state as one value, for comparing against the baseline. */
+    /** The live draft as one value, for comparing against the baseline. */
     private fun snapshot(): Pair<Gym, Set<Long>>? =
         editingGym.value?.let { it to editingAvailable.value }
 
@@ -107,13 +113,14 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
                     ) { gym, ids -> gym to ids.toSet() }
                 }
             }.collect { (gym, available) ->
-                val switchedGym = gym != null && edits.baseline?.first?.id != gym.id
-                editingGym.value = gym
-                editingAvailable.value = available
-                if (gym == null) {
-                    edits.rebaseline(null)
-                } else if (switchedGym) {
-                    edits.rebaseline(gym to available)
+                // What the database holds is the baseline. It is adopted into
+                // the draft only when a different gym is opened: otherwise the
+                // write from Apply would land back on top of edits made since.
+                val switchedGym = gym == null || edits.baseline?.first?.id != gym.id
+                edits.rebaseline(gym?.let { it to available })
+                if (switchedGym) {
+                    editingGym.value = gym
+                    editingAvailable.value = available
                     edits.clearHistory()
                 }
                 edits.refresh(snapshot())
@@ -122,36 +129,69 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.settings.settings.collect {
                 edits.confirmEdits.value = it.confirmLibraryEdits
+                // Turning confirmation off commits what is already drafted
+                // rather than stranding it with no bar left to Apply from.
+                if (!it.confirmLibraryEdits) applyChanges()
                 edits.refresh(snapshot())
             }
         }
     }
 
     /**
-     * Every mutation below (rename, toggle an exercise, bulk-add, ...) writes
-     * straight to the database; [edits] tracks whether the live state has
-     * drifted from the last-confirmed baseline so the UI can show an
-     * Apply/Cancel bar.
+     * Every mutation below (rename, toggle an exercise, bulk-add, ...) changes
+     * the draft only; [applyChanges] is the single place that writes.
      */
-    fun applyChanges() = edits.rebaseline(snapshot())
+    private fun edit(transform: (Gym, Set<Long>) -> Pair<Gym, Set<Long>>) {
+        val (gym, available) = snapshot() ?: return
+        val (newGym, newAvailable) = transform(gym, available)
+        if (newGym == gym && newAvailable == available) return
+        edits.push(gym to available)
+        editingGym.value = newGym
+        editingAvailable.value = newAvailable
+        edits.refresh(newGym to newAvailable)
+        if (!confirmEdits.value) applyChanges()
+    }
 
-    /** Reverts the edited gym's name and available-exercise list to the last Apply point. */
+    /** Writes the draft: the gym row, then the availability list as a diff. */
+    fun applyChanges() {
+        val (gym, available) = snapshot() ?: return
+        val baseline = edits.baseline
+        if (baseline?.first == gym && baseline.second == available) return
+        viewModelScope.launch {
+            db.gymDao().update(gym)
+            val current = db.gymDao().exerciseIdsAt(gym.id).toSet()
+            for (id in current - available) db.gymDao().removeExercise(gym.id, id)
+            val toAdd = available - current
+            if (toAdd.isNotEmpty()) {
+                db.gymDao().addExercises(toAdd.map { GymExercise(gym.id, it) })
+            }
+            edits.rebaseline(gym to available)
+        }
+    }
+
+    /** Throws the draft away. Nothing was written, so there is nothing to undo. */
     fun cancelChanges() {
         val (gym, available) = edits.baseline ?: return
-        viewModelScope.launch { restoreSnapshot(gym, available) }
+        editingGym.value = gym
+        editingAvailable.value = available
+        edits.clearHistory()
+        edits.refresh(gym to available)
     }
 
-    private suspend fun restoreSnapshot(gym: Gym, available: Set<Long>) {
-        db.gymDao().update(gym)
-        val current = db.gymDao().exerciseIdsAt(gym.id).toSet()
-        for (id in current - available) db.gymDao().removeExercise(gym.id, id)
-        val toAdd = available - current
-        if (toAdd.isNotEmpty()) db.gymDao().addExercises(toAdd.map { GymExercise(gym.id, it) })
+    fun undo() {
+        val (gym, available) = edits.undo(snapshot() ?: return) ?: return
+        editingGym.value = gym
+        editingAvailable.value = available
+        edits.refresh(gym to available)
+        if (!confirmEdits.value) applyChanges()
     }
 
-    /** Records the pre-change snapshot so [undo] can revert this step. */
-    private fun pushUndo() {
-        snapshot()?.let { edits.push(it) }
+    fun redo() {
+        val (gym, available) = edits.redo(snapshot() ?: return) ?: return
+        editingGym.value = gym
+        editingAvailable.value = available
+        edits.refresh(gym to available)
+        if (!confirmEdits.value) applyChanges()
     }
 
     /** Reorders gyms; the list is presented in [Gym.position] order. */
@@ -165,16 +205,6 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
                 if (gym.position != index) db.gymDao().update(gym.copy(position = index))
             }
         }
-    }
-
-    fun undo() {
-        val (gym, available) = edits.undo(snapshot() ?: return) ?: return
-        viewModelScope.launch { restoreSnapshot(gym, available) }
-    }
-
-    fun redo() {
-        val (gym, available) = edits.redo(snapshot() ?: return) ?: return
-        viewModelScope.launch { restoreSnapshot(gym, available) }
     }
 
     fun enterEditing(gymId: Long) {
@@ -194,8 +224,13 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun rename(gym: Gym, name: String) {
-        pushUndo()
-        viewModelScope.launch { db.gymDao().update(gym.copy(name = name)) }
+        // Renaming a gym from the list that is not the one open in the editor
+        // is not a drafted edit; there is no Apply bar to confirm it with.
+        if (gym.id != editingGym.value?.id) {
+            viewModelScope.launch { db.gymDao().update(gym.copy(name = name)) }
+            return
+        }
+        edit { current, available -> current.copy(name = name) to available }
     }
 
     fun delete(gym: Gym) {
@@ -211,30 +246,20 @@ class GymsViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun toggleExercise(gymId: Long, exerciseId: Long, available: Boolean) {
-        pushUndo()
-        viewModelScope.launch {
-            if (available) db.gymDao().addExercise(GymExercise(gymId, exerciseId))
-            else db.gymDao().removeExercise(gymId, exerciseId)
+        edit { gym, current ->
+            gym to if (available) current + exerciseId else current - exerciseId
         }
     }
 
     /** Bulk helper: mark every exercise with this equipment as available. */
     fun addAllWithEquipment(gymId: Long, equipment: Equipment) {
-        pushUndo()
-        viewModelScope.launch {
-            db.gymDao().addExercises(
-                exercises.value
-                    .filter { equipment in it.equipment }
-                    .map { GymExercise(gymId, it.id) }
-            )
-        }
+        val ids = exercises.value.filter { equipment in it.equipment }.map { it.id }
+        edit { gym, current -> gym to current + ids }
     }
 
     fun addAll(gymId: Long) {
-        pushUndo()
-        viewModelScope.launch {
-            db.gymDao().addExercises(exercises.value.map { GymExercise(gymId, it.id) })
-        }
+        val ids = exercises.value.map { it.id }
+        edit { gym, current -> gym to current + ids }
     }
 }
 
