@@ -674,9 +674,10 @@ private fun ExerciseSection(
                 Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                // Swapping stays available in a locked session: the lock guards
+                // against stray taps on the row, and this sits behind a menu.
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.swap_exercise)) },
-                    enabled = !locked,
                     onClick = { menuOpen = false; swapOpen = true },
                 )
                 if (blockSize > 1) {

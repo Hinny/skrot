@@ -323,7 +323,7 @@
     <string name="rest_zero_hint">0 = no timer</string>
     <string name="lock_session">Lock session</string>
     <string name="unlock_session">Unlock session</string>
-    <string name="session_locked_hint">Session locked — only weight, reps and completing the active set can be changed.</string>
+    <string name="session_locked_hint">Session locked — weight, reps, completing sets and swapping an exercise still work; the structure stays put.</string>
     <string name="swap_exercise">Swap exercise</string>
     <string name="remove_exercise">Remove exercise</string>
     <string name="exercise_note">Exercise note</string>

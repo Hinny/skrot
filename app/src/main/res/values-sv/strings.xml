@@ -321,7 +321,7 @@
     <string name="rest_zero_hint">0 = ingen timer</string>
     <string name="lock_session">Lås passet</string>
     <string name="unlock_session">Lås upp passet</string>
-    <string name="session_locked_hint">Passet är låst — endast vikt, reps och att slutföra aktuellt set kan ändras.</string>
+    <string name="session_locked_hint">Passet är låst — vikt, reps, att slutföra set och att byta övning fungerar fortfarande; strukturen ligger fast.</string>
     <string name="swap_exercise">Byt övning</string>
     <string name="remove_exercise">Ta bort övning</string>
     <string name="exercise_note">Övningsanteckning</string>
