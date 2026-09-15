@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ColorTheme
 import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.MetaDisplay
@@ -35,6 +36,8 @@ data class Settings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val unit: WeightUnit = WeightUnit.KG,
     val theme: ThemeMode = ThemeMode.DARK,
+    /** Accent family, on top of dark/light. */
+    val colorTheme: ColorTheme = ColorTheme.AMBER,
     val defaultRestSec: Int = 90,
     val timerSound: Boolean = true,
     /**
@@ -129,6 +132,7 @@ class SettingsRepository(private val context: Context) {
         val language = stringPreferencesKey("language")
         val unit = stringPreferencesKey("unit")
         val theme = stringPreferencesKey("theme")
+        val colorTheme = stringPreferencesKey("color_theme")
         val defaultRestSec = intPreferencesKey("default_rest_sec")
         val timerSound = booleanPreferencesKey("timer_sound")
         val timerSoundUri = stringPreferencesKey("timer_sound_uri")
@@ -182,6 +186,7 @@ class SettingsRepository(private val context: Context) {
             language = p[Keys.language].toEnum(defaults.language),
             unit = p[Keys.unit].toEnum(defaults.unit),
             theme = p[Keys.theme].toEnum(defaults.theme),
+            colorTheme = p[Keys.colorTheme].toEnum(defaults.colorTheme),
             defaultRestSec = p[Keys.defaultRestSec] ?: defaults.defaultRestSec,
             timerSound = p[Keys.timerSound] ?: defaults.timerSound,
             timerSoundUri = p[Keys.timerSoundUri] ?: defaults.timerSoundUri,
@@ -237,6 +242,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setLanguage(v: AppLanguage) = context.dataStore.edit { it[Keys.language] = v.name }
     suspend fun setUnit(v: WeightUnit) = context.dataStore.edit { it[Keys.unit] = v.name }
     suspend fun setTheme(v: ThemeMode) = context.dataStore.edit { it[Keys.theme] = v.name }
+    suspend fun setColorTheme(v: ColorTheme) = context.dataStore.edit { it[Keys.colorTheme] = v.name }
     suspend fun setDefaultRestSec(v: Int) = context.dataStore.edit { it[Keys.defaultRestSec] = v }
     suspend fun setTimerSound(v: Boolean) = context.dataStore.edit { it[Keys.timerSound] = v }
     suspend fun setTimerSoundUri(v: String) = context.dataStore.edit { it[Keys.timerSoundUri] = v }

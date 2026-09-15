@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val settings by container.settings.settings
                 .collectAsStateWithLifecycle(initialValue = Settings())
-            SkrotTheme(themeMode = settings.theme) {
+            SkrotTheme(themeMode = settings.theme, colorTheme = settings.colorTheme) {
                 SkrotApp(container = container, settings = settings)
             }
         }

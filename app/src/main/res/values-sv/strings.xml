@@ -478,6 +478,12 @@
     <string name="theme">Tema</string>
     <string name="theme_dark">Mörkt</string>
     <string name="theme_light">Ljust</string>
+    <string name="color_theme">Färg</string>
+    <string name="color_amber">Bärnsten</string>
+    <string name="color_moss">Mossa</string>
+    <string name="color_sky">Himmel</string>
+    <string name="color_rose">Ros</string>
+    <string name="color_violet">Viol</string>
     <string name="default_rest_for_new_sets">Standardvila för nya set (sekunder)</string>
     <string name="timer_adjust_step">Timerjusteringssteg (sekunder)</string>
     <string name="timer_sound">Timerljud</string>

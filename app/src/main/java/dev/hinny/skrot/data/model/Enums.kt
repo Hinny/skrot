@@ -340,6 +340,19 @@ enum class ThemeMode {
     SYSTEM,
 }
 
+/**
+ * Accent family, chosen independently of dark/light. Amber is the original
+ * look and stays the default; the rest are there for people who want the app
+ * to look like theirs.
+ */
+enum class ColorTheme {
+    AMBER,
+    MOSS,
+    SKY,
+    ROSE,
+    VIOLET,
+}
+
 /** Optional profile field; purely informational, stored on-device only. */
 enum class Sex {
     UNSPECIFIED,
