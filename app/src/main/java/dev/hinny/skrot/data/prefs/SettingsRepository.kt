@@ -128,6 +128,21 @@ data class Settings(
     val hapticFeedback: Boolean = true,
     /** Whether Back during a running workout asks before leaving the screen. */
     val confirmExitWorkout: Boolean = true,
+    /**
+     * Whether tapping a load or reps field selects its whole value, so typing
+     * replaces it. On by default: that is what a tap on a number means in a
+     * hurry.
+     */
+    val selectAllOnFocus: Boolean = true,
+    /** Whether set rows get +/- buttons under the load field. */
+    val stepperLoad: Boolean = false,
+    /** Whether set rows get +/- buttons under the reps field. */
+    val stepperReps: Boolean = false,
+    /**
+     * Whether the steppers are the only way to change those fields (the field
+     * itself no longer takes typing) rather than an addition to it.
+     */
+    val steppersReplaceTyping: Boolean = false,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -182,6 +197,10 @@ class SettingsRepository(private val context: Context) {
         val warmupSetCount = intPreferencesKey("warmup_set_count")
         val hapticFeedback = booleanPreferencesKey("haptic_feedback")
         val confirmExitWorkout = booleanPreferencesKey("confirm_exit_workout")
+        val selectAllOnFocus = booleanPreferencesKey("select_all_on_focus")
+        val stepperLoad = booleanPreferencesKey("stepper_load")
+        val stepperReps = booleanPreferencesKey("stepper_reps")
+        val steppersReplaceTyping = booleanPreferencesKey("steppers_replace_typing")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -244,6 +263,10 @@ class SettingsRepository(private val context: Context) {
             warmupSetCount = p[Keys.warmupSetCount] ?: defaults.warmupSetCount,
             hapticFeedback = p[Keys.hapticFeedback] ?: defaults.hapticFeedback,
             confirmExitWorkout = p[Keys.confirmExitWorkout] ?: defaults.confirmExitWorkout,
+            selectAllOnFocus = p[Keys.selectAllOnFocus] ?: defaults.selectAllOnFocus,
+            stepperLoad = p[Keys.stepperLoad] ?: defaults.stepperLoad,
+            stepperReps = p[Keys.stepperReps] ?: defaults.stepperReps,
+            steppersReplaceTyping = p[Keys.steppersReplaceTyping] ?: defaults.steppersReplaceTyping,
         )
     }
 
@@ -318,4 +341,12 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.hapticFeedback] = v }
     suspend fun setConfirmExitWorkout(v: Boolean) =
         context.dataStore.edit { it[Keys.confirmExitWorkout] = v }
+    suspend fun setSelectAllOnFocus(v: Boolean) =
+        context.dataStore.edit { it[Keys.selectAllOnFocus] = v }
+    suspend fun setStepperLoad(v: Boolean) =
+        context.dataStore.edit { it[Keys.stepperLoad] = v }
+    suspend fun setStepperReps(v: Boolean) =
+        context.dataStore.edit { it[Keys.stepperReps] = v }
+    suspend fun setSteppersReplaceTyping(v: Boolean) =
+        context.dataStore.edit { it[Keys.steppersReplaceTyping] = v }
 }

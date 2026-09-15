@@ -212,6 +212,13 @@
     <string name="section_appearance">Utseende och språk</string>
     <string name="section_workout">Under ett pass</string>
     <string name="show_last_session_values">Visa förra passet på varje set</string>
+    <string name="select_all_on_focus">Markera hela talet vid tryck</string>
+    <string name="select_all_on_focus_hint">Ett tryck på ett vikt- eller repsfält markerar värdet, så det du skriver ersätter det i stället för att hamna efter.</string>
+    <string name="stepper_load">+/−-knappar för vikt</string>
+    <string name="stepper_reps">+/−-knappar för reps</string>
+    <string name="stepper_hint">Knappar under fältet som stegar med övningens ökning (annars 2,5 kg / 5 lbs / 1 nivå) och med ett rep.</string>
+    <string name="steppers_replace_typing">Knapparna ersätter skrivning</string>
+    <string name="steppers_replace_typing_hint">Fältet öppnar inte längre tangentbordet; knapparna är enda sättet att ändra det.</string>
     <string name="show_last_session_values_hint">Setraden visar även vad du lyfte på samma set förra gången, så du vet vad du ska slå.</string>
     <string name="plate_calculator">Viktskivekalkylator</string>
     <string name="plate_calculator_hint">För skivstångsövningar visar setet du står på vilka skivor som ska sitta på varje sida.</string>

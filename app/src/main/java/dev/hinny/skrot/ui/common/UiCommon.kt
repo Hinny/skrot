@@ -31,11 +31,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -208,6 +215,10 @@ private val CompactFieldHeight = 40.dp
  * Tight numeric field for the logging screen: a bordered box with a small label
  * above it. Material3's OutlinedTextField carries far too much padding to fit a
  * load, reps, target, rest and a readable Done button on one phone-width row.
+ *
+ * With [selectAllOnFocus] the whole number is selected when the field is
+ * tapped, so whatever is typed replaces it rather than landing after it — a
+ * "60" that becomes "608" is the classic mid-set typo.
  */
 @Composable
 fun CompactNumberField(
@@ -217,8 +228,20 @@ fun CompactNumberField(
     modifier: Modifier = Modifier,
     decimal: Boolean = false,
     enabled: Boolean = true,
+    selectAllOnFocus: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
+    // The field owns a TextFieldValue so it can hold a selection; the caller
+    // keeps working in plain strings. A text change from the caller's side
+    // (filtered input, an accepted suggestion) is shown with the cursor at the
+    // end without disturbing our copy until the next edit.
+    var state by remember { mutableStateOf(TextFieldValue(value)) }
+    val shown = if (state.text == value) state else TextFieldValue(value, TextRange(value.length))
+    // The tap that gives focus also places the cursor, through onValueChange,
+    // *after* focus was granted — which would undo a selection made on focus.
+    // So the first value change after focus that leaves the text alone is
+    // taken to be that cursor placement and is turned back into select-all.
+    var selectAllPending by remember { mutableStateOf(false) }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             label,
@@ -227,8 +250,18 @@ fun CompactNumberField(
             maxLines = 1,
         )
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
+            value = shown,
+            onValueChange = { new ->
+                val adjusted =
+                    if (selectAllPending && new.text == shown.text) {
+                        new.copy(selection = TextRange(0, new.text.length))
+                    } else {
+                        new
+                    }
+                selectAllPending = false
+                state = adjusted
+                if (adjusted.text != value) onValueChange(adjusted.text)
+            },
             enabled = enabled,
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -243,7 +276,15 @@ fun CompactNumberField(
                 .fillMaxWidth()
                 .height(CompactFieldHeight)
                 .border(1.dp, colors.outline, RoundedCornerShape(8.dp))
-                .padding(horizontal = 2.dp),
+                .padding(horizontal = 2.dp)
+                .onFocusChanged { focus ->
+                    if (focus.isFocused && selectAllOnFocus) {
+                        state = shown.copy(selection = TextRange(0, shown.text.length))
+                        selectAllPending = true
+                    } else if (!focus.isFocused) {
+                        selectAllPending = false
+                    }
+                },
             decorationBox = { inner ->
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
             },

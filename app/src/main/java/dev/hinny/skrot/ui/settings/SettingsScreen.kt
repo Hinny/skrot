@@ -272,6 +272,29 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             SettingHint(stringResource(R.string.show_last_session_values_hint))
 
             ToggleSetting(
+                stringResource(R.string.select_all_on_focus),
+                settings.selectAllOnFocus,
+            ) { scope.launch { repo.setSelectAllOnFocus(it) } }
+            SettingHint(stringResource(R.string.select_all_on_focus_hint))
+
+            ToggleSetting(
+                stringResource(R.string.stepper_load),
+                settings.stepperLoad,
+            ) { scope.launch { repo.setStepperLoad(it) } }
+            ToggleSetting(
+                stringResource(R.string.stepper_reps),
+                settings.stepperReps,
+            ) { scope.launch { repo.setStepperReps(it) } }
+            SettingHint(stringResource(R.string.stepper_hint))
+            if (settings.stepperLoad || settings.stepperReps) {
+                ToggleSetting(
+                    stringResource(R.string.steppers_replace_typing),
+                    settings.steppersReplaceTyping,
+                ) { scope.launch { repo.setSteppersReplaceTyping(it) } }
+                SettingHint(stringResource(R.string.steppers_replace_typing_hint))
+            }
+
+            ToggleSetting(
                 stringResource(R.string.plate_calculator),
                 settings.plateCalculator,
             ) { scope.launch { repo.setPlateCalculator(it) } }

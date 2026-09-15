@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -1276,6 +1277,9 @@ private fun SetRowContent(
         )
 
         val loadLabel = loadFieldLabel(measurement, settings.unit)
+        // In "steppers replace typing" mode the field is display only.
+        val typeLoad = !(settings.steppersReplaceTyping && settings.stepperLoad)
+        val typeReps = !(settings.steppersReplaceTyping && settings.stepperReps)
         CompactNumberField(
             value = loadText,
             onValueChange = {
@@ -1284,6 +1288,8 @@ private fun SetRowContent(
             },
             label = loadLabel,
             decimal = !isLevel,
+            enabled = typeLoad,
+            selectAllOnFocus = settings.selectAllOnFocus,
             modifier = Modifier.weight(1.25f),
         )
         CompactNumberField(
@@ -1294,6 +1300,8 @@ private fun SetRowContent(
                 vm.updateSetValues(set, currentLoadKg(), filtered.toIntOrNull() ?: 0)
             },
             label = stringResource(R.string.reps),
+            enabled = typeReps,
+            selectAllOnFocus = settings.selectAllOnFocus,
             modifier = Modifier.weight(1f),
         )
 
@@ -1364,7 +1372,98 @@ private fun SetRowContent(
             }
         }
     }
+    if (settings.stepperLoad || settings.stepperReps) {
+        // Load steps by the exercise's own increment when it has one, else the
+        // unit's usual plate/level step; reps always by one.
+        val loadStep = se.exercise.progressionIncrement
+            ?.let { Units.toDisplay(it, settings.unit, measurement) }
+            ?: Units.stepSize(settings.unit, measurement)
+        SetStepperRow(
+            showLoad = settings.stepperLoad,
+            showReps = settings.stepperReps,
+            onLoad = { direction ->
+                val current = loadText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                var next = current + direction * loadStep
+                // Assistance on a bodyweight exercise is a negative load; nothing else is.
+                if (measurement != MeasurementType.BODYWEIGHT) next = next.coerceAtLeast(0.0)
+                val text = Units.formatValue(next)
+                onLoadText(text)
+                val kg = Units.fromDisplay(text.toDoubleOrNull() ?: 0.0, settings.unit, measurement)
+                vm.updateSetValues(set, kg, repsText.toIntOrNull() ?: 0)
+            },
+            onReps = { direction ->
+                val next = ((repsText.toIntOrNull() ?: 0) + direction).coerceAtLeast(0)
+                onRepsText(next.toString())
+                vm.updateSetValues(set, currentLoadKg(), next)
+            },
+        )
+    }
     SetRowFooter(se, set, previous, settings, isCurrent)
+    }
+}
+
+/**
+ * The optional +/- row under a set's fields, one pair under the load slot and
+ * one under the reps slot, spaced exactly like the row above so each pair sits
+ * under the number it changes. The row itself is too tight for the buttons.
+ */
+@Composable
+private fun SetStepperRow(
+    showLoad: Boolean,
+    showReps: Boolean,
+    onLoad: (direction: Int) -> Unit,
+    onReps: (direction: Int) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 3.dp),
+    ) {
+        Spacer(Modifier.width(34.dp))
+        Box(Modifier.weight(1.25f)) { if (showLoad) StepperPair(onLoad) }
+        Box(Modifier.weight(1f)) { if (showReps) StepperPair(onReps) }
+        Spacer(Modifier.weight(0.9f))
+        Spacer(Modifier.weight(0.9f))
+        Spacer(Modifier.width(64.dp))
+    }
+}
+
+/** A minus and a plus sharing one rounded box, each half its own target. */
+@Composable
+private fun StepperPair(onStep: (direction: Int) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.surfaceVariant),
+    ) {
+        @Composable
+        fun Half(label: String, contentDescription: String, direction: Int) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable(onClickLabel = contentDescription) { onStep(direction) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+        }
+        Half("−", stringResource(R.string.decrease), -1)
+        Spacer(
+            Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .background(colors.outline.copy(alpha = 0.4f)),
+        )
+        Half("+", stringResource(R.string.increase), +1)
     }
 }
 

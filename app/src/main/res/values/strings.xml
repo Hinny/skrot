@@ -214,6 +214,13 @@
     <string name="section_appearance">Appearance and language</string>
     <string name="section_workout">During a workout</string>
     <string name="show_last_session_values">Show last session on each set</string>
+    <string name="select_all_on_focus">Select the whole number on tap</string>
+    <string name="select_all_on_focus_hint">Tapping a weight or reps field selects its value, so what you type replaces it instead of being added to the end.</string>
+    <string name="stepper_load">+/− buttons for weight</string>
+    <string name="stepper_reps">+/− buttons for reps</string>
+    <string name="stepper_hint">Buttons under the field, stepping by the exercise\'s increment (or 2.5 kg / 5 lbs / 1 level) and by one rep.</string>
+    <string name="steppers_replace_typing">Buttons replace typing</string>
+    <string name="steppers_replace_typing_hint">The field no longer opens the keyboard; the buttons are the only way to change it.</string>
     <string name="show_last_session_values_hint">A set row also shows what you lifted for that set last time, so you know what you are beating.</string>
     <string name="plate_calculator">Plate calculator</string>
     <string name="plate_calculator_hint">For barbell exercises, the set you are on shows which discs go on each side.</string>
