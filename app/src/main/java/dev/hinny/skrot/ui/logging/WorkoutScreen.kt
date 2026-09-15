@@ -1121,8 +1121,9 @@ private fun SetRow(
 
     if (targetOpen) {
         TargetDialog(
-            initial = planned?.targetRepsMin ?: set.targetReps,
-            onSave = { reps -> vm.updateTarget(se, set, reps) },
+            initial = set.targetReps ?: planned?.targetRepsMin,
+            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
+            onSave = { reps, applyToPlan -> vm.updateTarget(se, set, reps, applyToPlan) },
             onDismiss = { targetOpen = false },
         )
     }
@@ -1221,8 +1222,9 @@ private fun SetRowContent(
         )
 
         // Target sits directly right of the actual reps: the number you are
-        // aiming for next to the number you just entered.
-        val target = planned?.targetRepsMin ?: set.targetReps
+        // aiming for next to the number you just entered. A target edited in
+        // this session shadows the plan's.
+        val target = set.targetReps ?: planned?.targetRepsMin
         val targetText = when {
             set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
             target != null -> "$target"
@@ -1415,29 +1417,51 @@ private fun SetTypeMarker(label: String, enabled: Boolean, onClick: () -> Unit) 
     }
 }
 
+/**
+ * Target edit for one set. Session-only unless "apply to future sessions" is
+ * ticked — the same choice the rest dialog offers. Targets used to rewrite the
+ * plan unconditionally, which made the two dialogs behave differently for no
+ * reason anyone could name.
+ */
 @Composable
 private fun TargetDialog(
     initial: Int?,
-    onSave: (Int?) -> Unit,
+    canApplyToPlan: Boolean,
+    onSave: (reps: Int?, applyToPlan: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var targetText by remember { mutableStateOf(initial?.toString() ?: "") }
+    var applyToPlan by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.target_reps)) },
         text = {
-            OutlinedTextField(
-                value = targetText,
-                onValueChange = { targetText = it.filter(Char::isDigit).take(3) },
-                label = { Text(stringResource(R.string.target_min)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(110.dp),
-            )
+            Column {
+                OutlinedTextField(
+                    value = targetText,
+                    onValueChange = { targetText = it.filter(Char::isDigit).take(3) },
+                    label = { Text(stringResource(R.string.target_min)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.width(110.dp),
+                )
+                if (canApplyToPlan) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = applyToPlan,
+                            onCheckedChange = { applyToPlan = it },
+                        )
+                        Text(
+                            stringResource(R.string.apply_future_sessions),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(targetText.toIntOrNull())
+                onSave(targetText.toIntOrNull(), applyToPlan)
                 onDismiss()
             }) { Text(stringResource(R.string.save)) }
         },

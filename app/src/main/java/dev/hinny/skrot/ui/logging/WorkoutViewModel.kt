@@ -218,10 +218,11 @@ class WorkoutViewModel(
         // "Hit the target now and it's a PR": check the next planned set of this exercise.
         val nextSet = se.sortedSets.firstOrNull { !it.completed && it.setType != SetType.WARMUP }
         if (nextSet != null) {
-            val target = se.sessionExercise.plannedExerciseId
-                ?.let { plannedSetsByPe.value[it] }
-                ?.find { it.position == nextSet.position }
-                ?.targetRepsMin
+            val target = nextSet.targetReps
+                ?: se.sessionExercise.plannedExerciseId
+                    ?.let { plannedSetsByPe.value[it] }
+                    ?.find { it.position == nextSet.position }
+                    ?.targetRepsMin
             val gymId = content.session.gymId
             val wouldBePr = PrDetector.detect(
                 se.exercise.measurementType,
@@ -571,18 +572,22 @@ class WorkoutViewModel(
     }
 
     /**
-     * Target-reps edits persist back to the routine, like rest durations. An
-     * exercise with no plan behind it keeps its target on the logged set, so it
-     * stays editable rather than showing a dead "—".
+     * Target-reps edits apply to this session, stored on the logged set where
+     * they shadow the plan; [applyToPlan] additionally writes them back to the
+     * routine ("apply to future sessions"), exactly like rest durations.
      */
-    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, reps: Int?) {
+    fun updateTarget(
+        se: SessionExerciseWithDetails,
+        set: LoggedSet,
+        reps: Int?,
+        applyToPlan: Boolean = false,
+    ) {
         viewModelScope.launch {
+            db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             val peId = se.sessionExercise.plannedExerciseId
-            if (peId != null) {
+            if (applyToPlan && peId != null) {
                 db.routineDao().writeBackTarget(peId, set.position, reps)
                 session.value?.let { refreshAuxiliary(it) }
-            } else {
-                db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             }
             touch()
         }
