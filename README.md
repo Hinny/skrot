@@ -99,11 +99,14 @@ Tagging `v*` triggers the release workflow, which builds a signed release APK an
 it to a GitHub Release.
 
 The version comes from the tag, so there is nothing to bump by hand: `v1.6.0` builds
-`versionName = "1.6.0"` with `versionCode` one higher than the last, and the workflow
-pushes that change to `app/build.gradle.kts` back to `main` once the release is out.
-Tags must be `vMAJOR.MINOR.PATCH` or the workflow stops before building. The same
-edit is a script — `.github/scripts/set-version.sh 1.6.0` — if you ever need it locally;
-it is idempotent, so re-running a release never double-bumps `versionCode`.
+`versionName = "1.6.0"` with `versionCode` one higher than the last, and once the
+release is out the workflow opens a pull request (`release/bump-1.6.0`) with that change
+to `app/build.gradle.kts` — `main` only takes pull requests, so it cannot push there
+itself. Squash-merge that PR before tagging the next release; the next `versionCode` is
+computed from the checked-in one. Tags must be `vMAJOR.MINOR.PATCH` or the workflow
+stops before building. The same edit is a script — `.github/scripts/set-version.sh 1.6.0`
+— if you ever need it locally; it is idempotent, so re-running a release never
+double-bumps `versionCode`.
 
 Configure these repository secrets:
 

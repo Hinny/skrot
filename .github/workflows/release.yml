@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -65,18 +66,35 @@ jobs:
       # The APK is already built and published from the tag; this only keeps the
       # checked-in version from drifting behind the releases, which is what used
       # to happen when the bump was a separate manual commit.
-      - name: Push the version bump to main
+      #
+      # It goes through a pull request because main only accepts those (the
+      # "Main protect" ruleset) -- pushing to main directly is what made every
+      # release run end red while the release itself was fine. The bot's token
+      # cannot trigger CI on the PR, and main requires no status checks, so it
+      # is mergeable as soon as it opens; squash-merge it before the next tag
+      # or the next versionCode is computed from a stale file.
+      - name: Open a pull request with the version bump
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
           git fetch origin main
           git checkout -B main origin/main
           .github/scripts/set-version.sh "$VERSION_NAME"
           if git diff --quiet -- app/build.gradle.kts; then
-            echo "main already carries $VERSION_NAME; nothing to push"
+            echo "main already carries $VERSION_NAME; nothing to open"
             exit 0
           fi
+          branch="release/bump-$VERSION_NAME"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$branch"
           git commit -m "Bump version to $VERSION_NAME" -- app/build.gradle.kts
-          git push origin main
+          # Re-running a release rewrites the same branch rather than failing on it.
+          git push --force origin "$branch"
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            echo "a pull request for $branch is already open"
+            exit 0
+          fi
+          gh pr create --base main --head "$branch" --title "Bump version to $VERSION_NAME" \
+            --body "Version bump for the $GITHUB_REF_NAME release, opened by the release workflow. Squash-merge it before tagging the next release so versionCode keeps counting from the right place."
