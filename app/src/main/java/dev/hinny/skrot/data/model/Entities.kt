@@ -65,7 +65,25 @@ data class Exercise(
     val nextTimeNote: String = "",
     /** Per-exercise progression increment override (kg or levels); null = use the global default. */
     val progressionIncrement: Double? = null,
-)
+    /**
+     * How to perform the exercise. Built-ins carry both languages from
+     * [dev.hinny.skrot.data.db.SeedInstructions]; custom exercises store the
+     * user's text in both fields, like the name.
+     */
+    val instructionsEn: String = "",
+    val instructionsSv: String = "",
+    /**
+     * The TL;DR: at most [MAX_CUES] short key points, the ones a coach calls
+     * out before the set. Same language split as the instructions.
+     */
+    val cuesEn: List<String> = emptyList(),
+    val cuesSv: List<String> = emptyList(),
+) {
+    companion object {
+        /** Three is a checklist; more is a paragraph nobody reads mid-set. */
+        const val MAX_CUES = 3
+    }
+}
 
 /** A named group of interchangeable exercises (e.g. "Horizontal press"). */
 @Serializable

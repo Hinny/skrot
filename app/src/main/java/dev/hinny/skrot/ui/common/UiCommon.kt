@@ -63,6 +63,29 @@ fun Exercise.displayName(): String = when (LocalExerciseNameLanguage.current) {
     AppLanguage.SYSTEM -> if (Locale.getDefault().language == "sv") nameSv else nameEn
 }
 
+/** Whether the exercise-name language setting resolves to Swedish right now. */
+private fun AppLanguage.isSwedish(): Boolean = when (this) {
+    AppLanguage.ENGLISH -> false
+    AppLanguage.SWEDISH -> true
+    AppLanguage.SYSTEM -> Locale.getDefault().language == "sv"
+}
+
+/** Instructions in the exercise-name language; they are exercise content, like the name. */
+@Composable
+fun Exercise.displayInstructions(): String = instructionsFor(LocalExerciseNameLanguage.current)
+
+/** The cue list in the exercise-name language. */
+@Composable
+fun Exercise.displayCues(): List<String> = cuesFor(LocalExerciseNameLanguage.current)
+
+/** Non-composable counterpart of [displayInstructions], for code that has the setting in hand. */
+fun Exercise.instructionsFor(language: AppLanguage): String =
+    if (language.isSwedish()) instructionsSv else instructionsEn
+
+/** Non-composable counterpart of [displayCues]. */
+fun Exercise.cuesFor(language: AppLanguage): List<String> =
+    if (language.isSwedish()) cuesSv else cuesEn
+
 /**
  * Label for a load input field: the unit you type in, which depends on the
  * exercise as much as on the setting. Machine levels are unit-less and say so;

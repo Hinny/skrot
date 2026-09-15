@@ -251,6 +251,8 @@
     <string name="open_settings">Open settings</string>
     <string name="coach_message_seconds">Seconds a comment stays up (0 = until dismissed)</string>
     <string name="coach_message_seconds_hint">How long a coach comment stays on screen during a workout.</string>
+    <string name="coach_exercise_cues">Read out exercise key points</string>
+    <string name="coach_exercise_cues_hint">As an exercise comes up, the coach repeats its key points in its own words. Follows the frequency setting, so it doesn\'t happen every time.</string>
     <string name="exercise_sort">Exercise order</string>
     <string name="sort_name">Alphabetical</string>
     <string name="sort_most_used">Most used</string>
@@ -328,6 +330,10 @@
     <string name="remove_exercise">Remove exercise</string>
     <string name="exercise_note">Exercise note</string>
     <string name="next_time_note">Next-time note</string>
+    <string name="instructions">Instructions</string>
+    <string name="instructions_hint">How to perform it</string>
+    <string name="cues_hint">Key points, one per line (max %1$d)</string>
+    <string name="no_instructions">No instructions for this exercise.</string>
     <string name="note_prefix">Note: %1$s</string>
     <string name="session_note">Session note</string>
     <string name="new_pr">New PR!</string>
@@ -891,6 +897,37 @@
         <item>That\'s it.</item>
         <item>Saved.</item>
         <item>Good.</item>
+    </string-array>
+    <!-- Coach: lead-ins for an exercise's key points; the list follows -->
+    <string-array name="coach_cheerleader_cues">
+        <item>Remember these and you\'ll nail it:</item>
+        <item>Quick reminder before you go —</item>
+        <item>Three things, then crush it:</item>
+        <item>Here\'s the recipe for a great set:</item>
+        <item>You know this, but just in case:</item>
+        <item>Set up, then think about:</item>
+    </string-array>
+    <string-array name="coach_bro_cues">
+        <item>Now I want to see:</item>
+        <item>Checklist, bro:</item>
+        <item>Don\'t forget:</item>
+        <item>Bro. Three things:</item>
+        <item>Form first, then weight:</item>
+        <item>Before you touch the bar:</item>
+    </string-array>
+    <string-array name="coach_pt_cues">
+        <item>Reduce the risk of injury with these instructions:</item>
+        <item>Technique check before you start:</item>
+        <item>Focus points for this exercise:</item>
+        <item>Before the first rep:</item>
+        <item>Keep these in mind on every rep:</item>
+        <item>Set-up reminders:</item>
+    </string-array>
+    <string-array name="coach_minimal_cues">
+        <item>Cues:</item>
+        <item>Focus:</item>
+        <item>Remember:</item>
+        <item>Key points:</item>
     </string-array>
     <string-array name="coach_minimal_streak">
         <item>Streak intact.</item>

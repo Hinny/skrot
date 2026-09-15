@@ -280,6 +280,7 @@ object SeedData {
         if (missing.isNotEmpty()) {
             dao.insertAll(
                 missing.map { e ->
+                    val text = SeedInstructions.byName[e.nameEn]
                     Exercise(
                         nameEn = e.nameEn,
                         nameSv = e.nameSv,
@@ -290,12 +291,17 @@ object SeedData {
                         isCustom = false,
                         bodyweightFactor = e.bwFactor,
                         groupId = e.groupKey?.let { groupIds[it] },
+                        instructionsEn = text?.en.orEmpty(),
+                        instructionsSv = text?.sv.orEmpty(),
+                        cuesEn = text?.cuesEn.orEmpty(),
+                        cuesSv = text?.cuesSv.orEmpty(),
                     )
                 }
             )
         }
         for (e in exercises) {
             val current = existingByName[e.nameEn.lowercase()] ?: continue
+            val text = SeedInstructions.byName[e.nameEn]
             val synced = current.copy(
                 nameSv = e.nameSv,
                 muscleGroup = e.muscle,
@@ -304,6 +310,10 @@ object SeedData {
                 measurementType = e.measurement,
                 bodyweightFactor = e.bwFactor,
                 groupId = e.groupKey?.let { groupIds[it] },
+                instructionsEn = text?.en.orEmpty(),
+                instructionsSv = text?.sv.orEmpty(),
+                cuesEn = text?.cuesEn.orEmpty(),
+                cuesSv = text?.cuesSv.orEmpty(),
             )
             if (synced != current) dao.update(synced)
         }

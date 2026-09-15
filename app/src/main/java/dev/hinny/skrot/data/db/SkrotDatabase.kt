@@ -36,7 +36,7 @@ import dev.hinny.skrot.data.model.WorkoutSession
         LoggedSet::class,
         BodyMetric::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -131,10 +131,24 @@ abstract class SkrotDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v8 -> v9: exercises carry instructions and a short list of cues, in
+         * both languages. Built-ins are filled in by the seed sync on the next
+         * launch; custom exercises start empty.
+         */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercises ADD COLUMN instructionsEn TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN instructionsSv TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN cuesEn TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN cuesSv TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         /** Migrations from version 1 onward are registered here. */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8,
+            MIGRATION_7_8, MIGRATION_8_9,
         )
 
         fun build(context: Context): SkrotDatabase =

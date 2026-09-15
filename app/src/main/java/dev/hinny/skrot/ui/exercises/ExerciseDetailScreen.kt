@@ -64,6 +64,8 @@ import dev.hinny.skrot.ui.charts.LineChart
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.EditHistory
 import dev.hinny.skrot.ui.common.PendingChangesBar
+import dev.hinny.skrot.ui.common.displayCues
+import dev.hinny.skrot.ui.common.displayInstructions
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.equipmentLabel
 import dev.hinny.skrot.ui.common.muscleLabel
@@ -487,6 +489,60 @@ fun ExerciseDetailScreen(
                 label = { Text(stringResource(R.string.notes)) },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+
+        // How to do it, and the three-line version of the same. Built-ins
+        // ship theirs; a custom exercise gets whatever you write here, which
+        // is also what the coach reads out if that is switched on.
+        item {
+            Text(stringResource(R.string.instructions), style = MaterialTheme.typography.titleSmall)
+            if (e.isCustom) {
+                var instructionsText by remember(e.id, revision) { mutableStateOf(e.instructionsEn) }
+                OutlinedTextField(
+                    value = instructionsText,
+                    onValueChange = {
+                        instructionsText = it
+                        vm.update { ex -> ex.copy(instructionsEn = it, instructionsSv = it) }
+                    },
+                    label = { Text(stringResource(R.string.instructions_hint)) },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                var cuesText by remember(e.id, revision) {
+                    mutableStateOf(e.cuesEn.joinToString("\n"))
+                }
+                OutlinedTextField(
+                    value = cuesText,
+                    onValueChange = { text ->
+                        cuesText = text
+                        val cues = text.lines()
+                            .map(String::trim)
+                            .filter(String::isNotBlank)
+                            .take(Exercise.MAX_CUES)
+                        vm.update { ex -> ex.copy(cuesEn = cues, cuesSv = cues) }
+                    },
+                    label = { Text(stringResource(R.string.cues_hint, Exercise.MAX_CUES)) },
+                    minLines = Exercise.MAX_CUES,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                val instructions = e.displayInstructions()
+                val cues = e.displayCues()
+                if (instructions.isBlank() && cues.isEmpty()) {
+                    Text(
+                        stringResource(R.string.no_instructions),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    if (instructions.isNotBlank()) {
+                        Text(instructions, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    cues.forEach { cue ->
+                        Text("• $cue", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
         }
 
         // Best set + charts

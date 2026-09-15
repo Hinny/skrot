@@ -249,6 +249,8 @@
     <string name="open_settings">Öppna inställningar</string>
     <string name="coach_message_seconds">Sekunder en kommentar visas (0 = tills du stänger den)</string>
     <string name="coach_message_seconds_hint">Hur länge en coachkommentar ligger kvar på skärmen under ett pass.</string>
+    <string name="coach_exercise_cues">Läs upp övningens nyckelpunkter</string>
+    <string name="coach_exercise_cues_hint">När en övning står på tur upprepar coachen dess nyckelpunkter med egna ord. Följer frekvensinställningen, så det sker inte varje gång.</string>
     <string name="exercise_sort">Övningsordning</string>
     <string name="sort_name">Alfabetisk</string>
     <string name="sort_most_used">Mest använda</string>
@@ -326,6 +328,10 @@
     <string name="remove_exercise">Ta bort övning</string>
     <string name="exercise_note">Övningsanteckning</string>
     <string name="next_time_note">Nästa gång-anteckning</string>
+    <string name="instructions">Instruktioner</string>
+    <string name="instructions_hint">Hur övningen utförs</string>
+    <string name="cues_hint">Nyckelpunkter, en per rad (max %1$d)</string>
+    <string name="no_instructions">Inga instruktioner för den här övningen.</string>
     <string name="note_prefix">Anteckning: %1$s</string>
     <string name="session_note">Passanteckning</string>
     <string name="new_pr">Nytt PB!</string>
@@ -889,6 +895,37 @@
         <item>Det var det.</item>
         <item>Sparat.</item>
         <item>Bra.</item>
+    </string-array>
+    <!-- Coach: inledningar till en övnings nyckelpunkter; listan följer -->
+    <string-array name="coach_cheerleader_cues">
+        <item>Kom ihåg de här så sitter det:</item>
+        <item>Snabb påminnelse innan du kör —</item>
+        <item>Tre saker, sedan kör du:</item>
+        <item>Här är receptet på ett bra set:</item>
+        <item>Du vet det här, men ändå:</item>
+        <item>Ställ upp, tänk sedan på:</item>
+    </string-array>
+    <string-array name="coach_bro_cues">
+        <item>Nu vill jag se:</item>
+        <item>Checklista, bror:</item>
+        <item>Glöm inte:</item>
+        <item>Bror. Tre saker:</item>
+        <item>Teknik först, sedan vikt:</item>
+        <item>Innan du rör stången:</item>
+    </string-array>
+    <string-array name="coach_pt_cues">
+        <item>Minska skaderisken med de här instruktionerna:</item>
+        <item>Teknikkoll innan du börjar:</item>
+        <item>Fokuspunkter för den här övningen:</item>
+        <item>Innan första repet:</item>
+        <item>Ha de här i åtanke på varje rep:</item>
+        <item>Påminnelser inför uppställningen:</item>
+    </string-array>
+    <string-array name="coach_minimal_cues">
+        <item>Fokus:</item>
+        <item>Kom ihåg:</item>
+        <item>Nyckelpunkter:</item>
+        <item>Tänk på:</item>
     </string-array>
     <string-array name="coach_minimal_streak">
         <item>Sviten håller.</item>
