@@ -55,7 +55,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -157,7 +159,11 @@ fun WorkoutScreen(
     // laid out, so the current set can be scrolled to the middle of the screen.
     val listState = rememberLazyListState()
     val rowBounds = remember { mutableStateMapOf<Long, IntRange>() }
-    var listBounds by remember { mutableStateOf<IntRange?>(null) }
+    val listBounds = remember { mutableStateOf<IntRange?>(null) }
+    // Per exercise section: the whole section and its title row, for the
+    // pinned name that stands in for a title scrolled off the top.
+    val sectionBounds = remember { mutableStateMapOf<Long, IntRange>() }
+    val headerBounds = remember { mutableStateMapOf<Long, IntRange>() }
     val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
 
     // Keep the screen awake during an active workout (configurable).
@@ -366,20 +372,24 @@ fun WorkoutScreen(
                 delay(CENTER_SCROLL_SETTLE_MS)
             }
             val row = rowBounds[id] ?: return@LaunchedEffect
-            val list = listBounds ?: return@LaunchedEffect
+            val list = listBounds.value ?: return@LaunchedEffect
             val delta = ((row.first + row.last) / 2 - (list.first + list.last) / 2).toFloat()
             if (abs(delta) > CENTER_SCROLL_THRESHOLD_PX) listState.animateScrollBy(delta)
         }
 
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 12.dp)
                 .onGloballyPositioned { coords ->
                     val top = coords.positionInRoot().y.roundToInt()
-                    listBounds = top..(top + coords.size.height)
+                    listBounds.value = top..(top + coords.size.height)
                 },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -450,6 +460,8 @@ fun WorkoutScreen(
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
                                 rowBounds = rowBounds,
+                                sectionBounds = sectionBounds,
+                                headerBounds = headerBounds,
                                 // Only supersets need per-exercise reordering; a
                                 // lone exercise moves with its block.
                                 blockReorder = exerciseReorder.takeIf { block.size > 1 },
@@ -513,6 +525,16 @@ fun WorkoutScreen(
                 )
                 Spacer(Modifier.height(80.dp))
             }
+        }
+        if (settings.stickyExerciseHeader) {
+            StickyExerciseHeader(
+                exercises = session.exercises,
+                listBounds = listBounds,
+                sectionBounds = sectionBounds,
+                headerBounds = headerBounds,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
         }
     }
 
@@ -635,6 +657,52 @@ fun WorkoutScreen(
     }
 }
 
+/**
+ * The name of the exercise you are scrolled into, pinned at the top of the
+ * list while its own title row is off-screen. Shows for the section that
+ * straddles the list's top edge, and only once that section's header has
+ * gone past it — so it appears exactly when the title would be missed and
+ * disappears the moment the next exercise's title scrolls into view.
+ *
+ * Bounds are root-relative and refreshed on every scroll frame by the
+ * sections themselves; the derived state keeps this from recomposing until
+ * the answer actually changes.
+ */
+@Composable
+private fun StickyExerciseHeader(
+    exercises: List<SessionExerciseWithDetails>,
+    listBounds: State<IntRange?>,
+    sectionBounds: SnapshotStateMap<Long, IntRange>,
+    headerBounds: SnapshotStateMap<Long, IntRange>,
+    modifier: Modifier = Modifier,
+) {
+    val pinned by remember(exercises) {
+        derivedStateOf {
+            val top = listBounds.value?.first ?: return@derivedStateOf null
+            exercises.firstOrNull { se ->
+                val id = se.sessionExercise.id
+                val section = sectionBounds[id] ?: return@firstOrNull false
+                val header = headerBounds[id] ?: return@firstOrNull false
+                section.first < top && section.last > top && header.last <= top
+            }
+        }
+    }
+    val se = pinned ?: return
+    Surface(
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Text(
+            se.exercise.displayName(),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
+        )
+    }
+}
+
 private fun formatElapsed(ms: Long): String {
     val totalSec = ms / 1000
     val h = totalSec / 3600
@@ -658,6 +726,8 @@ private fun ExerciseSection(
     hasRoutineDay: Boolean,
     locked: Boolean,
     rowBounds: SnapshotStateMap<Long, IntRange>,
+    sectionBounds: SnapshotStateMap<Long, IntRange>,
+    headerBounds: SnapshotStateMap<Long, IntRange>,
     blockReorder: ReorderState?,
     indexInBlock: Int,
     blockSize: Int,
@@ -690,6 +760,17 @@ private fun ExerciseSection(
         vm.moveSet(se.sessionExercise.id, from, to)
     }
 
+    // A section scrolled out of the lazy list is disposed without a final
+    // position report, so its last known bounds must not linger and claim
+    // the pinned header for an exercise that is nowhere on screen.
+    val seId = se.sessionExercise.id
+    DisposableEffect(seId) {
+        onDispose {
+            sectionBounds.remove(seId)
+            headerBounds.remove(seId)
+        }
+    }
+
     Column(
         Modifier
             .padding(vertical = 4.dp)
@@ -699,9 +780,19 @@ private fun ExerciseSection(
                 } else {
                     Modifier
                 }
-            ),
+            )
+            .onGloballyPositioned { coords ->
+                val top = coords.positionInRoot().y.roundToInt()
+                sectionBounds[seId] = top..(top + coords.size.height)
+            },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.onGloballyPositioned { coords ->
+                val top = coords.positionInRoot().y.roundToInt()
+                headerBounds[seId] = top..(top + coords.size.height)
+            },
+        ) {
             if (blockReorder != null && !locked) {
                 ReorderHandle(blockReorder, indexInBlock, blockSize)
                 Spacer(Modifier.width(6.dp))

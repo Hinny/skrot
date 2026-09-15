@@ -214,6 +214,8 @@
     <string name="section_appearance">Appearance and language</string>
     <string name="section_workout">During a workout</string>
     <string name="show_last_session_values">Show last session on each set</string>
+    <string name="sticky_exercise_header">Keep the exercise name in view</string>
+    <string name="sticky_exercise_header_hint">Scrolling through many sets, the exercise you are in stays pinned at the top until you reach the next one.</string>
     <string name="select_all_on_focus">Select the whole number on tap</string>
     <string name="select_all_on_focus_hint">Tapping a weight or reps field selects its value, so what you type replaces it instead of being added to the end.</string>
     <string name="stepper_load">+/− buttons for weight</string>

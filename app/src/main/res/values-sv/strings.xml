@@ -212,6 +212,8 @@
     <string name="section_appearance">Utseende och språk</string>
     <string name="section_workout">Under ett pass</string>
     <string name="show_last_session_values">Visa förra passet på varje set</string>
+    <string name="sticky_exercise_header">Håll övningsnamnet synligt</string>
+    <string name="sticky_exercise_header_hint">När du rullar genom många set ligger övningen du är i kvar högst upp tills du når nästa.</string>
     <string name="select_all_on_focus">Markera hela talet vid tryck</string>
     <string name="select_all_on_focus_hint">Ett tryck på ett vikt- eller repsfält markerar värdet, så det du skriver ersätter det i stället för att hamna efter.</string>
     <string name="stepper_load">+/−-knappar för vikt</string>

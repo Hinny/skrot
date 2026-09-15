@@ -134,6 +134,12 @@ data class Settings(
      * hurry.
      */
     val selectAllOnFocus: Boolean = true,
+    /**
+     * Whether the exercise you are scrolled into keeps its name pinned at the
+     * top of the workout until you scroll past it into the next one. Five sets
+     * of the same lift push the title off-screen otherwise.
+     */
+    val stickyExerciseHeader: Boolean = true,
     /** Whether set rows get +/- buttons under the load field. */
     val stepperLoad: Boolean = false,
     /** Whether set rows get +/- buttons under the reps field. */
@@ -198,6 +204,7 @@ class SettingsRepository(private val context: Context) {
         val hapticFeedback = booleanPreferencesKey("haptic_feedback")
         val confirmExitWorkout = booleanPreferencesKey("confirm_exit_workout")
         val selectAllOnFocus = booleanPreferencesKey("select_all_on_focus")
+        val stickyExerciseHeader = booleanPreferencesKey("sticky_exercise_header")
         val stepperLoad = booleanPreferencesKey("stepper_load")
         val stepperReps = booleanPreferencesKey("stepper_reps")
         val steppersReplaceTyping = booleanPreferencesKey("steppers_replace_typing")
@@ -264,6 +271,7 @@ class SettingsRepository(private val context: Context) {
             hapticFeedback = p[Keys.hapticFeedback] ?: defaults.hapticFeedback,
             confirmExitWorkout = p[Keys.confirmExitWorkout] ?: defaults.confirmExitWorkout,
             selectAllOnFocus = p[Keys.selectAllOnFocus] ?: defaults.selectAllOnFocus,
+            stickyExerciseHeader = p[Keys.stickyExerciseHeader] ?: defaults.stickyExerciseHeader,
             stepperLoad = p[Keys.stepperLoad] ?: defaults.stepperLoad,
             stepperReps = p[Keys.stepperReps] ?: defaults.stepperReps,
             steppersReplaceTyping = p[Keys.steppersReplaceTyping] ?: defaults.steppersReplaceTyping,
@@ -343,6 +351,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.confirmExitWorkout] = v }
     suspend fun setSelectAllOnFocus(v: Boolean) =
         context.dataStore.edit { it[Keys.selectAllOnFocus] = v }
+    suspend fun setStickyExerciseHeader(v: Boolean) =
+        context.dataStore.edit { it[Keys.stickyExerciseHeader] = v }
     suspend fun setStepperLoad(v: Boolean) =
         context.dataStore.edit { it[Keys.stepperLoad] = v }
     suspend fun setStepperReps(v: Boolean) =

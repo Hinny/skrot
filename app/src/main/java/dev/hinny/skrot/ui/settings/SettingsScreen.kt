@@ -272,6 +272,12 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
             SettingHint(stringResource(R.string.show_last_session_values_hint))
 
             ToggleSetting(
+                stringResource(R.string.sticky_exercise_header),
+                settings.stickyExerciseHeader,
+            ) { scope.launch { repo.setStickyExerciseHeader(it) } }
+            SettingHint(stringResource(R.string.sticky_exercise_header_hint))
+
+            ToggleSetting(
                 stringResource(R.string.select_all_on_focus),
                 settings.selectAllOnFocus,
             ) { scope.launch { repo.setSelectAllOnFocus(it) } }
