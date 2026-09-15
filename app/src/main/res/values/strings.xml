@@ -377,6 +377,15 @@
     <string name="clone_exercise">Clone exercise</string>
     <string name="copy_program">Copy program</string>
     <string name="clone_suffix">(copy)</string>
+    <string name="measurement_copy_suffix">(%1$s)</string>
+    <string name="measurement_conflict_title">Logged sets don\'t match</string>
+    <string name="measurement_conflict_body">%1$d sets in %2$d workouts were logged as %3$s. Read as %4$s, those numbers would mean something else. What should happen to them?</string>
+    <string name="measurement_conflict_keep">Keep the numbers</string>
+    <string name="measurement_conflict_keep_body">They are read as the new type from now on — 60 kg becomes level 60. Charts and records carry on unchanged.</string>
+    <string name="measurement_conflict_zero">Clear the loads, keep the reps</string>
+    <string name="measurement_conflict_zero_body">Every logged load for this exercise becomes 0. The sets and their reps stay.</string>
+    <string name="measurement_conflict_move">Move the history to a copy</string>
+    <string name="measurement_conflict_move_body">A copy named \"%1$s\" keeps the old type and takes over all the logged sets. This exercise starts fresh.</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>
     <string name="measurement_weight">Weight (kg)</string>

@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -78,12 +80,39 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/**
+ * A measurement-type change that would reinterpret what has already been
+ * logged: 60 kg on the bench is not level 60 on a machine. Held here until
+ * the user says what to do with the old sets.
+ */
+data class MeasurementConflict(
+    val from: MeasurementType,
+    val to: MeasurementType,
+    val setCount: Int,
+    val sessionCount: Int,
+)
+
+/** What to do with logged sets whose loads no longer fit the exercise. */
+enum class ConflictResolution {
+    /** Leave the numbers; they are read as the new type from now on. */
+    KEEP_VALUES,
+
+    /** Clear the loads, keep the reps. */
+    ZERO_LOADS,
+
+    /** Park the history on a copy of the exercise that keeps the old type. */
+    MOVE_HISTORY,
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExerciseDetailViewModel(
     private val container: AppContainer,
     private val exerciseId: Long,
 ) : ViewModel() {
     private val db = container.db
+
+    /** Set while a measurement-type change is waiting on a decision about the logs. */
+    val measurementConflict = MutableStateFlow<MeasurementConflict?>(null)
 
     /** Last-persisted value, as loaded from the database. */
     val exercise = MutableStateFlow<Exercise?>(null)
@@ -168,7 +197,57 @@ class ExerciseDetailViewModel(
     }
 
     private fun persist(e: Exercise) {
+        val saved = exercise.value
+        val logged = sets.value
+        if (saved != null && saved.measurementType != e.measurementType && logged.isNotEmpty()) {
+            measurementConflict.value = MeasurementConflict(
+                from = saved.measurementType,
+                to = e.measurementType,
+                setCount = logged.size,
+                sessionCount = logged.distinctBy { it.sessionId }.size,
+            )
+            return
+        }
         viewModelScope.launch { db.exerciseDao().update(e) }
+    }
+
+    /**
+     * Settles a pending [measurementConflict] and then writes the draft. For
+     * [ConflictResolution.MOVE_HISTORY] the copy is named "<name> [copySuffix]"
+     * and takes over every past session instance, so charts and records for
+     * the old numbers live on there under the type they were logged as.
+     */
+    fun resolveMeasurementConflict(resolution: ConflictResolution, copySuffix: String) {
+        measurementConflict.value ?: return
+        val target = draft.value ?: return
+        val saved = exercise.value ?: return
+        measurementConflict.value = null
+        viewModelScope.launch {
+            when (resolution) {
+                ConflictResolution.KEEP_VALUES -> Unit
+                ConflictResolution.ZERO_LOADS -> db.sessionDao().zeroLoadsForExercise(saved.id)
+                ConflictResolution.MOVE_HISTORY -> {
+                    val copyId = db.exerciseDao().insert(
+                        saved.copy(
+                            id = 0,
+                            nameEn = "${saved.nameEn} $copySuffix",
+                            nameSv = "${saved.nameSv} $copySuffix",
+                            isCustom = true,
+                            nextTimeNote = "",
+                        )
+                    )
+                    db.sessionDao().moveExerciseHistory(from = saved.id, to = copyId)
+                }
+            }
+            db.exerciseDao().update(target)
+        }
+    }
+
+    /** Backs out of the type change only; any other pending edits stay pending. */
+    fun cancelMeasurementChange() {
+        val conflict = measurementConflict.value ?: return
+        measurementConflict.value = null
+        draft.value = draft.value?.copy(measurementType = conflict.from)
     }
 
     fun delete(onDone: () -> Unit) {
@@ -215,6 +294,7 @@ fun ExerciseDetailScreen(
     val sets by vm.sets.collectAsState()
     val groups by vm.groups.collectAsState()
     val gyms by vm.gyms.collectAsState()
+    val measurementConflict by vm.measurementConflict.collectAsState()
     val e = draft ?: return
     var groupMenu by remember { mutableStateOf(false) }
     var gymFilter by remember { mutableStateOf<Long?>(null) }
@@ -711,6 +791,99 @@ fun ExerciseDetailScreen(
             onDismiss = { confirmDelete = false },
         )
     }
+    measurementConflict?.let { conflict ->
+        MeasurementConflictDialog(
+            exercise = e,
+            conflict = conflict,
+            onResolve = { resolution, suffix -> vm.resolveMeasurementConflict(resolution, suffix) },
+            onCancel = { vm.cancelMeasurementChange() },
+        )
+    }
+}
+
+@Composable
+private fun measurementLabel(type: MeasurementType): String = stringResource(
+    when (type) {
+        MeasurementType.WEIGHT_KG -> R.string.measurement_weight
+        MeasurementType.MACHINE_LEVEL -> R.string.measurement_level
+        MeasurementType.BODYWEIGHT -> R.string.measurement_bodyweight
+    }
+)
+
+/**
+ * Asked when a custom exercise's measurement type changes and sets have been
+ * logged under the old one. Each way out is a button with what it does under
+ * it; Cancel puts the type back and leaves the logs alone.
+ */
+@Composable
+private fun MeasurementConflictDialog(
+    exercise: Exercise,
+    conflict: MeasurementConflict,
+    onResolve: (ConflictResolution, copySuffix: String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    val copySuffix = stringResource(R.string.measurement_copy_suffix, measurementLabel(conflict.from))
+
+    @Composable
+    fun Choice(title: String, body: String, resolution: ConflictResolution) {
+        TextButton(
+            onClick = { onResolve(resolution, copySuffix) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.fillMaxWidth()) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.measurement_conflict_title)) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    stringResource(
+                        R.string.measurement_conflict_body,
+                        conflict.setCount,
+                        conflict.sessionCount,
+                        measurementLabel(conflict.from),
+                        measurementLabel(conflict.to),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Choice(
+                    stringResource(R.string.measurement_conflict_keep),
+                    stringResource(R.string.measurement_conflict_keep_body),
+                    ConflictResolution.KEEP_VALUES,
+                )
+                Choice(
+                    stringResource(R.string.measurement_conflict_zero),
+                    stringResource(R.string.measurement_conflict_zero_body),
+                    ConflictResolution.ZERO_LOADS,
+                )
+                Choice(
+                    stringResource(R.string.measurement_conflict_move),
+                    stringResource(
+                        R.string.measurement_conflict_move_body,
+                        "${exercise.displayName()} $copySuffix",
+                    ),
+                    ConflictResolution.MOVE_HISTORY,
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+        },
+    )
 }
 
 /** Sessions of history revealed at a time under the charts. */

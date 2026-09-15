@@ -415,6 +415,21 @@ interface SessionDao {
     )
     fun observeSetsForExercise(exerciseId: Long): Flow<List<SetWithContext>>
 
+    /**
+     * Clears the load of every set ever logged for an exercise, keeping the
+     * reps. One way out when the exercise's measurement type changes and the
+     * old numbers would mean something else.
+     */
+    @Query(
+        "UPDATE logged_sets SET load = 0 WHERE sessionExerciseId IN " +
+            "(SELECT id FROM session_exercises WHERE exerciseId = :exerciseId)"
+    )
+    suspend fun zeroLoadsForExercise(exerciseId: Long)
+
+    /** Re-points every session instance of one exercise at another. */
+    @Query("UPDATE session_exercises SET exerciseId = :to WHERE exerciseId = :from")
+    suspend fun moveExerciseHistory(from: Long, to: Long)
+
     /** Start times of finished sessions in a range (frequency heatmap). */
     @Query(
         "SELECT startedAt FROM sessions WHERE endedAt IS NOT NULL AND startedAt >= :from " +

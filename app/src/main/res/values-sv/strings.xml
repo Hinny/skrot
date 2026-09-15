@@ -375,6 +375,15 @@
     <string name="clone_exercise">Klona övning</string>
     <string name="copy_program">Kopiera program</string>
     <string name="clone_suffix">(kopia)</string>
+    <string name="measurement_copy_suffix">(%1$s)</string>
+    <string name="measurement_conflict_title">Loggade set stämmer inte</string>
+    <string name="measurement_conflict_body">%1$d set i %2$d pass loggades som %3$s. Lästa som %4$s skulle de talen betyda något annat. Vad ska hända med dem?</string>
+    <string name="measurement_conflict_keep">Behåll talen</string>
+    <string name="measurement_conflict_keep_body">De läses som den nya typen från och med nu — 60 kg blir nivå 60. Diagram och rekord fortsätter oförändrade.</string>
+    <string name="measurement_conflict_zero">Nollställ belastningen, behåll reps</string>
+    <string name="measurement_conflict_zero_body">Varje loggad belastning för den här övningen blir 0. Seten och deras reps finns kvar.</string>
+    <string name="measurement_conflict_move">Flytta historiken till en kopia</string>
+    <string name="measurement_conflict_move_body">En kopia med namnet \"%1$s\" behåller den gamla typen och tar över alla loggade set. Den här övningen börjar om från noll.</string>
     <string name="custom_badge">Egen</string>
     <string name="measurement_type">Mätningstyp</string>
     <string name="measurement_weight">Vikt (kg)</string>
