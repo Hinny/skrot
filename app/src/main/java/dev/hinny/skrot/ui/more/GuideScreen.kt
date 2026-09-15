@@ -32,7 +32,9 @@ private data class GuideTopic(val titleRes: Int, val bodyRes: Int)
 private val basicTopics = listOf(
     GuideTopic(R.string.guide_programs_t, R.string.guide_programs_b),
     GuideTopic(R.string.guide_logging_t, R.string.guide_logging_b),
+    GuideTopic(R.string.guide_entry_t, R.string.guide_entry_b),
     GuideTopic(R.string.guide_library_t, R.string.guide_library_b),
+    GuideTopic(R.string.guide_instructions_t, R.string.guide_instructions_b),
     GuideTopic(R.string.guide_home_t, R.string.guide_home_b),
     GuideTopic(R.string.guide_stats_t, R.string.guide_stats_b),
     GuideTopic(R.string.guide_backup_t, R.string.guide_backup_b),

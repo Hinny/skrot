@@ -16,6 +16,8 @@ so it is provably offline.
   hybrid of the two (last session's weight, the plan's target reps), chosen per program;
   most sets are a single tap to confirm. The set you're on
   is boxed in the accent colour, and confirming it scrolls the next one into view.
+  Tapping a number selects it so typing replaces it; optional +/− steppers for weight
+  and reps; the exercise name stays pinned at the top while you scroll through its sets.
 - **Programs with named days**, supersets/circuits, drag-to-reorder, program/day icons and
   descriptions, free-form tags.
 - **Sessions are editable mid-workout** — reorder sets and exercises, build a superset,
@@ -27,7 +29,10 @@ so it is provably offline.
   Optionally plan every exercise, and how it stands at your gym, before starting.
 - **Three measurement types per exercise**: weight (kg/lbs), unit-less machine levels, and
   bodyweight (reps with optional added weight or assistance, plus a per-exercise
-  bodyweight factor for volume).
+  bodyweight factor for volume). Changing the type of an exercise with history asks what
+  to do with the old logs rather than silently reinterpreting them.
+- **Exercise instructions** — every catalog exercise ships with how-to text and three key
+  cues, in English and Swedish; custom exercises can carry their own.
 - **Set types**: warmup, standard (auto-numbered), drop set, failure (AMRAP). Warmups are
   excluded from PRs, 1RM estimates, and progression.
 - **Rest timer with memory** — per-set durations stored in the routine; adjust during a
@@ -41,7 +46,8 @@ so it is provably offline.
   anywhere via interchangeable-exercise groups, with per-gym overrides
   ("always use this here") and a temporary-visit mode. Machine-level history is per-gym.
   A program can name the gym it's normally done at, which is then preselected when you
-  start it.
+  start it. Swapping at start or mid-workout offers to remember it: at this gym, as the
+  program day's default, or as interchangeable exercises.
 - **Statistics** — load and estimated 1RM over time (Epley, capped at 12 reps), a
   GitHub-style training calendar, sets per muscle group; all filterable by time range.
 - **Body metrics** — weight and measurements with a trend chart, logged at any date and
@@ -51,10 +57,12 @@ so it is provably offline.
   you're training normally.
 - **Coach comments** (off by default) — local, rule-based encouragements in four
   personalities (Cheerleader, Bro, PT, Minimal) with a frequency setting, on the home
-  screen and during workouts.
+  screen and during workouts. Optionally reads out an exercise's key cues in its own
+  voice as the exercise comes up.
 - **Backup** — full JSON export/import via the system file picker, CSV export of the log,
   and **JEFIT CSV import** with preview.
-- **Localized** in English and Swedish; dark theme by default.
+- **Localized** in English and Swedish; dark theme by default, with five colour themes
+  (Amber, Moss, Sky, Rose, Violet).
 - **Configurable everywhere** — thresholds, defaults, and behaviors live in Settings.
 
 ## Building
