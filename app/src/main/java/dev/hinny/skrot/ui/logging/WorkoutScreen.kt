@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -99,6 +101,9 @@ import dev.hinny.skrot.ui.common.ReorderState
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
+import dev.hinny.skrot.ui.common.cuesFor
+import dev.hinny.skrot.ui.common.displayCues
+import dev.hinny.skrot.ui.common.displayInstructions
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.containerViewModel
@@ -197,25 +202,36 @@ fun WorkoutScreen(
                 }
 
                 is WorkoutEvent.Coach -> {
-                    CoachMessages.random(context, settings.coachPersonality, event.trigger)
-                        ?.let { message ->
-                            // 0 seconds means it waits for you; anything else is
-                            // shown indefinitely and taken away on a timer.
-                            if (settings.coachMessageSeconds <= 0) {
+                    val cueList = event.exercise?.cuesFor(settings.exerciseNameLanguage)
+                    val message = if (cueList != null) {
+                        CoachMessages.cues(context, settings.coachPersonality, cueList)
+                    } else {
+                        CoachMessages.random(context, settings.coachPersonality, event.trigger)
+                    }
+                    // A list of three cues takes longer to read than a one-liner,
+                    // so it gets twice the time and a way to send it off early.
+                    val seconds =
+                        if (cueList != null) settings.coachMessageSeconds * 2
+                        else settings.coachMessageSeconds
+                    message?.let {
+                        // 0 seconds means it waits for you; anything else is
+                        // shown indefinitely and taken away on a timer.
+                        if (seconds <= 0) {
+                            snackbar.showSnackbar(
+                                message = it,
+                                withDismissAction = true,
+                                duration = SnackbarDuration.Indefinite,
+                            )
+                        } else {
+                            withTimeoutOrNull(seconds * 1000L) {
                                 snackbar.showSnackbar(
-                                    message = message,
-                                    withDismissAction = true,
+                                    message = it,
+                                    withDismissAction = cueList != null,
                                     duration = SnackbarDuration.Indefinite,
                                 )
-                            } else {
-                                withTimeoutOrNull(settings.coachMessageSeconds * 1000L) {
-                                    snackbar.showSnackbar(
-                                        message = message,
-                                        duration = SnackbarDuration.Indefinite,
-                                    )
-                                }
                             }
                         }
+                    }
                 }
             }
         }
@@ -321,6 +337,13 @@ fun WorkoutScreen(
                 }
                 .minWithOrNull(compareBy({ it.first }, { it.second }))
         }?.third
+
+        // The exercise the current set belongs to; the coach reads its cues
+        // out when it changes to one that hasn't started yet.
+        val currentExerciseId = currentSetId?.let { id ->
+            session.exercises.find { se -> se.sets.any { it.id == id } }?.sessionExercise?.id
+        }
+        LaunchedEffect(currentExerciseId) { vm.onCurrentExerciseChanged(currentExerciseId) }
 
         // Finishing a set moves "current" to the next one, which is often just
         // off-screen. Pull it back to the middle so the next set is always in
@@ -640,6 +663,9 @@ private fun ExerciseSection(
     var swapOpen by remember { mutableStateOf(false) }
     var noteOpen by remember { mutableStateOf(false) }
     var nextTimeOpen by remember { mutableStateOf(false) }
+    var instructionsOpen by remember { mutableStateOf(false) }
+    val instructions = se.exercise.displayInstructions()
+    val cues = se.exercise.displayCues()
     var removeSetOpen by remember { mutableStateOf(false) }
     // Non-null while the full picker is open for a swap; carries the
     // "save permanently" choices made in the swap dialog.
@@ -692,6 +718,12 @@ private fun ExerciseSection(
                         text = { Text(stringResource(R.string.add_warmup_sets)) },
                         enabled = !locked,
                         onClick = { menuOpen = false; onAddWarmups() },
+                    )
+                }
+                if (instructions.isNotBlank() || cues.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.instructions)) },
+                        onClick = { menuOpen = false; instructionsOpen = true },
                     )
                 }
                 DropdownMenuItem(
@@ -882,6 +914,30 @@ private fun ExerciseSection(
             initial = se.exercise.nextTimeNote,
             onSave = { vm.setNextTimeNote(se.exercise, it) },
             onDismiss = { nextTimeOpen = false },
+        )
+    }
+    if (instructionsOpen) {
+        AlertDialog(
+            onDismissRequest = { instructionsOpen = false },
+            title = { Text(se.exercise.displayName()) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    if (instructions.isNotBlank()) {
+                        Text(instructions, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    cues.forEach { cue ->
+                        Text("• $cue", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { instructionsOpen = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
         )
     }
 }

@@ -58,6 +58,12 @@ data class Settings(
     val coachFrequency: CoachFrequency = CoachFrequency.MEDIUM,
     /** Seconds a coach comment stays on screen during a workout; 0 = until dismissed. */
     val coachMessageSeconds: Int = 5,
+    /**
+     * Whether the coach reads out an exercise's key points as its first set
+     * comes up, in its own voice. Rate-limited by the frequency setting like
+     * every other comment, so it stays a reminder rather than a nag.
+     */
+    val coachExerciseCues: Boolean = false,
     val progressionIncrementKg: Double = ProgressionEngine.DEFAULT_INCREMENT_KG,
     val progressionIncrementLevel: Double = ProgressionEngine.DEFAULT_INCREMENT_LEVEL,
     val bodyweightFallbackKg: Double = VolumeCalculator.DEFAULT_BODYWEIGHT_FALLBACK_KG,
@@ -145,6 +151,7 @@ class SettingsRepository(private val context: Context) {
         val coachPersonality = stringPreferencesKey("coach_personality")
         val coachFrequency = stringPreferencesKey("coach_frequency")
         val coachMessageSeconds = intPreferencesKey("coach_message_seconds")
+        val coachExerciseCues = booleanPreferencesKey("coach_exercise_cues")
         val progressionIncrementKg = doublePreferencesKey("progression_increment_kg")
         val progressionIncrementLevel = doublePreferencesKey("progression_increment_level")
         val bodyweightFallbackKg = doublePreferencesKey("bodyweight_fallback_kg")
@@ -199,6 +206,7 @@ class SettingsRepository(private val context: Context) {
             coachPersonality = p[Keys.coachPersonality].toEnum(defaults.coachPersonality),
             coachFrequency = p[Keys.coachFrequency].toEnum(defaults.coachFrequency),
             coachMessageSeconds = p[Keys.coachMessageSeconds] ?: defaults.coachMessageSeconds,
+            coachExerciseCues = p[Keys.coachExerciseCues] ?: defaults.coachExerciseCues,
             progressionIncrementKg = p[Keys.progressionIncrementKg] ?: defaults.progressionIncrementKg,
             progressionIncrementLevel = p[Keys.progressionIncrementLevel] ?: defaults.progressionIncrementLevel,
             bodyweightFallbackKg = p[Keys.bodyweightFallbackKg] ?: defaults.bodyweightFallbackKg,
@@ -256,6 +264,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCoachFrequency(v: CoachFrequency) = context.dataStore.edit { it[Keys.coachFrequency] = v.name }
     suspend fun setCoachMessageSeconds(v: Int) =
         context.dataStore.edit { it[Keys.coachMessageSeconds] = v.coerceAtLeast(0) }
+    suspend fun setCoachExerciseCues(v: Boolean) =
+        context.dataStore.edit { it[Keys.coachExerciseCues] = v }
     suspend fun setProgressionIncrementKg(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementKg] = v }
     suspend fun setProgressionIncrementLevel(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementLevel] = v }
     suspend fun setBodyweightFallbackKg(v: Double) = context.dataStore.edit { it[Keys.bodyweightFallbackKg] = v }

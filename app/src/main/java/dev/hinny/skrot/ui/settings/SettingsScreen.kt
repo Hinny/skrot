@@ -430,6 +430,11 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     value = settings.coachMessageSeconds,
                 ) { scope.launch { repo.setCoachMessageSeconds(it) } }
                 SettingHint(stringResource(R.string.coach_message_seconds_hint))
+                ToggleSetting(
+                    stringResource(R.string.coach_exercise_cues),
+                    settings.coachExerciseCues,
+                ) { scope.launch { repo.setCoachExerciseCues(it) } }
+                SettingHint(stringResource(R.string.coach_exercise_cues_hint))
             }
         }
 

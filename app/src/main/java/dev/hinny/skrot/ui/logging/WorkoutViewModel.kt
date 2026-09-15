@@ -24,6 +24,7 @@ import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
 import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.WarmupGenerator
+import dev.hinny.skrot.ui.common.cuesFor
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -31,7 +32,9 @@ import kotlinx.coroutines.launch
 
 sealed class WorkoutEvent {
     data class Pr(val exerciseName: String, val types: List<PrType>) : WorkoutEvent()
-    data class Coach(val trigger: CoachTrigger) : WorkoutEvent()
+
+    /** [exercise] is set for [CoachTrigger.EXERCISE_CUES]: the one whose cues to read. */
+    data class Coach(val trigger: CoachTrigger, val exercise: Exercise? = null) : WorkoutEvent()
     data class Finished(val sessionId: Long) : WorkoutEvent()
 }
 
@@ -56,6 +59,7 @@ class WorkoutViewModel(
     private var coach: CoachEngine? = null
     private var welcomeChecked = false
     private var lastExerciseAnnounced = false
+    private val cuesAnnounced = mutableSetOf<Long>()
     private val dismissedSuggestions = mutableSetOf<Long>()
 
     init {
@@ -784,6 +788,29 @@ class WorkoutViewModel(
         viewModelScope.launch {
             container.restTimer.skip()
             db.sessionDao().deleteSession(sessionId)
+        }
+    }
+
+    /**
+     * The set to do next has moved into another exercise. If that exercise is
+     * about to start — nothing of it done yet — the coach may read out its
+     * cues. Once per exercise, whether or not the coach had room for it: a cue
+     * read out at set three is not a reminder, it is a nag.
+     */
+    fun onCurrentExerciseChanged(seId: Long?) {
+        viewModelScope.launch {
+            val id = seId ?: return@launch
+            if (id in cuesAnnounced) return@launch
+            val settings = container.settingsNow()
+            if (!settings.coachExerciseCues) return@launch
+            val se = session.value?.exercises?.find { it.sessionExercise.id == id } ?: return@launch
+            if (se.sets.any { it.completed }) return@launch
+            cuesAnnounced += id
+            if (se.exercise.cuesFor(settings.exerciseNameLanguage).isEmpty()) return@launch
+            val engine = coachEngine() ?: return@launch
+            if (engine.offer(CoachTrigger.EXERCISE_CUES)) {
+                events.emit(WorkoutEvent.Coach(CoachTrigger.EXERCISE_CUES, se.exercise))
+            }
         }
     }
 

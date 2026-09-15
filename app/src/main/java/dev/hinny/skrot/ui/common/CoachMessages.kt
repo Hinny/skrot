@@ -40,6 +40,10 @@ object CoachMessages {
         (CoachPersonality.MINIMAL to CoachTrigger.LAST_EXERCISE) to R.array.coach_minimal_last_exercise,
         (CoachPersonality.MINIMAL to CoachTrigger.SESSION_DONE) to R.array.coach_minimal_session_done,
         (CoachPersonality.MINIMAL to CoachTrigger.STREAK) to R.array.coach_minimal_streak,
+        (CoachPersonality.CHEERLEADER to CoachTrigger.EXERCISE_CUES) to R.array.coach_cheerleader_cues,
+        (CoachPersonality.BRO to CoachTrigger.EXERCISE_CUES) to R.array.coach_bro_cues,
+        (CoachPersonality.PT to CoachTrigger.EXERCISE_CUES) to R.array.coach_pt_cues,
+        (CoachPersonality.MINIMAL to CoachTrigger.EXERCISE_CUES) to R.array.coach_minimal_cues,
     )
 
     /**
@@ -56,5 +60,16 @@ object CoachMessages {
         val previous = lastShown[key]
         val pool = options.filterNot { it == previous }.ifEmpty { options.toList() }
         return pool.randomOrNull()?.also { lastShown[key] = it }
+    }
+
+    /**
+     * An exercise's cues in the coach's voice: a personality-flavoured lead-in
+     * followed by the key points. The list itself is the exercise's own text;
+     * only the framing changes with the personality.
+     */
+    fun cues(context: Context, personality: CoachPersonality, cues: List<String>): String? {
+        if (cues.isEmpty()) return null
+        val intro = random(context, personality, CoachTrigger.EXERCISE_CUES) ?: return null
+        return "$intro " + cues.joinToString(" · ")
     }
 }
