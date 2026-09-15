@@ -89,6 +89,23 @@ interface ExerciseDao {
     @Query("UPDATE exercises SET nextTimeNote = :note WHERE id = :id")
     suspend fun setNextTimeNote(id: Long, note: String)
 
+    /**
+     * Records [picked] as interchangeable with [original], so a gym without
+     * the original offers it automatically next time. Joins the original's
+     * group, or starts one named after it.
+     *
+     * Grouping is a statement about your own training, not an edit to the
+     * library's definition of an exercise, so this is allowed for built-in
+     * exercises too — unlike renaming one.
+     */
+    @Transaction
+    suspend fun linkAsEquivalent(original: Exercise, picked: Exercise) {
+        val groupId = original.groupId ?: insertGroup(
+            ExerciseGroup(nameEn = original.nameEn, nameSv = original.nameSv, isCustom = true)
+        ).also { newGroup -> update(original.copy(groupId = newGroup)) }
+        update(picked.copy(groupId = groupId))
+    }
+
     @Query("SELECT * FROM exercise_groups ORDER BY nameEn")
     fun observeGroups(): Flow<List<ExerciseGroup>>
 

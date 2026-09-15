@@ -139,7 +139,6 @@
     <string name="not_available_no_equivalent">Not available at this gym, no equivalent found</string>
     <string name="keep_original">Keep original</string>
     <string name="skip_exercise">Skip exercise</string>
-    <string name="always_use_at_gym">Always use this exercise at this gym</string>
     <string name="active_badge">Active</string>
     <string name="set_active">Set active</string>
 
@@ -261,6 +260,7 @@
     <string name="remember_swap_title">Remember this swap?</string>
     <string name="flag_equivalent_body">Offer %1$s automatically whenever %2$s isn\'t available</string>
     <string name="add_to_gym_body">Mark %1$s as available at %2$s</string>
+    <string name="save_to_plan_body">Make %1$s the program day\'s default instead of %2$s</string>
     <string name="always_use_here_body">Use %1$s instead of %2$s at %3$s from now on</string>
     <string name="flag_equivalent_no">Just this time</string>
     <string name="workout_completed">Workout completed!</string>
@@ -311,7 +311,6 @@
     <string name="plan_before_start_hint">Walk through every exercise and whether the gym has it, instead of only being asked when something is missing.</string>
     <string name="update_program_day">Update program day</string>
     <string name="update_program_day_warning">The program day will be rewritten to match this session: exercises, order, supersets and how many sets each exercise has. Rep targets and target loads are kept, and nothing you have logged today changes.</string>
-    <string name="save_to_program_day">Save to the program day</string>
     <string name="remove_set_pick">Pick the set to remove</string>
     <string name="set_completed_note">completed</string>
     <string name="set_marker_warmup">W</string>

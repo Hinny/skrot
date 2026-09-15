@@ -137,7 +137,6 @@
     <string name="not_available_no_equivalent">Finns inte på detta gym, ingen motsvarighet hittad</string>
     <string name="keep_original">Behåll original</string>
     <string name="skip_exercise">Hoppa över övning</string>
-    <string name="always_use_at_gym">Använd alltid denna övning på detta gym</string>
     <string name="active_badge">Aktivt</string>
     <string name="set_active">Gör aktivt</string>
 
@@ -259,6 +258,7 @@
     <string name="remember_swap_title">Kom ihåg det här bytet?</string>
     <string name="flag_equivalent_body">Föreslå %1$s automatiskt när %2$s inte finns</string>
     <string name="add_to_gym_body">Markera %1$s som tillgänglig på %2$s</string>
+    <string name="save_to_plan_body">Gör %1$s till passdagens standard i stället för %2$s</string>
     <string name="always_use_here_body">Använd %1$s i stället för %2$s på %3$s hädanefter</string>
     <string name="flag_equivalent_no">Bara den här gången</string>
     <string name="workout_completed">Passet är klart!</string>
@@ -309,7 +309,6 @@
     <string name="plan_before_start_hint">Gå igenom varje övning och om gymmet har den, i stället för att bara få frågan när något saknas.</string>
     <string name="update_program_day">Uppdatera programdagen</string>
     <string name="update_program_day_warning">Programdagen skrivs om så att den matchar det här passet: övningar, ordning, superset och antal set per övning. Målreps och mållaster behålls, och inget du loggat i dag ändras.</string>
-    <string name="save_to_program_day">Spara i programdagen</string>
     <string name="remove_set_pick">Välj setet som ska tas bort</string>
     <string name="set_completed_note">klart</string>
     <string name="set_marker_warmup">U</string>

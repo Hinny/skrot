@@ -96,8 +96,10 @@ import dev.hinny.skrot.ui.common.CompactNumberField
 import dev.hinny.skrot.ui.common.CompactValueButton
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.RememberSwapDialog
 import dev.hinny.skrot.ui.common.ReorderHandle
 import dev.hinny.skrot.ui.common.ReorderState
+import dev.hinny.skrot.ui.common.SwapMemory
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
@@ -131,6 +133,8 @@ fun WorkoutScreen(
     val suggestions by vm.suggestions.collectAsState()
     val groupOptions by vm.groupOptions.collectAsState()
     val lastSessionSets by vm.lastSessionSets.collectAsState()
+    val gymName by vm.gymName.collectAsState()
+    val availableAtGym by vm.availableAtGym.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -439,8 +443,8 @@ fun WorkoutScreen(
                                 suggestion = suggestions[se.sessionExercise.id],
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
                                 allExercises = allExercises,
-                                canSaveForGym = session.session.gymId != null &&
-                                    !session.session.temporaryVisit,
+                                gymName = gymName,
+                                availableAtGym = availableAtGym,
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
@@ -647,7 +651,8 @@ private fun ExerciseSection(
     suggestion: ProgressionSuggestion?,
     swapOptions: List<Exercise>,
     allExercises: List<Exercise>,
-    canSaveForGym: Boolean,
+    gymName: String?,
+    availableAtGym: Set<Long>,
     currentSetId: Long?,
     hasRoutineDay: Boolean,
     locked: Boolean,
@@ -667,9 +672,18 @@ private fun ExerciseSection(
     val instructions = se.exercise.displayInstructions()
     val cues = se.exercise.displayCues()
     var removeSetOpen by remember { mutableStateOf(false) }
-    // Non-null while the full picker is open for a swap; carries the
-    // "save permanently" choices made in the swap dialog.
-    var swapPickerFlags by remember { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
+    var swapPickerOpen by remember { mutableStateOf(false) }
+    // The swap just made (original to picked), awaiting "remember this?".
+    var rememberSwap by remember { mutableStateOf<Pair<Exercise, Exercise>?>(null) }
+
+    // The swap itself is done at once and session-only; the dialog that follows
+    // decides what outlives the session. Dismissing it remembers nothing.
+    fun swapTo(picked: Exercise) {
+        val original = se.exercise
+        if (picked.id == original.id) return
+        vm.swapExercise(se, picked)
+        rememberSwap = original to picked
+    }
 
     val setReorder = rememberReorderState { from, to ->
         vm.moveSet(se.sessionExercise.id, from, to)
@@ -868,29 +882,57 @@ private fun ExerciseSection(
     if (swapOpen) {
         SwapExerciseDialog(
             options = swapOptions,
-            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
-            canSaveForGym = canSaveForGym && se.sessionExercise.plannedExerciseId != null,
-            onSwap = { option, applyToPlan, alwaysAtGym ->
-                vm.swapExercise(se, option, applyToPlan, alwaysAtGym)
+            onSwap = { option ->
                 swapOpen = false
+                swapTo(option)
             },
-            onPickOther = { applyToPlan, alwaysAtGym ->
+            onPickOther = {
                 swapOpen = false
-                swapPickerFlags = applyToPlan to alwaysAtGym
+                swapPickerOpen = true
             },
             onDismiss = { swapOpen = false },
         )
     }
-    swapPickerFlags?.let { (applyToPlan, alwaysAtGym) ->
+    if (swapPickerOpen) {
         ExercisePickerDialog(
             exercises = allExercises,
             title = stringResource(R.string.swap_exercise),
+            availableIds = availableAtGym.takeIf { it.isNotEmpty() },
             onPick = {
-                vm.swapExercise(se, it, applyToPlan, alwaysAtGym)
-                swapPickerFlags = null
+                swapPickerOpen = false
+                swapTo(it)
             },
-            onDismiss = { swapPickerFlags = null },
+            onDismiss = { swapPickerOpen = false },
         )
+    }
+    rememberSwap?.let { (original, picked) ->
+        val peId = se.sessionExercise.plannedExerciseId
+        val offered = buildSet {
+            if (gymName != null && picked.id !in availableAtGym) add(SwapMemory.ADD_TO_GYM)
+            if (peId != null) add(SwapMemory.SAVE_TO_PLAN)
+            if (gymName != null && peId != null) add(SwapMemory.ALWAYS_AT_GYM)
+            if (original.groupId == null || picked.groupId != original.groupId) {
+                add(SwapMemory.LINK_EQUIVALENT)
+            }
+        }
+        if (offered.isEmpty()) {
+            rememberSwap = null
+        } else {
+            RememberSwapDialog(
+                original = original,
+                picked = picked,
+                gymName = gymName,
+                offered = offered,
+                // A mid-session swap is often a one-off (the machine was taken);
+                // only the fact about the gym is assumed worth keeping.
+                defaults = setOf(SwapMemory.ADD_TO_GYM),
+                onDone = { chosen ->
+                    rememberSwap = null
+                    if (chosen.isNotEmpty()) vm.rememberSwap(se, original, picked, chosen)
+                },
+                onDismiss = { rememberSwap = null },
+            )
+        }
     }
     if (removeSetOpen) {
         RemoveSetDialog(
@@ -944,20 +986,16 @@ private fun ExerciseSection(
 
 /**
  * Swap dialog: group equivalents up front, the whole library one tap further.
- * The two checkboxes decide whether the swap outlives this session — rewriting
- * the program day, or only what happens at this gym.
+ * Whether the swap outlives this session is asked afterwards, in the same
+ * "remember this swap?" dialog the start flow uses.
  */
 @Composable
 private fun SwapExerciseDialog(
     options: List<Exercise>,
-    canApplyToPlan: Boolean,
-    canSaveForGym: Boolean,
-    onSwap: (Exercise, applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
-    onPickOther: (applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
+    onSwap: (Exercise) -> Unit,
+    onPickOther: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var applyToPlan by remember { mutableStateOf(false) }
-    var alwaysAtGym by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.swap_exercise)) },
@@ -965,35 +1003,16 @@ private fun SwapExerciseDialog(
             Column {
                 options.forEach { option ->
                     TextButton(
-                        onClick = { onSwap(option, applyToPlan, alwaysAtGym) },
+                        onClick = { onSwap(option) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(option.displayName(), modifier = Modifier.weight(1f))
                     }
                 }
                 OutlinedButton(
-                    onClick = { onPickOther(applyToPlan, alwaysAtGym) },
+                    onClick = onPickOther,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.pick_another_exercise)) }
-
-                if (canApplyToPlan) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = applyToPlan, onCheckedChange = { applyToPlan = it })
-                        Text(
-                            stringResource(R.string.save_to_program_day),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-                if (canSaveForGym) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = alwaysAtGym, onCheckedChange = { alwaysAtGym = it })
-                        Text(
-                            stringResource(R.string.always_use_at_gym),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
             }
         },
         confirmButton = {},

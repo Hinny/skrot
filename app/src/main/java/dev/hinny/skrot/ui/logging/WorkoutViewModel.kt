@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
@@ -24,6 +25,7 @@ import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
 import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.WarmupGenerator
+import dev.hinny.skrot.ui.common.SwapMemory
 import dev.hinny.skrot.ui.common.cuesFor
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +56,14 @@ class WorkoutViewModel(
      * by session-exercise id. What you are trying to beat, shown on the row.
      */
     val lastSessionSets = MutableStateFlow<Map<Long, List<LoggedSet>>>(emptyMap())
+
+    /**
+     * The gym this session is at, by name, and what it has — for the
+     * "remember this swap?" question. Null / empty on a temporary visit or an
+     * ad-hoc session without a gym, where there is nothing to remember into.
+     */
+    val gymName = MutableStateFlow<String?>(null)
+    val availableAtGym = MutableStateFlow<Set<Long>>(emptySet())
     val events = MutableSharedFlow<WorkoutEvent>(extraBufferCapacity = 8)
 
     private var coach: CoachEngine? = null
@@ -149,6 +159,10 @@ class WorkoutViewModel(
         suggestions.value = suggestionMap
         groupOptions.value = options
         lastSessionSets.value = previous
+
+        val gymId = content.session.gymId?.takeIf { !content.session.temporaryVisit }
+        gymName.value = gymId?.let { db.gymDao().byId(it)?.name }
+        availableAtGym.value = gymId?.let { db.gymDao().exerciseIdsAt(it).toSet() }.orEmpty()
     }
 
     private suspend fun touch() {
@@ -620,32 +634,47 @@ class WorkoutViewModel(
     }
 
     /**
-     * Swaps the exercise for this session. The swap is session-only unless asked
-     * to persist: [applyToPlan] rewrites the routine's planned exercise, and
-     * [alwaysAtGym] records it as a per-gym override instead, which keeps the
-     * routine intact and only changes what happens at this gym.
+     * Swaps the exercise for this session only. Whether the swap outlives the
+     * session is a separate question, answered through [rememberSwap].
      */
-    fun swapExercise(
-        se: SessionExerciseWithDetails,
-        to: Exercise,
-        applyToPlan: Boolean = false,
-        alwaysAtGym: Boolean = false,
-    ) {
+    fun swapExercise(se: SessionExerciseWithDetails, to: Exercise) {
         viewModelScope.launch {
             db.sessionDao().updateSessionExercise(se.sessionExercise.copy(exerciseId = to.id))
+            touch()
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /**
+     * Makes a swap of [original] for [picked] outlive this session, in the ways
+     * chosen: mark it available at this gym, rewrite the program day's planned
+     * exercise, record a per-gym override (the program stays intact and only
+     * this gym changes), or group the two as interchangeable.
+     */
+    fun rememberSwap(
+        se: SessionExerciseWithDetails,
+        original: Exercise,
+        picked: Exercise,
+        memory: Set<SwapMemory>,
+    ) {
+        viewModelScope.launch {
+            val current = session.value?.session
+            val gymId = current?.gymId?.takeIf { !current.temporaryVisit }
             val peId = se.sessionExercise.plannedExerciseId
-            if (peId != null) {
-                if (applyToPlan) {
-                    db.routineDao().plannedExerciseById(peId)?.let {
-                        db.routineDao().updatePlannedExercise(it.copy(exerciseId = to.id))
-                    }
-                }
-                val current = session.value?.session
-                if (alwaysAtGym && current?.gymId != null && !current.temporaryVisit) {
-                    db.gymDao().setOverride(GymOverride(current.gymId, peId, to.id))
+            if (SwapMemory.ADD_TO_GYM in memory && gymId != null) {
+                db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = picked.id))
+            }
+            if (SwapMemory.SAVE_TO_PLAN in memory && peId != null) {
+                db.routineDao().plannedExerciseById(peId)?.let {
+                    db.routineDao().updatePlannedExercise(it.copy(exerciseId = picked.id))
                 }
             }
-            touch()
+            if (SwapMemory.ALWAYS_AT_GYM in memory && peId != null && gymId != null) {
+                db.gymDao().setOverride(GymOverride(gymId, peId, picked.id))
+            }
+            if (SwapMemory.LINK_EQUIVALENT in memory) {
+                db.exerciseDao().linkAsEquivalent(original, picked)
+            }
             session.value?.let { refreshAuxiliary(it) }
         }
     }
