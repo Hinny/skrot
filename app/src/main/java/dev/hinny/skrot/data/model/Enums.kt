@@ -348,8 +348,9 @@ enum class ThemeMode {
 enum class ColorTheme {
     AMBER,
     MOSS,
-    SKY,
-    ROSE,
+    OCEAN,
+    BLOOD,
+    IRON,
     VIOLET,
 }
 

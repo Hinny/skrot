@@ -61,8 +61,8 @@ so it is provably offline.
   voice as the exercise comes up.
 - **Backup** — full JSON export/import via the system file picker, CSV export of the log,
   and **JEFIT CSV import** with preview.
-- **Localized** in English and Swedish; dark theme by default, with five colour themes
-  (Amber, Moss, Sky, Rose, Violet).
+- **Localized** in English and Swedish; dark theme by default, with six colour themes
+  (Amber, Moss, Ocean, Blood, Iron, Violet).
 - **Configurable everywhere** — thresholds, defaults, and behaviors live in Settings.
 
 ## Building

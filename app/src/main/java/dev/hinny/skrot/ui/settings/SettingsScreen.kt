@@ -581,8 +581,9 @@ private fun colorThemeLabel(theme: ColorTheme): String = stringResource(
     when (theme) {
         ColorTheme.AMBER -> R.string.color_amber
         ColorTheme.MOSS -> R.string.color_moss
-        ColorTheme.SKY -> R.string.color_sky
-        ColorTheme.ROSE -> R.string.color_rose
+        ColorTheme.OCEAN -> R.string.color_ocean
+        ColorTheme.BLOOD -> R.string.color_blood
+        ColorTheme.IRON -> R.string.color_iron
         ColorTheme.VIOLET -> R.string.color_violet
     }
 )

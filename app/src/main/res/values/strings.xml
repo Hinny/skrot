@@ -510,8 +510,9 @@
     <string name="color_theme">Colour</string>
     <string name="color_amber">Amber</string>
     <string name="color_moss">Moss</string>
-    <string name="color_sky">Sky</string>
-    <string name="color_rose">Rose</string>
+    <string name="color_ocean">Ocean</string>
+    <string name="color_blood">Blood</string>
+    <string name="color_iron">Iron</string>
     <string name="color_violet">Violet</string>
     <string name="default_rest_for_new_sets">Default rest for new sets (seconds)</string>
     <string name="timer_adjust_step">Timer adjust step (seconds)</string>
