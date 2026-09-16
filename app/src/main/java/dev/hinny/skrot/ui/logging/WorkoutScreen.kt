@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +61,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,9 +71,11 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -79,6 +84,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
@@ -377,10 +383,13 @@ fun WorkoutScreen(
             if (abs(delta) > CENTER_SCROLL_THRESHOLD_PX) listState.animateScrollBy(delta)
         }
 
+        // Clipped so a pinned title being pushed out slides under the top bar
+        // rather than over it.
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .clipToBounds(),
         ) {
         LazyColumn(
             state = listState,
@@ -528,7 +537,7 @@ fun WorkoutScreen(
         }
         if (settings.stickyExerciseHeader) {
             StickyExerciseHeader(
-                exercises = session.exercises,
+                exercises = blocks.flatten(),
                 listBounds = listBounds,
                 sectionBounds = sectionBounds,
                 headerBounds = headerBounds,
@@ -657,16 +666,21 @@ fun WorkoutScreen(
     }
 }
 
+/** What the pinned header shows, and how far the next title has pushed it up. */
+private data class PinnedHeader(val se: SessionExerciseWithDetails, val pushPx: Int)
+
 /**
- * The name of the exercise you are scrolled into, pinned at the top of the
- * list while its own title row is off-screen. Shows for the section that
- * straddles the list's top edge, and only once that section's header has
- * gone past it — so it appears exactly when the title would be missed and
- * disappears the moment the next exercise's title scrolls into view.
+ * The exercise title, stuck to the top of the list the way a sticky header
+ * behaves: it takes over the moment the real title row reaches the top edge
+ * and stays while any of that exercise's sets are still there; when the next
+ * exercise's title arrives it pushes this one up and out, then takes its
+ * place. Drawn in the card's own colour and width so it reads as the card's
+ * title held in place rather than a banner laid over it.
  *
  * Bounds are root-relative and refreshed on every scroll frame by the
- * sections themselves; the derived state keeps this from recomposing until
- * the answer actually changes.
+ * sections themselves; [exercises] must be in display order for the
+ * hand-over to find the right neighbour. The derived state keeps this from
+ * recomposing except while the answer is actually changing.
  */
 @Composable
 private fun StickyExerciseHeader(
@@ -676,29 +690,40 @@ private fun StickyExerciseHeader(
     headerBounds: SnapshotStateMap<Long, IntRange>,
     modifier: Modifier = Modifier,
 ) {
+    var height by remember { mutableIntStateOf(0) }
     val pinned by remember(exercises) {
         derivedStateOf {
             val top = listBounds.value?.first ?: return@derivedStateOf null
-            exercises.firstOrNull { se ->
+            val index = exercises.indexOfFirst { se ->
                 val id = se.sessionExercise.id
-                val section = sectionBounds[id] ?: return@firstOrNull false
-                val header = headerBounds[id] ?: return@firstOrNull false
-                section.first < top && section.last > top && header.last <= top
+                val section = sectionBounds[id] ?: return@indexOfFirst false
+                val header = headerBounds[id] ?: return@indexOfFirst false
+                header.first <= top && section.last > top
             }
+            if (index < 0) return@derivedStateOf null
+            val nextTop = exercises.getOrNull(index + 1)
+                ?.let { headerBounds[it.sessionExercise.id]?.first }
+            val push = if (nextTop != null && height > 0) minOf(0, nextTop - (top + height)) else 0
+            PinnedHeader(exercises[index], push)
         }
     }
-    val se = pinned ?: return
+    val (se, push) = pinned ?: return
     Surface(
-        tonalElevation = 3.dp,
+        shape = CardDefaults.shape,
+        color = CardDefaults.cardColors().containerColor,
         shadowElevation = 2.dp,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .offset { IntOffset(0, push) }
+            .onSizeChanged { height = it.height },
     ) {
         Text(
             se.exercise.displayName(),
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         )
     }
 }
