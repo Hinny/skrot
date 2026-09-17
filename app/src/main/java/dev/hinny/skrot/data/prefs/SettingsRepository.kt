@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ColorTheme
 import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.HomeSection
 import dev.hinny.skrot.data.model.MetaDisplay
@@ -35,6 +36,8 @@ data class Settings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val unit: WeightUnit = WeightUnit.KG,
     val theme: ThemeMode = ThemeMode.DARK,
+    /** Accent family, on top of dark/light. */
+    val colorTheme: ColorTheme = ColorTheme.AMBER,
     val defaultRestSec: Int = 90,
     val timerSound: Boolean = true,
     /**
@@ -55,6 +58,12 @@ data class Settings(
     val coachFrequency: CoachFrequency = CoachFrequency.MEDIUM,
     /** Seconds a coach comment stays on screen during a workout; 0 = until dismissed. */
     val coachMessageSeconds: Int = 5,
+    /**
+     * Whether the coach reads out an exercise's key points as its first set
+     * comes up, in its own voice. Rate-limited by the frequency setting like
+     * every other comment, so it stays a reminder rather than a nag.
+     */
+    val coachExerciseCues: Boolean = false,
     val progressionIncrementKg: Double = ProgressionEngine.DEFAULT_INCREMENT_KG,
     val progressionIncrementLevel: Double = ProgressionEngine.DEFAULT_INCREMENT_LEVEL,
     val bodyweightFallbackKg: Double = VolumeCalculator.DEFAULT_BODYWEIGHT_FALLBACK_KG,
@@ -119,6 +128,27 @@ data class Settings(
     val hapticFeedback: Boolean = true,
     /** Whether Back during a running workout asks before leaving the screen. */
     val confirmExitWorkout: Boolean = true,
+    /**
+     * Whether tapping a load or reps field selects its whole value, so typing
+     * replaces it. On by default: that is what a tap on a number means in a
+     * hurry.
+     */
+    val selectAllOnFocus: Boolean = true,
+    /**
+     * Whether the exercise you are scrolled into keeps its name pinned at the
+     * top of the workout until you scroll past it into the next one. Five sets
+     * of the same lift push the title off-screen otherwise.
+     */
+    val stickyExerciseHeader: Boolean = true,
+    /** Whether set rows get +/- buttons under the load field. */
+    val stepperLoad: Boolean = false,
+    /** Whether set rows get +/- buttons under the reps field. */
+    val stepperReps: Boolean = false,
+    /**
+     * Whether the steppers are the only way to change those fields (the field
+     * itself no longer takes typing) rather than an addition to it.
+     */
+    val steppersReplaceTyping: Boolean = false,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -129,6 +159,7 @@ class SettingsRepository(private val context: Context) {
         val language = stringPreferencesKey("language")
         val unit = stringPreferencesKey("unit")
         val theme = stringPreferencesKey("theme")
+        val colorTheme = stringPreferencesKey("color_theme")
         val defaultRestSec = intPreferencesKey("default_rest_sec")
         val timerSound = booleanPreferencesKey("timer_sound")
         val timerSoundUri = stringPreferencesKey("timer_sound_uri")
@@ -141,6 +172,7 @@ class SettingsRepository(private val context: Context) {
         val coachPersonality = stringPreferencesKey("coach_personality")
         val coachFrequency = stringPreferencesKey("coach_frequency")
         val coachMessageSeconds = intPreferencesKey("coach_message_seconds")
+        val coachExerciseCues = booleanPreferencesKey("coach_exercise_cues")
         val progressionIncrementKg = doublePreferencesKey("progression_increment_kg")
         val progressionIncrementLevel = doublePreferencesKey("progression_increment_level")
         val bodyweightFallbackKg = doublePreferencesKey("bodyweight_fallback_kg")
@@ -171,6 +203,11 @@ class SettingsRepository(private val context: Context) {
         val warmupSetCount = intPreferencesKey("warmup_set_count")
         val hapticFeedback = booleanPreferencesKey("haptic_feedback")
         val confirmExitWorkout = booleanPreferencesKey("confirm_exit_workout")
+        val selectAllOnFocus = booleanPreferencesKey("select_all_on_focus")
+        val stickyExerciseHeader = booleanPreferencesKey("sticky_exercise_header")
+        val stepperLoad = booleanPreferencesKey("stepper_load")
+        val stepperReps = booleanPreferencesKey("stepper_reps")
+        val steppersReplaceTyping = booleanPreferencesKey("steppers_replace_typing")
     }
 
     private inline fun <reified E : Enum<E>> String?.toEnum(default: E): E =
@@ -182,6 +219,7 @@ class SettingsRepository(private val context: Context) {
             language = p[Keys.language].toEnum(defaults.language),
             unit = p[Keys.unit].toEnum(defaults.unit),
             theme = p[Keys.theme].toEnum(defaults.theme),
+            colorTheme = p[Keys.colorTheme].toEnum(defaults.colorTheme),
             defaultRestSec = p[Keys.defaultRestSec] ?: defaults.defaultRestSec,
             timerSound = p[Keys.timerSound] ?: defaults.timerSound,
             timerSoundUri = p[Keys.timerSoundUri] ?: defaults.timerSoundUri,
@@ -194,6 +232,7 @@ class SettingsRepository(private val context: Context) {
             coachPersonality = p[Keys.coachPersonality].toEnum(defaults.coachPersonality),
             coachFrequency = p[Keys.coachFrequency].toEnum(defaults.coachFrequency),
             coachMessageSeconds = p[Keys.coachMessageSeconds] ?: defaults.coachMessageSeconds,
+            coachExerciseCues = p[Keys.coachExerciseCues] ?: defaults.coachExerciseCues,
             progressionIncrementKg = p[Keys.progressionIncrementKg] ?: defaults.progressionIncrementKg,
             progressionIncrementLevel = p[Keys.progressionIncrementLevel] ?: defaults.progressionIncrementLevel,
             bodyweightFallbackKg = p[Keys.bodyweightFallbackKg] ?: defaults.bodyweightFallbackKg,
@@ -231,12 +270,18 @@ class SettingsRepository(private val context: Context) {
             warmupSetCount = p[Keys.warmupSetCount] ?: defaults.warmupSetCount,
             hapticFeedback = p[Keys.hapticFeedback] ?: defaults.hapticFeedback,
             confirmExitWorkout = p[Keys.confirmExitWorkout] ?: defaults.confirmExitWorkout,
+            selectAllOnFocus = p[Keys.selectAllOnFocus] ?: defaults.selectAllOnFocus,
+            stickyExerciseHeader = p[Keys.stickyExerciseHeader] ?: defaults.stickyExerciseHeader,
+            stepperLoad = p[Keys.stepperLoad] ?: defaults.stepperLoad,
+            stepperReps = p[Keys.stepperReps] ?: defaults.stepperReps,
+            steppersReplaceTyping = p[Keys.steppersReplaceTyping] ?: defaults.steppersReplaceTyping,
         )
     }
 
     suspend fun setLanguage(v: AppLanguage) = context.dataStore.edit { it[Keys.language] = v.name }
     suspend fun setUnit(v: WeightUnit) = context.dataStore.edit { it[Keys.unit] = v.name }
     suspend fun setTheme(v: ThemeMode) = context.dataStore.edit { it[Keys.theme] = v.name }
+    suspend fun setColorTheme(v: ColorTheme) = context.dataStore.edit { it[Keys.colorTheme] = v.name }
     suspend fun setDefaultRestSec(v: Int) = context.dataStore.edit { it[Keys.defaultRestSec] = v }
     suspend fun setTimerSound(v: Boolean) = context.dataStore.edit { it[Keys.timerSound] = v }
     suspend fun setTimerSoundUri(v: String) = context.dataStore.edit { it[Keys.timerSoundUri] = v }
@@ -250,6 +295,8 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCoachFrequency(v: CoachFrequency) = context.dataStore.edit { it[Keys.coachFrequency] = v.name }
     suspend fun setCoachMessageSeconds(v: Int) =
         context.dataStore.edit { it[Keys.coachMessageSeconds] = v.coerceAtLeast(0) }
+    suspend fun setCoachExerciseCues(v: Boolean) =
+        context.dataStore.edit { it[Keys.coachExerciseCues] = v }
     suspend fun setProgressionIncrementKg(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementKg] = v }
     suspend fun setProgressionIncrementLevel(v: Double) = context.dataStore.edit { it[Keys.progressionIncrementLevel] = v }
     suspend fun setBodyweightFallbackKg(v: Double) = context.dataStore.edit { it[Keys.bodyweightFallbackKg] = v }
@@ -302,4 +349,14 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.hapticFeedback] = v }
     suspend fun setConfirmExitWorkout(v: Boolean) =
         context.dataStore.edit { it[Keys.confirmExitWorkout] = v }
+    suspend fun setSelectAllOnFocus(v: Boolean) =
+        context.dataStore.edit { it[Keys.selectAllOnFocus] = v }
+    suspend fun setStickyExerciseHeader(v: Boolean) =
+        context.dataStore.edit { it[Keys.stickyExerciseHeader] = v }
+    suspend fun setStepperLoad(v: Boolean) =
+        context.dataStore.edit { it[Keys.stepperLoad] = v }
+    suspend fun setStepperReps(v: Boolean) =
+        context.dataStore.edit { it[Keys.stepperReps] = v }
+    suspend fun setSteppersReplaceTyping(v: Boolean) =
+        context.dataStore.edit { it[Keys.steppersReplaceTyping] = v }
 }

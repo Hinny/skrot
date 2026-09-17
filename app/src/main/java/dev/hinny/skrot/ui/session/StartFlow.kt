@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -45,6 +44,8 @@ import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.GymResolution
 import dev.hinny.skrot.ui.Routes
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.RememberSwapDialog
+import dev.hinny.skrot.ui.common.SwapMemory
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.lastPerformedText
 import kotlinx.coroutines.launch
@@ -354,99 +355,40 @@ private fun ResolveExercisesDialog(
         // Keeping the original at a gym that doesn't list it is still news about
         // the gym, so that case gets the availability question with no
         // equivalence question attached.
-        val canLink = picked.id != original.id &&
-            (original.groupId == null || picked.groupId != original.groupId)
-        val canAddToGym = gymName != null &&
-            picked.id !in pending.availableExerciseIds &&
-            picked.id !in addedToGym
-        // The narrowest memory of the three: this program day, at this gym only.
-        val canAlwaysUse = gymName != null && picked.id != original.id
-        if (!canLink && !canAddToGym && !canAlwaysUse) {
+        val offered = buildSet {
+            if (gymName != null &&
+                picked.id !in pending.availableExerciseIds &&
+                picked.id !in addedToGym
+            ) add(SwapMemory.ADD_TO_GYM)
+            // The narrowest memory of the three: this program day, at this gym only.
+            if (gymName != null && picked.id != original.id) add(SwapMemory.ALWAYS_AT_GYM)
+            if (picked.id != original.id &&
+                (original.groupId == null || picked.groupId != original.groupId)
+            ) add(SwapMemory.LINK_EQUIVALENT)
+        }
+        if (offered.isEmpty()) {
             confirmSwap = null
             return@let
         }
-        var linkEquivalent by remember(picked.id) { mutableStateOf(true) }
-        var addToGym by remember(picked.id) { mutableStateOf(true) }
-        var alwaysUseHere by remember(picked.id) { mutableStateOf(true) }
-        val willLink = canLink && linkEquivalent
-        val willAdd = canAddToGym && addToGym
-        val willAlwaysUse = canAlwaysUse && alwaysUseHere
-
-        AlertDialog(
-            onDismissRequest = { confirmSwap = null },
-            title = { Text(stringResource(R.string.remember_swap_title)) },
-            text = {
-                Column {
-                    if (canAddToGym) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = addToGym, onCheckedChange = { addToGym = it })
-                            Text(
-                                stringResource(
-                                    R.string.add_to_gym_body,
-                                    picked.displayName(),
-                                    gymName.orEmpty(),
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                    if (canAlwaysUse) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = alwaysUseHere,
-                                onCheckedChange = { alwaysUseHere = it },
-                            )
-                            Text(
-                                stringResource(
-                                    R.string.always_use_here_body,
-                                    picked.displayName(),
-                                    original.displayName(),
-                                    gymName.orEmpty(),
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                    if (canLink) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = linkEquivalent,
-                                onCheckedChange = { linkEquivalent = it },
-                            )
-                            Text(
-                                stringResource(
-                                    R.string.flag_equivalent_body,
-                                    picked.displayName(),
-                                    original.displayName(),
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
+        RememberSwapDialog(
+            original = original,
+            picked = picked,
+            gymName = gymName,
+            offered = offered,
+            // The gym forced this choice, so remembering it is the point.
+            defaults = offered,
+            onDone = { chosen ->
+                if (SwapMemory.LINK_EQUIVALENT in chosen) onLinkEquivalent(original, picked)
+                if (SwapMemory.ADD_TO_GYM in chosen) {
+                    onAddToGym(picked)
+                    addedToGym = addedToGym + picked.id
                 }
+                always.value =
+                    if (SwapMemory.ALWAYS_AT_GYM in chosen) always.value + plannedId
+                    else always.value - plannedId
+                confirmSwap = null
             },
-            // One button, reading what it will actually do: untick everything
-            // and it plainly says so rather than leaving two ways to say no.
-            confirmButton = {
-                TextButton(onClick = {
-                    if (willLink) onLinkEquivalent(original, picked)
-                    if (willAdd) {
-                        onAddToGym(picked)
-                        addedToGym = addedToGym + picked.id
-                    }
-                    always.value =
-                        if (willAlwaysUse) always.value + plannedId
-                        else always.value - plannedId
-                    confirmSwap = null
-                }) {
-                    Text(
-                        stringResource(
-                            if (willLink || willAdd || willAlwaysUse) R.string.save
-                            else R.string.skip
-                        )
-                    )
-                }
-            },
+            onDismiss = { confirmSwap = null },
         )
     }
     AlertDialog(

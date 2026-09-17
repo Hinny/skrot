@@ -89,6 +89,23 @@ interface ExerciseDao {
     @Query("UPDATE exercises SET nextTimeNote = :note WHERE id = :id")
     suspend fun setNextTimeNote(id: Long, note: String)
 
+    /**
+     * Records [picked] as interchangeable with [original], so a gym without
+     * the original offers it automatically next time. Joins the original's
+     * group, or starts one named after it.
+     *
+     * Grouping is a statement about your own training, not an edit to the
+     * library's definition of an exercise, so this is allowed for built-in
+     * exercises too — unlike renaming one.
+     */
+    @Transaction
+    suspend fun linkAsEquivalent(original: Exercise, picked: Exercise) {
+        val groupId = original.groupId ?: insertGroup(
+            ExerciseGroup(nameEn = original.nameEn, nameSv = original.nameSv, isCustom = true)
+        ).also { newGroup -> update(original.copy(groupId = newGroup)) }
+        update(picked.copy(groupId = groupId))
+    }
+
     @Query("SELECT * FROM exercise_groups ORDER BY nameEn")
     fun observeGroups(): Flow<List<ExerciseGroup>>
 
@@ -397,6 +414,21 @@ interface SessionDao {
             "ORDER BY s.startedAt"
     )
     fun observeSetsForExercise(exerciseId: Long): Flow<List<SetWithContext>>
+
+    /**
+     * Clears the load of every set ever logged for an exercise, keeping the
+     * reps. One way out when the exercise's measurement type changes and the
+     * old numbers would mean something else.
+     */
+    @Query(
+        "UPDATE logged_sets SET load = 0 WHERE sessionExerciseId IN " +
+            "(SELECT id FROM session_exercises WHERE exerciseId = :exerciseId)"
+    )
+    suspend fun zeroLoadsForExercise(exerciseId: Long)
+
+    /** Re-points every session instance of one exercise at another. */
+    @Query("UPDATE session_exercises SET exerciseId = :to WHERE exerciseId = :from")
+    suspend fun moveExerciseHistory(from: Long, to: Long)
 
     /** Start times of finished sessions in a range (frequency heatmap). */
     @Query(

@@ -78,15 +78,19 @@
     <string name="guide_programs_t">Programs and workout days</string>
     <string name="guide_programs_b">A program is a set of workout days, for example Push, Pull and Legs. Each day lists exercises with planned sets, target reps and rest times. Mark one program as active and the home screen suggests which day is next. You can keep several programs and switch whenever you like.</string>
     <string name="guide_logging_t">Starting and logging a workout</string>
-    <string name="guide_logging_b">Start from the Home or Session tab: take the suggested day, pick another one, or begin an empty workout. While training, the set you are on is boxed in the accent colour - tap Done to complete it. The rest timer starts by itself, the keyboard gets out of the way, and the next set scrolls into the middle of the screen. In a superset the box alternates between the exercises. Finish ends the whole workout.</string>
+    <string name="guide_logging_b">Start from the Home or Session tab: take the suggested day, pick another one, or begin an empty workout. While training, the set you are on is boxed in the accent colour - tap Done to complete it. The rest timer starts by itself, the keyboard gets out of the way, and the next set scrolls into the middle of the screen. In a superset the box alternates between the exercises. Scroll through a long list of sets and the exercise you are in stays pinned at the top until you reach the next one (Settings can turn that off). Finish ends the whole workout.</string>
+    <string name="guide_entry_t">Entering weight and reps</string>
+    <string name="guide_entry_b">Tap a weight or reps field and its whole value is selected, so what you type replaces it — no backspacing first. Settings > During a workout can switch that off, and can add +/− buttons under the weight and reps fields that step by the exercise\'s own increment (or 2.5 kg, 5 lbs, one level) and by one rep; a further toggle makes the buttons the only way in, so the keyboard never appears. The target and rest dialogs both apply to this session only unless you tick \"Apply to future sessions\".</string>
     <string name="guide_library_t">Exercises, search and your own</string>
     <string name="guide_library_b">The Library tab gathers programs, exercises, gyms, workout history and body metrics. Skrot ships with a large exercise catalog, and the search matches English names, Swedish names, muscle groups and equipment all at once - with name hits first. Lists can be ordered alphabetically or by what you train most, from Settings. Create your own exercise, or clone an existing one and adjust it.</string>
+    <string name="guide_instructions_t">Instructions and key points</string>
+    <string name="guide_instructions_b">Every built-in exercise comes with instructions and a three-line summary of what matters most, in English and Swedish; open the exercise in the library, or pick Instructions from its menu during a workout. Your own exercises can carry the same, written in the exercise editor. With the coach on, \"Read out exercise key points\" has it repeat those three lines in its own voice as the exercise comes up — rate-limited by the frequency setting so it stays a reminder.</string>
     <string name="guide_stats_t">Statistics and history</string>
     <string name="guide_stats_b">Statistics opens with a summary of the selected range — sessions, sets, volume, average length and your run of training weeks — then training frequency, muscle-group balance, volume per week, your most trained exercises and per-exercise charts with personal records. Body weight can be logged and followed here too. The list of logged workouts lives under Library → Workout history, where opening one lets you correct it with undo/redo, or delete it.</string>
     <string name="guide_backup_t">Backups</string>
     <string name="guide_backup_b">Everything is stored offline on your phone — no account, no cloud. Export a JSON backup from More → Backup and keep it somewhere safe; importing it restores everything, including on a new phone. Skrot reminds you when it is time; the interval is set in Settings.</string>
     <string name="guide_gyms_t">Gyms and equipment</string>
-    <string name="guide_gyms_b">Every exercise lists the equipment it needs, and every gym keeps a list of which exercises are available there. When you start a workout at a gym, unavailable exercises are swapped to an equivalent from the same exercise family, or you get to choose - and you can always search the whole library for something else. Whatever you pick, Skrot offers to remember it: mark it as available here, use it here from now on, or treat the two exercises as interchangeable everywhere.</string>
+    <string name="guide_gyms_b">Every exercise lists the equipment it needs, and every gym keeps a list of which exercises are available there. When you start a workout at a gym, unavailable exercises are swapped to an equivalent from the same exercise family, or you get to choose - and you can always search the whole library for something else. Whatever you pick, Skrot offers to remember it: mark it as available here, use it here from now on, or treat the two exercises as interchangeable everywhere. Swapping an exercise mid-workout asks the same question, plus whether the new one should become the program day\'s default.</string>
     <string name="guide_temp_gym_t">Temporary gym</string>
     <string name="guide_temp_gym_b">Training somewhere that isn\'t one of your saved gyms - on holiday, at a hotel? Pick Temporary gym when starting. Skrot then assumes nothing is available and asks you to confirm every exercise, you can swap freely, and nothing is saved to your gym setups.</string>
     <string name="guide_plan_edits_t">This session vs. the plan</string>
@@ -94,7 +98,7 @@
     <string name="guide_supersets_t">Supersets and set types</string>
     <string name="guide_supersets_b">Exercises placed in the same block are run as a superset: while logging, the box alternates so you always see which set is next. Build one in the day editor, or during a workout with \"Add exercise to this block\" and \"Link with previous\"; \"Unlink\" splits one back out. Sets can also be marked as warm-up, drop or failure sets; warm-up sets are excluded from records, estimates and progression.</string>
     <string name="guide_measurements_t">Weight, machine levels and bodyweight</string>
-    <string name="guide_measurements_b">An exercise measures load as free weight, as a machine level, or as bodyweight with optional added weight. Machine levels aren\'t comparable between gyms, so history and charts for machine exercises are kept per gym. Bodyweight exercises use your logged body weight and a per-exercise factor when volume is estimated.</string>
+    <string name="guide_measurements_b">An exercise measures load as free weight, as a machine level, or as bodyweight with optional added weight. Machine levels aren\'t comparable between gyms, so history and charts for machine exercises are kept per gym. Bodyweight exercises use your logged body weight and a per-exercise factor when volume is estimated. Change the type of a custom exercise that already has history and Skrot asks what to do with the old sets: keep the numbers, clear the loads, or move the history to a copy that keeps the old type.</string>
     <string name="guide_prefill_t">Prefill and progression</string>
     <string name="guide_prefill_b">When you start a planned day, the sets come prefilled, so most of them are a single tap to confirm. The program\'s prefill mode picks where the numbers come from: Last session repeats the weight and reps you actually did, Targets uses the weight and reps written in the plan, and Hybrid takes one of each - last session\'s weight with the plan\'s target reps, so you keep the load you have proved while the reps you are chasing stay in front of you. Whatever a mode is missing, such as a set you have never done or a plan without a target, is filled in from the other source. A set\'s target is the reps you need to reach for it to count: hit the target on every standard set at the same load, and the next session suggests more weight. The increment settings decide how big that step is, globally and per exercise.</string>
     <string name="guide_recovery_t">Recovery programs</string>
@@ -139,7 +143,6 @@
     <string name="not_available_no_equivalent">Not available at this gym, no equivalent found</string>
     <string name="keep_original">Keep original</string>
     <string name="skip_exercise">Skip exercise</string>
-    <string name="always_use_at_gym">Always use this exercise at this gym</string>
     <string name="active_badge">Active</string>
     <string name="set_active">Set active</string>
 
@@ -215,6 +218,15 @@
     <string name="section_appearance">Appearance and language</string>
     <string name="section_workout">During a workout</string>
     <string name="show_last_session_values">Show last session on each set</string>
+    <string name="sticky_exercise_header">Keep the exercise name in view</string>
+    <string name="sticky_exercise_header_hint">Scrolling through many sets, the exercise you are in stays pinned at the top until you reach the next one.</string>
+    <string name="select_all_on_focus">Select the whole number on tap</string>
+    <string name="select_all_on_focus_hint">Tapping a weight or reps field selects its value, so what you type replaces it instead of being added to the end.</string>
+    <string name="stepper_load">+/− buttons for weight</string>
+    <string name="stepper_reps">+/− buttons for reps</string>
+    <string name="stepper_hint">Buttons under the field, stepping by the exercise\'s increment (or 2.5 kg / 5 lbs / 1 level) and by one rep.</string>
+    <string name="steppers_replace_typing">Buttons replace typing</string>
+    <string name="steppers_replace_typing_hint">The field no longer opens the keyboard; the buttons are the only way to change it.</string>
     <string name="show_last_session_values_hint">A set row also shows what you lifted for that set last time, so you know what you are beating.</string>
     <string name="plate_calculator">Plate calculator</string>
     <string name="plate_calculator_hint">For barbell exercises, the set you are on shows which discs go on each side.</string>
@@ -251,6 +263,8 @@
     <string name="open_settings">Open settings</string>
     <string name="coach_message_seconds">Seconds a comment stays up (0 = until dismissed)</string>
     <string name="coach_message_seconds_hint">How long a coach comment stays on screen during a workout.</string>
+    <string name="coach_exercise_cues">Read out exercise key points</string>
+    <string name="coach_exercise_cues_hint">As an exercise comes up, the coach repeats its key points in its own words. Follows the frequency setting, so it doesn\'t happen every time.</string>
     <string name="exercise_sort">Exercise order</string>
     <string name="sort_name">Alphabetical</string>
     <string name="sort_most_used">Most used</string>
@@ -259,6 +273,7 @@
     <string name="remember_swap_title">Remember this swap?</string>
     <string name="flag_equivalent_body">Offer %1$s automatically whenever %2$s isn\'t available</string>
     <string name="add_to_gym_body">Mark %1$s as available at %2$s</string>
+    <string name="save_to_plan_body">Make %1$s the program day\'s default instead of %2$s</string>
     <string name="always_use_here_body">Use %1$s instead of %2$s at %3$s from now on</string>
     <string name="flag_equivalent_no">Just this time</string>
     <string name="workout_completed">Workout completed!</string>
@@ -309,7 +324,6 @@
     <string name="plan_before_start_hint">Walk through every exercise and whether the gym has it, instead of only being asked when something is missing.</string>
     <string name="update_program_day">Update program day</string>
     <string name="update_program_day_warning">The program day will be rewritten to match this session: exercises, order, supersets and how many sets each exercise has. Rep targets and target loads are kept, and nothing you have logged today changes.</string>
-    <string name="save_to_program_day">Save to the program day</string>
     <string name="remove_set_pick">Pick the set to remove</string>
     <string name="set_completed_note">completed</string>
     <string name="set_marker_warmup">W</string>
@@ -323,11 +337,15 @@
     <string name="rest_zero_hint">0 = no timer</string>
     <string name="lock_session">Lock session</string>
     <string name="unlock_session">Unlock session</string>
-    <string name="session_locked_hint">Session locked — only weight, reps and completing the active set can be changed.</string>
+    <string name="session_locked_hint">Session locked — weight, reps, completing sets and swapping an exercise still work; the structure stays put.</string>
     <string name="swap_exercise">Swap exercise</string>
     <string name="remove_exercise">Remove exercise</string>
     <string name="exercise_note">Exercise note</string>
     <string name="next_time_note">Next-time note</string>
+    <string name="instructions">Instructions</string>
+    <string name="instructions_hint">How to perform it</string>
+    <string name="cues_hint">Key points, one per line (max %1$d)</string>
+    <string name="no_instructions">No instructions for this exercise.</string>
     <string name="note_prefix">Note: %1$s</string>
     <string name="session_note">Session note</string>
     <string name="new_pr">New PR!</string>
@@ -363,6 +381,15 @@
     <string name="clone_exercise">Clone exercise</string>
     <string name="copy_program">Copy program</string>
     <string name="clone_suffix">(copy)</string>
+    <string name="measurement_copy_suffix">(%1$s)</string>
+    <string name="measurement_conflict_title">Logged sets don\'t match</string>
+    <string name="measurement_conflict_body">%1$d sets in %2$d workouts were logged as %3$s. Read as %4$s, those numbers would mean something else. What should happen to them?</string>
+    <string name="measurement_conflict_keep">Keep the numbers</string>
+    <string name="measurement_conflict_keep_body">They are read as the new type from now on — 60 kg becomes level 60. Charts and records carry on unchanged.</string>
+    <string name="measurement_conflict_zero">Clear the loads, keep the reps</string>
+    <string name="measurement_conflict_zero_body">Every logged load for this exercise becomes 0. The sets and their reps stay.</string>
+    <string name="measurement_conflict_move">Move the history to a copy</string>
+    <string name="measurement_conflict_move_body">A copy named \"%1$s\" keeps the old type and takes over all the logged sets. This exercise starts fresh.</string>
     <string name="custom_badge">Custom</string>
     <string name="measurement_type">Measurement type</string>
     <string name="measurement_weight">Weight (kg)</string>
@@ -480,6 +507,13 @@
     <string name="theme">Theme</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
+    <string name="color_theme">Colour</string>
+    <string name="color_amber">Amber</string>
+    <string name="color_moss">Moss</string>
+    <string name="color_ocean">Ocean</string>
+    <string name="color_blood">Blood</string>
+    <string name="color_iron">Iron</string>
+    <string name="color_violet">Violet</string>
     <string name="default_rest_for_new_sets">Default rest for new sets (seconds)</string>
     <string name="timer_adjust_step">Timer adjust step (seconds)</string>
     <string name="timer_sound">Timer sound</string>
@@ -885,6 +919,37 @@
         <item>That\'s it.</item>
         <item>Saved.</item>
         <item>Good.</item>
+    </string-array>
+    <!-- Coach: lead-ins for an exercise's key points; the list follows -->
+    <string-array name="coach_cheerleader_cues">
+        <item>Remember these and you\'ll nail it:</item>
+        <item>Quick reminder before you go —</item>
+        <item>Three things, then crush it:</item>
+        <item>Here\'s the recipe for a great set:</item>
+        <item>You know this, but just in case:</item>
+        <item>Set up, then think about:</item>
+    </string-array>
+    <string-array name="coach_bro_cues">
+        <item>Now I want to see:</item>
+        <item>Checklist, bro:</item>
+        <item>Don\'t forget:</item>
+        <item>Bro. Three things:</item>
+        <item>Form first, then weight:</item>
+        <item>Before you touch the bar:</item>
+    </string-array>
+    <string-array name="coach_pt_cues">
+        <item>Reduce the risk of injury with these instructions:</item>
+        <item>Technique check before you start:</item>
+        <item>Focus points for this exercise:</item>
+        <item>Before the first rep:</item>
+        <item>Keep these in mind on every rep:</item>
+        <item>Set-up reminders:</item>
+    </string-array>
+    <string-array name="coach_minimal_cues">
+        <item>Cues:</item>
+        <item>Focus:</item>
+        <item>Remember:</item>
+        <item>Key points:</item>
     </string-array>
     <string-array name="coach_minimal_streak">
         <item>Streak intact.</item>

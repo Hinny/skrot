@@ -11,16 +11,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -31,6 +35,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,8 +57,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,9 +71,11 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -74,6 +84,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import dev.hinny.skrot.AppContainer
@@ -94,11 +105,16 @@ import dev.hinny.skrot.ui.common.CompactNumberField
 import dev.hinny.skrot.ui.common.CompactValueButton
 import dev.hinny.skrot.ui.common.ConfirmDialog
 import dev.hinny.skrot.ui.common.ExercisePickerDialog
+import dev.hinny.skrot.ui.common.RememberSwapDialog
 import dev.hinny.skrot.ui.common.ReorderHandle
 import dev.hinny.skrot.ui.common.ReorderState
+import dev.hinny.skrot.ui.common.SwapMemory
 import dev.hinny.skrot.ui.common.rememberReorderState
 import dev.hinny.skrot.ui.common.reorderableRow
 import dev.hinny.skrot.ui.common.StepperNumberField
+import dev.hinny.skrot.ui.common.cuesFor
+import dev.hinny.skrot.ui.common.displayCues
+import dev.hinny.skrot.ui.common.displayInstructions
 import dev.hinny.skrot.ui.common.displayName
 import dev.hinny.skrot.ui.common.loadFieldLabel
 import dev.hinny.skrot.ui.containerViewModel
@@ -126,6 +142,8 @@ fun WorkoutScreen(
     val suggestions by vm.suggestions.collectAsState()
     val groupOptions by vm.groupOptions.collectAsState()
     val lastSessionSets by vm.lastSessionSets.collectAsState()
+    val gymName by vm.gymName.collectAsState()
+    val availableAtGym by vm.availableAtGym.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -147,7 +165,11 @@ fun WorkoutScreen(
     // laid out, so the current set can be scrolled to the middle of the screen.
     val listState = rememberLazyListState()
     val rowBounds = remember { mutableStateMapOf<Long, IntRange>() }
-    var listBounds by remember { mutableStateOf<IntRange?>(null) }
+    val listBounds = remember { mutableStateOf<IntRange?>(null) }
+    // Per exercise section: the whole section and its title row, for the
+    // pinned name that stands in for a title scrolled off the top.
+    val sectionBounds = remember { mutableStateMapOf<Long, IntRange>() }
+    val headerBounds = remember { mutableStateMapOf<Long, IntRange>() }
     val blockReorder = rememberReorderState { from, to -> vm.moveBlock(from, to) }
 
     // Keep the screen awake during an active workout (configurable).
@@ -197,25 +219,36 @@ fun WorkoutScreen(
                 }
 
                 is WorkoutEvent.Coach -> {
-                    CoachMessages.random(context, settings.coachPersonality, event.trigger)
-                        ?.let { message ->
-                            // 0 seconds means it waits for you; anything else is
-                            // shown indefinitely and taken away on a timer.
-                            if (settings.coachMessageSeconds <= 0) {
+                    val cueList = event.exercise?.cuesFor(settings.exerciseNameLanguage)
+                    val message = if (cueList != null) {
+                        CoachMessages.cues(context, settings.coachPersonality, cueList)
+                    } else {
+                        CoachMessages.random(context, settings.coachPersonality, event.trigger)
+                    }
+                    // A list of three cues takes longer to read than a one-liner,
+                    // so it gets twice the time and a way to send it off early.
+                    val seconds =
+                        if (cueList != null) settings.coachMessageSeconds * 2
+                        else settings.coachMessageSeconds
+                    message?.let {
+                        // 0 seconds means it waits for you; anything else is
+                        // shown indefinitely and taken away on a timer.
+                        if (seconds <= 0) {
+                            snackbar.showSnackbar(
+                                message = it,
+                                withDismissAction = true,
+                                duration = SnackbarDuration.Indefinite,
+                            )
+                        } else {
+                            withTimeoutOrNull(seconds * 1000L) {
                                 snackbar.showSnackbar(
-                                    message = message,
-                                    withDismissAction = true,
+                                    message = it,
+                                    withDismissAction = cueList != null,
                                     duration = SnackbarDuration.Indefinite,
                                 )
-                            } else {
-                                withTimeoutOrNull(settings.coachMessageSeconds * 1000L) {
-                                    snackbar.showSnackbar(
-                                        message = message,
-                                        duration = SnackbarDuration.Indefinite,
-                                    )
-                                }
                             }
                         }
+                    }
                 }
             }
         }
@@ -322,6 +355,13 @@ fun WorkoutScreen(
                 .minWithOrNull(compareBy({ it.first }, { it.second }))
         }?.third
 
+        // The exercise the current set belongs to; the coach reads its cues
+        // out when it changes to one that hasn't started yet.
+        val currentExerciseId = currentSetId?.let { id ->
+            session.exercises.find { se -> se.sets.any { it.id == id } }?.sessionExercise?.id
+        }
+        LaunchedEffect(currentExerciseId) { vm.onCurrentExerciseChanged(currentExerciseId) }
+
         // Finishing a set moves "current" to the next one, which is often just
         // off-screen. Pull it back to the middle so the next set is always in
         // reach without scrolling.
@@ -338,20 +378,27 @@ fun WorkoutScreen(
                 delay(CENTER_SCROLL_SETTLE_MS)
             }
             val row = rowBounds[id] ?: return@LaunchedEffect
-            val list = listBounds ?: return@LaunchedEffect
+            val list = listBounds.value ?: return@LaunchedEffect
             val delta = ((row.first + row.last) / 2 - (list.first + list.last) / 2).toFloat()
             if (abs(delta) > CENTER_SCROLL_THRESHOLD_PX) listState.animateScrollBy(delta)
         }
 
+        // Clipped so a pinned title being pushed out slides under the top bar
+        // rather than over it.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .clipToBounds(),
+        ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 12.dp)
                 .onGloballyPositioned { coords ->
                     val top = coords.positionInRoot().y.roundToInt()
-                    listBounds = top..(top + coords.size.height)
+                    listBounds.value = top..(top + coords.size.height)
                 },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -416,12 +463,14 @@ fun WorkoutScreen(
                                 suggestion = suggestions[se.sessionExercise.id],
                                 swapOptions = groupOptions[se.sessionExercise.id] ?: emptyList(),
                                 allExercises = allExercises,
-                                canSaveForGym = session.session.gymId != null &&
-                                    !session.session.temporaryVisit,
+                                gymName = gymName,
+                                availableAtGym = availableAtGym,
                                 currentSetId = currentSetId,
                                 hasRoutineDay = session.session.routineDayId != null,
                                 locked = locked,
                                 rowBounds = rowBounds,
+                                sectionBounds = sectionBounds,
+                                headerBounds = headerBounds,
                                 // Only supersets need per-exercise reordering; a
                                 // lone exercise moves with its block.
                                 blockReorder = exerciseReorder.takeIf { block.size > 1 },
@@ -485,6 +534,16 @@ fun WorkoutScreen(
                 )
                 Spacer(Modifier.height(80.dp))
             }
+        }
+        if (settings.stickyExerciseHeader) {
+            StickyExerciseHeader(
+                exercises = blocks.flatten(),
+                listBounds = listBounds,
+                sectionBounds = sectionBounds,
+                headerBounds = headerBounds,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
         }
     }
 
@@ -607,6 +666,68 @@ fun WorkoutScreen(
     }
 }
 
+/** What the pinned header shows, and how far the next title has pushed it up. */
+private data class PinnedHeader(val se: SessionExerciseWithDetails, val pushPx: Int)
+
+/**
+ * The exercise title, stuck to the top of the list the way a sticky header
+ * behaves: it takes over the moment the real title row reaches the top edge
+ * and stays while any of that exercise's sets are still there; when the next
+ * exercise's title arrives it pushes this one up and out, then takes its
+ * place. Drawn in the card's own colour and width so it reads as the card's
+ * title held in place rather than a banner laid over it.
+ *
+ * Bounds are root-relative and refreshed on every scroll frame by the
+ * sections themselves; [exercises] must be in display order for the
+ * hand-over to find the right neighbour. The derived state keeps this from
+ * recomposing except while the answer is actually changing.
+ */
+@Composable
+private fun StickyExerciseHeader(
+    exercises: List<SessionExerciseWithDetails>,
+    listBounds: State<IntRange?>,
+    sectionBounds: SnapshotStateMap<Long, IntRange>,
+    headerBounds: SnapshotStateMap<Long, IntRange>,
+    modifier: Modifier = Modifier,
+) {
+    var height by remember { mutableIntStateOf(0) }
+    val pinned by remember(exercises) {
+        derivedStateOf {
+            val top = listBounds.value?.first ?: return@derivedStateOf null
+            val index = exercises.indexOfFirst { se ->
+                val id = se.sessionExercise.id
+                val section = sectionBounds[id] ?: return@indexOfFirst false
+                val header = headerBounds[id] ?: return@indexOfFirst false
+                header.first <= top && section.last > top
+            }
+            if (index < 0) return@derivedStateOf null
+            val nextTop = exercises.getOrNull(index + 1)
+                ?.let { headerBounds[it.sessionExercise.id]?.first }
+            val push = if (nextTop != null && height > 0) minOf(0, nextTop - (top + height)) else 0
+            PinnedHeader(exercises[index], push)
+        }
+    }
+    val (se, push) = pinned ?: return
+    Surface(
+        shape = CardDefaults.shape,
+        color = CardDefaults.cardColors().containerColor,
+        shadowElevation = 2.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .offset { IntOffset(0, push) }
+            .onSizeChanged { height = it.height },
+    ) {
+        Text(
+            se.exercise.displayName(),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        )
+    }
+}
+
 private fun formatElapsed(ms: Long): String {
     val totalSec = ms / 1000
     val h = totalSec / 3600
@@ -624,11 +745,14 @@ private fun ExerciseSection(
     suggestion: ProgressionSuggestion?,
     swapOptions: List<Exercise>,
     allExercises: List<Exercise>,
-    canSaveForGym: Boolean,
+    gymName: String?,
+    availableAtGym: Set<Long>,
     currentSetId: Long?,
     hasRoutineDay: Boolean,
     locked: Boolean,
     rowBounds: SnapshotStateMap<Long, IntRange>,
+    sectionBounds: SnapshotStateMap<Long, IntRange>,
+    headerBounds: SnapshotStateMap<Long, IntRange>,
     blockReorder: ReorderState?,
     indexInBlock: Int,
     blockSize: Int,
@@ -640,13 +764,36 @@ private fun ExerciseSection(
     var swapOpen by remember { mutableStateOf(false) }
     var noteOpen by remember { mutableStateOf(false) }
     var nextTimeOpen by remember { mutableStateOf(false) }
+    var instructionsOpen by remember { mutableStateOf(false) }
+    val instructions = se.exercise.displayInstructions()
+    val cues = se.exercise.displayCues()
     var removeSetOpen by remember { mutableStateOf(false) }
-    // Non-null while the full picker is open for a swap; carries the
-    // "save permanently" choices made in the swap dialog.
-    var swapPickerFlags by remember { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
+    var swapPickerOpen by remember { mutableStateOf(false) }
+    // The swap just made (original to picked), awaiting "remember this?".
+    var rememberSwap by remember { mutableStateOf<Pair<Exercise, Exercise>?>(null) }
+
+    // The swap itself is done at once and session-only; the dialog that follows
+    // decides what outlives the session. Dismissing it remembers nothing.
+    fun swapTo(picked: Exercise) {
+        val original = se.exercise
+        if (picked.id == original.id) return
+        vm.swapExercise(se, picked)
+        rememberSwap = original to picked
+    }
 
     val setReorder = rememberReorderState { from, to ->
         vm.moveSet(se.sessionExercise.id, from, to)
+    }
+
+    // A section scrolled out of the lazy list is disposed without a final
+    // position report, so its last known bounds must not linger and claim
+    // the pinned header for an exercise that is nowhere on screen.
+    val seId = se.sessionExercise.id
+    DisposableEffect(seId) {
+        onDispose {
+            sectionBounds.remove(seId)
+            headerBounds.remove(seId)
+        }
     }
 
     Column(
@@ -658,9 +805,19 @@ private fun ExerciseSection(
                 } else {
                     Modifier
                 }
-            ),
+            )
+            .onGloballyPositioned { coords ->
+                val top = coords.positionInRoot().y.roundToInt()
+                sectionBounds[seId] = top..(top + coords.size.height)
+            },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.onGloballyPositioned { coords ->
+                val top = coords.positionInRoot().y.roundToInt()
+                headerBounds[seId] = top..(top + coords.size.height)
+            },
+        ) {
             if (blockReorder != null && !locked) {
                 ReorderHandle(blockReorder, indexInBlock, blockSize)
                 Spacer(Modifier.width(6.dp))
@@ -674,9 +831,10 @@ private fun ExerciseSection(
                 Icon(Icons.Filled.MoreVert, stringResource(R.string.more))
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                // Swapping stays available in a locked session: the lock guards
+                // against stray taps on the row, and this sits behind a menu.
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.swap_exercise)) },
-                    enabled = !locked,
                     onClick = { menuOpen = false; swapOpen = true },
                 )
                 if (blockSize > 1) {
@@ -691,6 +849,12 @@ private fun ExerciseSection(
                         text = { Text(stringResource(R.string.add_warmup_sets)) },
                         enabled = !locked,
                         onClick = { menuOpen = false; onAddWarmups() },
+                    )
+                }
+                if (instructions.isNotBlank() || cues.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.instructions)) },
+                        onClick = { menuOpen = false; instructionsOpen = true },
                     )
                 }
                 DropdownMenuItem(
@@ -835,29 +999,57 @@ private fun ExerciseSection(
     if (swapOpen) {
         SwapExerciseDialog(
             options = swapOptions,
-            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
-            canSaveForGym = canSaveForGym && se.sessionExercise.plannedExerciseId != null,
-            onSwap = { option, applyToPlan, alwaysAtGym ->
-                vm.swapExercise(se, option, applyToPlan, alwaysAtGym)
+            onSwap = { option ->
                 swapOpen = false
+                swapTo(option)
             },
-            onPickOther = { applyToPlan, alwaysAtGym ->
+            onPickOther = {
                 swapOpen = false
-                swapPickerFlags = applyToPlan to alwaysAtGym
+                swapPickerOpen = true
             },
             onDismiss = { swapOpen = false },
         )
     }
-    swapPickerFlags?.let { (applyToPlan, alwaysAtGym) ->
+    if (swapPickerOpen) {
         ExercisePickerDialog(
             exercises = allExercises,
             title = stringResource(R.string.swap_exercise),
+            availableIds = availableAtGym.takeIf { it.isNotEmpty() },
             onPick = {
-                vm.swapExercise(se, it, applyToPlan, alwaysAtGym)
-                swapPickerFlags = null
+                swapPickerOpen = false
+                swapTo(it)
             },
-            onDismiss = { swapPickerFlags = null },
+            onDismiss = { swapPickerOpen = false },
         )
+    }
+    rememberSwap?.let { (original, picked) ->
+        val peId = se.sessionExercise.plannedExerciseId
+        val offered = buildSet {
+            if (gymName != null && picked.id !in availableAtGym) add(SwapMemory.ADD_TO_GYM)
+            if (peId != null) add(SwapMemory.SAVE_TO_PLAN)
+            if (gymName != null && peId != null) add(SwapMemory.ALWAYS_AT_GYM)
+            if (original.groupId == null || picked.groupId != original.groupId) {
+                add(SwapMemory.LINK_EQUIVALENT)
+            }
+        }
+        if (offered.isEmpty()) {
+            rememberSwap = null
+        } else {
+            RememberSwapDialog(
+                original = original,
+                picked = picked,
+                gymName = gymName,
+                offered = offered,
+                // A mid-session swap is often a one-off (the machine was taken);
+                // only the fact about the gym is assumed worth keeping.
+                defaults = setOf(SwapMemory.ADD_TO_GYM),
+                onDone = { chosen ->
+                    rememberSwap = null
+                    if (chosen.isNotEmpty()) vm.rememberSwap(se, original, picked, chosen)
+                },
+                onDismiss = { rememberSwap = null },
+            )
+        }
     }
     if (removeSetOpen) {
         RemoveSetDialog(
@@ -883,24 +1075,44 @@ private fun ExerciseSection(
             onDismiss = { nextTimeOpen = false },
         )
     }
+    if (instructionsOpen) {
+        AlertDialog(
+            onDismissRequest = { instructionsOpen = false },
+            title = { Text(se.exercise.displayName()) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    if (instructions.isNotBlank()) {
+                        Text(instructions, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    cues.forEach { cue ->
+                        Text("• $cue", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { instructionsOpen = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+        )
+    }
 }
 
 /**
  * Swap dialog: group equivalents up front, the whole library one tap further.
- * The two checkboxes decide whether the swap outlives this session — rewriting
- * the program day, or only what happens at this gym.
+ * Whether the swap outlives this session is asked afterwards, in the same
+ * "remember this swap?" dialog the start flow uses.
  */
 @Composable
 private fun SwapExerciseDialog(
     options: List<Exercise>,
-    canApplyToPlan: Boolean,
-    canSaveForGym: Boolean,
-    onSwap: (Exercise, applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
-    onPickOther: (applyToPlan: Boolean, alwaysAtGym: Boolean) -> Unit,
+    onSwap: (Exercise) -> Unit,
+    onPickOther: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var applyToPlan by remember { mutableStateOf(false) }
-    var alwaysAtGym by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.swap_exercise)) },
@@ -908,35 +1120,16 @@ private fun SwapExerciseDialog(
             Column {
                 options.forEach { option ->
                     TextButton(
-                        onClick = { onSwap(option, applyToPlan, alwaysAtGym) },
+                        onClick = { onSwap(option) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(option.displayName(), modifier = Modifier.weight(1f))
                     }
                 }
                 OutlinedButton(
-                    onClick = { onPickOther(applyToPlan, alwaysAtGym) },
+                    onClick = onPickOther,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.pick_another_exercise)) }
-
-                if (canApplyToPlan) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = applyToPlan, onCheckedChange = { applyToPlan = it })
-                        Text(
-                            stringResource(R.string.save_to_program_day),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-                if (canSaveForGym) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = alwaysAtGym, onCheckedChange = { alwaysAtGym = it })
-                        Text(
-                            stringResource(R.string.always_use_at_gym),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
             }
         },
         confirmButton = {},
@@ -1121,8 +1314,9 @@ private fun SetRow(
 
     if (targetOpen) {
         TargetDialog(
-            initial = planned?.targetRepsMin ?: set.targetReps,
-            onSave = { reps -> vm.updateTarget(se, set, reps) },
+            initial = set.targetReps ?: planned?.targetRepsMin,
+            canApplyToPlan = se.sessionExercise.plannedExerciseId != null,
+            onSave = { reps, applyToPlan -> vm.updateTarget(se, set, reps, applyToPlan) },
             onDismiss = { targetOpen = false },
         )
     }
@@ -1199,6 +1393,9 @@ private fun SetRowContent(
         )
 
         val loadLabel = loadFieldLabel(measurement, settings.unit)
+        // In "steppers replace typing" mode the field is display only.
+        val typeLoad = !(settings.steppersReplaceTyping && settings.stepperLoad)
+        val typeReps = !(settings.steppersReplaceTyping && settings.stepperReps)
         CompactNumberField(
             value = loadText,
             onValueChange = {
@@ -1207,6 +1404,8 @@ private fun SetRowContent(
             },
             label = loadLabel,
             decimal = !isLevel,
+            enabled = typeLoad,
+            selectAllOnFocus = settings.selectAllOnFocus,
             modifier = Modifier.weight(1.25f),
         )
         CompactNumberField(
@@ -1217,12 +1416,15 @@ private fun SetRowContent(
                 vm.updateSetValues(set, currentLoadKg(), filtered.toIntOrNull() ?: 0)
             },
             label = stringResource(R.string.reps),
+            enabled = typeReps,
+            selectAllOnFocus = settings.selectAllOnFocus,
             modifier = Modifier.weight(1f),
         )
 
         // Target sits directly right of the actual reps: the number you are
-        // aiming for next to the number you just entered.
-        val target = planned?.targetRepsMin ?: set.targetReps
+        // aiming for next to the number you just entered. A target edited in
+        // this session shadows the plan's.
+        val target = set.targetReps ?: planned?.targetRepsMin
         val targetText = when {
             set.setType == SetType.FAILURE -> stringResource(R.string.amrap)
             target != null -> "$target"
@@ -1286,7 +1488,98 @@ private fun SetRowContent(
             }
         }
     }
+    if (settings.stepperLoad || settings.stepperReps) {
+        // Load steps by the exercise's own increment when it has one, else the
+        // unit's usual plate/level step; reps always by one.
+        val loadStep = se.exercise.progressionIncrement
+            ?.let { Units.toDisplay(it, settings.unit, measurement) }
+            ?: Units.stepSize(settings.unit, measurement)
+        SetStepperRow(
+            showLoad = settings.stepperLoad,
+            showReps = settings.stepperReps,
+            onLoad = { direction ->
+                val current = loadText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                var next = current + direction * loadStep
+                // Assistance on a bodyweight exercise is a negative load; nothing else is.
+                if (measurement != MeasurementType.BODYWEIGHT) next = next.coerceAtLeast(0.0)
+                val text = Units.formatValue(next)
+                onLoadText(text)
+                val kg = Units.fromDisplay(text.toDoubleOrNull() ?: 0.0, settings.unit, measurement)
+                vm.updateSetValues(set, kg, repsText.toIntOrNull() ?: 0)
+            },
+            onReps = { direction ->
+                val next = ((repsText.toIntOrNull() ?: 0) + direction).coerceAtLeast(0)
+                onRepsText(next.toString())
+                vm.updateSetValues(set, currentLoadKg(), next)
+            },
+        )
+    }
     SetRowFooter(se, set, previous, settings, isCurrent)
+    }
+}
+
+/**
+ * The optional +/- row under a set's fields, one pair under the load slot and
+ * one under the reps slot, spaced exactly like the row above so each pair sits
+ * under the number it changes. The row itself is too tight for the buttons.
+ */
+@Composable
+private fun SetStepperRow(
+    showLoad: Boolean,
+    showReps: Boolean,
+    onLoad: (direction: Int) -> Unit,
+    onReps: (direction: Int) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 3.dp),
+    ) {
+        Spacer(Modifier.width(34.dp))
+        Box(Modifier.weight(1.25f)) { if (showLoad) StepperPair(onLoad) }
+        Box(Modifier.weight(1f)) { if (showReps) StepperPair(onReps) }
+        Spacer(Modifier.weight(0.9f))
+        Spacer(Modifier.weight(0.9f))
+        Spacer(Modifier.width(64.dp))
+    }
+}
+
+/** A minus and a plus sharing one rounded box, each half its own target. */
+@Composable
+private fun StepperPair(onStep: (direction: Int) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.surfaceVariant),
+    ) {
+        @Composable
+        fun Half(label: String, contentDescription: String, direction: Int) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable(onClickLabel = contentDescription) { onStep(direction) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+        }
+        Half("−", stringResource(R.string.decrease), -1)
+        Spacer(
+            Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .background(colors.outline.copy(alpha = 0.4f)),
+        )
+        Half("+", stringResource(R.string.increase), +1)
     }
 }
 
@@ -1415,29 +1708,51 @@ private fun SetTypeMarker(label: String, enabled: Boolean, onClick: () -> Unit) 
     }
 }
 
+/**
+ * Target edit for one set. Session-only unless "apply to future sessions" is
+ * ticked — the same choice the rest dialog offers. Targets used to rewrite the
+ * plan unconditionally, which made the two dialogs behave differently for no
+ * reason anyone could name.
+ */
 @Composable
 private fun TargetDialog(
     initial: Int?,
-    onSave: (Int?) -> Unit,
+    canApplyToPlan: Boolean,
+    onSave: (reps: Int?, applyToPlan: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var targetText by remember { mutableStateOf(initial?.toString() ?: "") }
+    var applyToPlan by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.target_reps)) },
         text = {
-            OutlinedTextField(
-                value = targetText,
-                onValueChange = { targetText = it.filter(Char::isDigit).take(3) },
-                label = { Text(stringResource(R.string.target_min)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(110.dp),
-            )
+            Column {
+                OutlinedTextField(
+                    value = targetText,
+                    onValueChange = { targetText = it.filter(Char::isDigit).take(3) },
+                    label = { Text(stringResource(R.string.target_min)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.width(110.dp),
+                )
+                if (canApplyToPlan) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = applyToPlan,
+                            onCheckedChange = { applyToPlan = it },
+                        )
+                        Text(
+                            stringResource(R.string.apply_future_sessions),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(targetText.toIntOrNull())
+                onSave(targetText.toIntOrNull(), applyToPlan)
                 onDismiss()
             }) { Text(stringResource(R.string.save)) }
         },

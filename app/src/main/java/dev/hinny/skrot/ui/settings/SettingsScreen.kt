@@ -7,9 +7,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +19,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -56,6 +60,7 @@ import dev.hinny.skrot.R
 import dev.hinny.skrot.data.model.AppLanguage
 import dev.hinny.skrot.data.model.CoachFrequency
 import dev.hinny.skrot.data.model.CoachPersonality
+import dev.hinny.skrot.data.model.ColorTheme
 import dev.hinny.skrot.data.model.ExerciseSort
 import dev.hinny.skrot.data.model.MeasurementType
 import dev.hinny.skrot.data.model.MetaDisplay
@@ -66,6 +71,7 @@ import dev.hinny.skrot.data.db.SeedData
 import dev.hinny.skrot.data.prefs.Settings
 import dev.hinny.skrot.domain.Units
 import dev.hinny.skrot.ui.common.SearchField
+import dev.hinny.skrot.ui.theme.accent
 import kotlinx.coroutines.launch
 
 /**
@@ -206,6 +212,29 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 selected = settings.theme,
             ) { scope.launch { repo.setTheme(it) } }
 
+            Text(stringResource(R.string.color_theme), style = MaterialTheme.typography.bodyMedium)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                ColorTheme.entries.forEach { theme ->
+                    FilterChip(
+                        selected = settings.colorTheme == theme,
+                        onClick = { scope.launch { repo.setColorTheme(theme) } },
+                        // A swatch says more than the name, and never lies
+                        // about what "Moss" is.
+                        leadingIcon = {
+                            Box(
+                                Modifier
+                                    .size(14.dp)
+                                    .background(theme.accent(), CircleShape),
+                            )
+                        },
+                        label = { Text(colorThemeLabel(theme)) },
+                    )
+                }
+            }
+
             Text(stringResource(R.string.display_unit), style = MaterialTheme.typography.bodyMedium)
             ChipRow(
                 options = listOf(WeightUnit.KG to "kg", WeightUnit.LBS to "lbs"),
@@ -241,6 +270,35 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                 settings.showLastSessionValues,
             ) { scope.launch { repo.setShowLastSessionValues(it) } }
             SettingHint(stringResource(R.string.show_last_session_values_hint))
+
+            ToggleSetting(
+                stringResource(R.string.sticky_exercise_header),
+                settings.stickyExerciseHeader,
+            ) { scope.launch { repo.setStickyExerciseHeader(it) } }
+            SettingHint(stringResource(R.string.sticky_exercise_header_hint))
+
+            ToggleSetting(
+                stringResource(R.string.select_all_on_focus),
+                settings.selectAllOnFocus,
+            ) { scope.launch { repo.setSelectAllOnFocus(it) } }
+            SettingHint(stringResource(R.string.select_all_on_focus_hint))
+
+            ToggleSetting(
+                stringResource(R.string.stepper_load),
+                settings.stepperLoad,
+            ) { scope.launch { repo.setStepperLoad(it) } }
+            ToggleSetting(
+                stringResource(R.string.stepper_reps),
+                settings.stepperReps,
+            ) { scope.launch { repo.setStepperReps(it) } }
+            SettingHint(stringResource(R.string.stepper_hint))
+            if (settings.stepperLoad || settings.stepperReps) {
+                ToggleSetting(
+                    stringResource(R.string.steppers_replace_typing),
+                    settings.steppersReplaceTyping,
+                ) { scope.launch { repo.setSteppersReplaceTyping(it) } }
+                SettingHint(stringResource(R.string.steppers_replace_typing_hint))
+            }
 
             ToggleSetting(
                 stringResource(R.string.plate_calculator),
@@ -401,6 +459,11 @@ fun SettingsScreen(container: AppContainer, settings: Settings, nav: NavHostCont
                     value = settings.coachMessageSeconds,
                 ) { scope.launch { repo.setCoachMessageSeconds(it) } }
                 SettingHint(stringResource(R.string.coach_message_seconds_hint))
+                ToggleSetting(
+                    stringResource(R.string.coach_exercise_cues),
+                    settings.coachExerciseCues,
+                ) { scope.launch { repo.setCoachExerciseCues(it) } }
+                SettingHint(stringResource(R.string.coach_exercise_cues_hint))
             }
         }
 
@@ -512,6 +575,18 @@ private fun DeleteDataDialog(
         },
     )
 }
+
+@Composable
+private fun colorThemeLabel(theme: ColorTheme): String = stringResource(
+    when (theme) {
+        ColorTheme.AMBER -> R.string.color_amber
+        ColorTheme.MOSS -> R.string.color_moss
+        ColorTheme.OCEAN -> R.string.color_ocean
+        ColorTheme.BLOOD -> R.string.color_blood
+        ColorTheme.IRON -> R.string.color_iron
+        ColorTheme.VIOLET -> R.string.color_violet
+    }
+)
 
 @Composable
 private fun metaDisplayOptions(): List<Pair<MetaDisplay, String>> = listOf(

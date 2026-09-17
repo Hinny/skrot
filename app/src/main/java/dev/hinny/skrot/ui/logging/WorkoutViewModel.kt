@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
+import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.data.model.GymOverride
 import dev.hinny.skrot.data.model.LoggedSet
 import dev.hinny.skrot.data.model.MeasurementType
@@ -24,6 +25,8 @@ import dev.hinny.skrot.domain.ScheduleEngine
 import dev.hinny.skrot.domain.SetRecord
 import dev.hinny.skrot.domain.StreakCalculator
 import dev.hinny.skrot.domain.WarmupGenerator
+import dev.hinny.skrot.ui.common.SwapMemory
+import dev.hinny.skrot.ui.common.cuesFor
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -31,7 +34,9 @@ import kotlinx.coroutines.launch
 
 sealed class WorkoutEvent {
     data class Pr(val exerciseName: String, val types: List<PrType>) : WorkoutEvent()
-    data class Coach(val trigger: CoachTrigger) : WorkoutEvent()
+
+    /** [exercise] is set for [CoachTrigger.EXERCISE_CUES]: the one whose cues to read. */
+    data class Coach(val trigger: CoachTrigger, val exercise: Exercise? = null) : WorkoutEvent()
     data class Finished(val sessionId: Long) : WorkoutEvent()
 }
 
@@ -51,11 +56,20 @@ class WorkoutViewModel(
      * by session-exercise id. What you are trying to beat, shown on the row.
      */
     val lastSessionSets = MutableStateFlow<Map<Long, List<LoggedSet>>>(emptyMap())
+
+    /**
+     * The gym this session is at, by name, and what it has — for the
+     * "remember this swap?" question. Null / empty on a temporary visit or an
+     * ad-hoc session without a gym, where there is nothing to remember into.
+     */
+    val gymName = MutableStateFlow<String?>(null)
+    val availableAtGym = MutableStateFlow<Set<Long>>(emptySet())
     val events = MutableSharedFlow<WorkoutEvent>(extraBufferCapacity = 8)
 
     private var coach: CoachEngine? = null
     private var welcomeChecked = false
     private var lastExerciseAnnounced = false
+    private val cuesAnnounced = mutableSetOf<Long>()
     private val dismissedSuggestions = mutableSetOf<Long>()
 
     init {
@@ -145,6 +159,10 @@ class WorkoutViewModel(
         suggestions.value = suggestionMap
         groupOptions.value = options
         lastSessionSets.value = previous
+
+        val gymId = content.session.gymId?.takeIf { !content.session.temporaryVisit }
+        gymName.value = gymId?.let { db.gymDao().byId(it)?.name }
+        availableAtGym.value = gymId?.let { db.gymDao().exerciseIdsAt(it).toSet() }.orEmpty()
     }
 
     private suspend fun touch() {
@@ -218,10 +236,11 @@ class WorkoutViewModel(
         // "Hit the target now and it's a PR": check the next planned set of this exercise.
         val nextSet = se.sortedSets.firstOrNull { !it.completed && it.setType != SetType.WARMUP }
         if (nextSet != null) {
-            val target = se.sessionExercise.plannedExerciseId
-                ?.let { plannedSetsByPe.value[it] }
-                ?.find { it.position == nextSet.position }
-                ?.targetRepsMin
+            val target = nextSet.targetReps
+                ?: se.sessionExercise.plannedExerciseId
+                    ?.let { plannedSetsByPe.value[it] }
+                    ?.find { it.position == nextSet.position }
+                    ?.targetRepsMin
             val gymId = content.session.gymId
             val wouldBePr = PrDetector.detect(
                 se.exercise.measurementType,
@@ -571,18 +590,22 @@ class WorkoutViewModel(
     }
 
     /**
-     * Target-reps edits persist back to the routine, like rest durations. An
-     * exercise with no plan behind it keeps its target on the logged set, so it
-     * stays editable rather than showing a dead "—".
+     * Target-reps edits apply to this session, stored on the logged set where
+     * they shadow the plan; [applyToPlan] additionally writes them back to the
+     * routine ("apply to future sessions"), exactly like rest durations.
      */
-    fun updateTarget(se: SessionExerciseWithDetails, set: LoggedSet, reps: Int?) {
+    fun updateTarget(
+        se: SessionExerciseWithDetails,
+        set: LoggedSet,
+        reps: Int?,
+        applyToPlan: Boolean = false,
+    ) {
         viewModelScope.launch {
+            db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             val peId = se.sessionExercise.plannedExerciseId
-            if (peId != null) {
+            if (applyToPlan && peId != null) {
                 db.routineDao().writeBackTarget(peId, set.position, reps)
                 session.value?.let { refreshAuxiliary(it) }
-            } else {
-                db.sessionDao().updateLoggedSet(set.copy(targetReps = reps))
             }
             touch()
         }
@@ -611,32 +634,47 @@ class WorkoutViewModel(
     }
 
     /**
-     * Swaps the exercise for this session. The swap is session-only unless asked
-     * to persist: [applyToPlan] rewrites the routine's planned exercise, and
-     * [alwaysAtGym] records it as a per-gym override instead, which keeps the
-     * routine intact and only changes what happens at this gym.
+     * Swaps the exercise for this session only. Whether the swap outlives the
+     * session is a separate question, answered through [rememberSwap].
      */
-    fun swapExercise(
-        se: SessionExerciseWithDetails,
-        to: Exercise,
-        applyToPlan: Boolean = false,
-        alwaysAtGym: Boolean = false,
-    ) {
+    fun swapExercise(se: SessionExerciseWithDetails, to: Exercise) {
         viewModelScope.launch {
             db.sessionDao().updateSessionExercise(se.sessionExercise.copy(exerciseId = to.id))
+            touch()
+            session.value?.let { refreshAuxiliary(it) }
+        }
+    }
+
+    /**
+     * Makes a swap of [original] for [picked] outlive this session, in the ways
+     * chosen: mark it available at this gym, rewrite the program day's planned
+     * exercise, record a per-gym override (the program stays intact and only
+     * this gym changes), or group the two as interchangeable.
+     */
+    fun rememberSwap(
+        se: SessionExerciseWithDetails,
+        original: Exercise,
+        picked: Exercise,
+        memory: Set<SwapMemory>,
+    ) {
+        viewModelScope.launch {
+            val current = session.value?.session
+            val gymId = current?.gymId?.takeIf { !current.temporaryVisit }
             val peId = se.sessionExercise.plannedExerciseId
-            if (peId != null) {
-                if (applyToPlan) {
-                    db.routineDao().plannedExerciseById(peId)?.let {
-                        db.routineDao().updatePlannedExercise(it.copy(exerciseId = to.id))
-                    }
-                }
-                val current = session.value?.session
-                if (alwaysAtGym && current?.gymId != null && !current.temporaryVisit) {
-                    db.gymDao().setOverride(GymOverride(current.gymId, peId, to.id))
+            if (SwapMemory.ADD_TO_GYM in memory && gymId != null) {
+                db.gymDao().addExercise(GymExercise(gymId = gymId, exerciseId = picked.id))
+            }
+            if (SwapMemory.SAVE_TO_PLAN in memory && peId != null) {
+                db.routineDao().plannedExerciseById(peId)?.let {
+                    db.routineDao().updatePlannedExercise(it.copy(exerciseId = picked.id))
                 }
             }
-            touch()
+            if (SwapMemory.ALWAYS_AT_GYM in memory && peId != null && gymId != null) {
+                db.gymDao().setOverride(GymOverride(gymId, peId, picked.id))
+            }
+            if (SwapMemory.LINK_EQUIVALENT in memory) {
+                db.exerciseDao().linkAsEquivalent(original, picked)
+            }
             session.value?.let { refreshAuxiliary(it) }
         }
     }
@@ -779,6 +817,29 @@ class WorkoutViewModel(
         viewModelScope.launch {
             container.restTimer.skip()
             db.sessionDao().deleteSession(sessionId)
+        }
+    }
+
+    /**
+     * The set to do next has moved into another exercise. If that exercise is
+     * about to start — nothing of it done yet — the coach may read out its
+     * cues. Once per exercise, whether or not the coach had room for it: a cue
+     * read out at set three is not a reminder, it is a nag.
+     */
+    fun onCurrentExerciseChanged(seId: Long?) {
+        viewModelScope.launch {
+            val id = seId ?: return@launch
+            if (id in cuesAnnounced) return@launch
+            val settings = container.settingsNow()
+            if (!settings.coachExerciseCues) return@launch
+            val se = session.value?.exercises?.find { it.sessionExercise.id == id } ?: return@launch
+            if (se.sets.any { it.completed }) return@launch
+            cuesAnnounced += id
+            if (se.exercise.cuesFor(settings.exerciseNameLanguage).isEmpty()) return@launch
+            val engine = coachEngine() ?: return@launch
+            if (engine.offer(CoachTrigger.EXERCISE_CUES)) {
+                events.emit(WorkoutEvent.Coach(CoachTrigger.EXERCISE_CUES, se.exercise))
+            }
         }
     }
 

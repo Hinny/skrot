@@ -65,7 +65,25 @@ data class Exercise(
     val nextTimeNote: String = "",
     /** Per-exercise progression increment override (kg or levels); null = use the global default. */
     val progressionIncrement: Double? = null,
-)
+    /**
+     * How to perform the exercise. Built-ins carry both languages from
+     * [dev.hinny.skrot.data.db.SeedInstructions]; custom exercises store the
+     * user's text in both fields, like the name.
+     */
+    val instructionsEn: String = "",
+    val instructionsSv: String = "",
+    /**
+     * The TL;DR: at most [MAX_CUES] short key points, the ones a coach calls
+     * out before the set. Same language split as the instructions.
+     */
+    val cuesEn: List<String> = emptyList(),
+    val cuesSv: List<String> = emptyList(),
+) {
+    companion object {
+        /** Three is a checklist; more is a paragraph nobody reads mid-set. */
+        const val MAX_CUES = 3
+    }
+}
 
 /** A named group of interchangeable exercises (e.g. "Horizontal press"). */
 @Serializable
@@ -307,9 +325,10 @@ data class WorkoutSession(
     /** True when started in "temporary visit" mode (no gym availability filtering). */
     val temporaryVisit: Boolean = false,
     /**
-     * When true, structural edits (add/remove/reorder sets or exercises, swap
-     * exercise, set type, target reps, rest duration) are blocked; weight,
-     * reps and completing the active set always stay editable.
+     * When true, structural edits (add/remove/reorder sets or exercises, set
+     * type, target reps, rest duration) are blocked; weight, reps, completing
+     * the active set and swapping an exercise (it sits behind a menu, out of
+     * reach of a stray tap) always stay available.
      */
     val locked: Boolean = false,
 )

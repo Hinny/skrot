@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hinny.skrot.AppContainer
 import dev.hinny.skrot.data.model.Exercise
-import dev.hinny.skrot.data.model.ExerciseGroup
 import dev.hinny.skrot.data.model.Gym
 import dev.hinny.skrot.data.model.GymExercise
 import dev.hinny.skrot.data.model.GymOverride
@@ -123,28 +122,9 @@ class StartSessionViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /**
-     * Records [picked] as interchangeable with [original], so a gym without the
-     * original offers it automatically next time. Joins the original's group, or
-     * starts one named after it.
-     *
-     * Grouping is a statement about your own training, not an edit to the
-     * library's definition of an exercise, so this is allowed for built-in
-     * exercises too — unlike renaming one.
-     */
+    /** See [dev.hinny.skrot.data.db.ExerciseDao.linkAsEquivalent]. */
     fun linkAsEquivalent(original: Exercise, picked: Exercise) {
-        viewModelScope.launch {
-            val groupId = original.groupId ?: db.exerciseDao().insertGroup(
-                ExerciseGroup(
-                    nameEn = original.nameEn,
-                    nameSv = original.nameSv,
-                    isCustom = true,
-                )
-            ).also { newGroup ->
-                db.exerciseDao().update(original.copy(groupId = newGroup))
-            }
-            db.exerciseDao().update(picked.copy(groupId = groupId))
-        }
+        viewModelScope.launch { db.exerciseDao().linkAsEquivalent(original, picked) }
     }
 
     /**

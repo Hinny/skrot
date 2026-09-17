@@ -11,6 +11,9 @@ enum class CoachTrigger {
     LAST_EXERCISE,
     SESSION_DONE,
     STREAK,
+
+    /** The exercise's key points, read out as its first set comes up. */
+    EXERCISE_CUES,
 }
 
 /**
@@ -45,10 +48,17 @@ class CoachEngine(
     private val lastShownAt = mutableMapOf<CoachTrigger, Long>()
     private val firedOnce = mutableSetOf<CoachTrigger>()
 
+    /**
+     * Triggers that only obey the cooldown, not the per-session cap. Cues are
+     * information rather than encouragement; letting them eat the cap would
+     * mean a LOW-frequency coach spends both its comments on technique and
+     * never gets to the PR it was there for.
+     */
+    private val uncapped = setOf(CoachTrigger.SESSION_DONE, CoachTrigger.EXERCISE_CUES)
+
     /** True if a comment for [trigger] may be shown now; records it as shown. */
     fun offer(trigger: CoachTrigger): Boolean {
-        // The session-done message never counts against the cap.
-        if (trigger != CoachTrigger.SESSION_DONE && shownCount >= maxPerSession) return false
+        if (trigger !in uncapped && shownCount >= maxPerSession) return false
         if (trigger in oncePerSession && trigger in firedOnce) return false
         val now = nowMs()
         val last = lastShownAt[trigger]
