@@ -15,8 +15,8 @@ android {
         applicationId = "dev.hinny.skrot"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.5.3"
+        versionCode = 8
+        versionName = "1.6.0"
     }
 
     // Release signing is provided via environment variables in CI (see README).
